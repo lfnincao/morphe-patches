@@ -1,3 +1,9 @@
+## [1.47.0](https://github.com/lfnincao/morphe-patches/compare/v1.46.1...v1.47.0) (2026-10-06)
+
+### ✨ New Features
+
+* **youtube:** remember playback position across playlists ([17f3b0c](https://github.com/lfnincao/morphe-patches/commit/17f3b0ca627d4442bb48dbb37b85a22d9ea633a4))
+
 ## [1.46.0](https://github.com/MorpheApp/morphe-patches/compare/v1.45.0...v1.46.0) (2026-10-06)
 
 ### 🐛 Bug Fixes
