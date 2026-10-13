@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.47.0",
+  "version": "1.48.0",
   "patches": [
     {
       "name": "AI channel filter",
@@ -9562,11 +9562,6 @@
       "description": "Adds an option to resume videos where you left off, including when videos auto-advance inside a playlist or autoplay queue.",
       "default": true,
       "category": null,
-      "dependencies": [
-        "BytecodePatch",
-        "BytecodePatch",
-        "BytecodePatch"
-      ],
       "compatiblePackages": [
         {
           "packageName": "com.google.android.youtube",
@@ -9615,14 +9610,14 @@
               "description": null
             },
             {
-              "version": "21.16.256",
+              "version": "21.20.405",
               "versionCodes": null,
               "isExperimental": false,
               "minSdk": 28,
               "description": null
             },
             {
-              "version": "21.13.164",
+              "version": "21.16.256",
               "versionCodes": null,
               "isExperimental": false,
               "minSdk": 28,
