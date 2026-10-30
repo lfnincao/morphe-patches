@@ -3,12 +3,11 @@ package app.morphe.patches.youtube.interaction.seekbar
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patches.shared.misc.settings.preference.SwitchPreference
 import app.morphe.patches.youtube.misc.extension.sharedExtensionPatch
 import app.morphe.patches.youtube.misc.settings.PreferenceScreen
 import app.morphe.patches.youtube.misc.settings.settingsPatch
-import app.morphe.util.findFreeRegister
+import app.morphe.patcher.util.findFreeRegister
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -66,8 +65,9 @@ val enableTapToSeekPatch = bytecodePatch(
                         if-eqz v$freeRegister, :disabled
                         invoke-virtual { v$thisInstanceRegister, v$xAxisRegister }, $oMethod
                         invoke-virtual { v$thisInstanceRegister, v$xAxisRegister }, $nMethod
-                    """,
-                    ExternalLabel("disabled", getInstruction(insertIndex)),
+                        :disabled
+                        nop
+                    """
                 )
             }
         }

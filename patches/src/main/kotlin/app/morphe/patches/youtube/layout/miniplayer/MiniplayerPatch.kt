@@ -17,6 +17,11 @@ import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.cloneParameters
+import app.morphe.patcher.util.findFreeRegister
+import app.morphe.patcher.util.getReference
+import app.morphe.patcher.util.numberOfParameterRegisters
+import app.morphe.patcher.util.proxy.mutableTypes.MutableField.Companion.toMutable
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patcher.util.smali.ExternalLabel
@@ -35,7 +40,10 @@ import app.morphe.patches.youtube.misc.playservice.is_20_37_or_greater
 import app.morphe.patches.youtube.misc.playservice.is_21_17_or_greater
 import app.morphe.patches.youtube.misc.playservice.is_21_29_or_greater
 import app.morphe.patches.youtube.misc.playservice.is_21_30_or_greater
+import app.morphe.patches.youtube.misc.playservice.is_21_31_or_greater
 import app.morphe.patches.youtube.misc.playservice.is_21_32_or_greater
+import app.morphe.patches.youtube.misc.playservice.is_21_42_or_greater
+import app.morphe.patches.youtube.misc.playservice.is_21_43_or_greater
 import app.morphe.patches.youtube.misc.playservice.versionCheckPatch
 import app.morphe.patches.youtube.misc.settings.PreferenceScreen
 import app.morphe.patches.youtube.misc.settings.settingsPatch
@@ -46,14 +54,11 @@ import app.morphe.patches.youtube.video.format.hookAdaptiveFormat
 import app.morphe.patches.youtube.video.format.videoFormatPatch
 import app.morphe.patches.youtube.video.information.videoInformationPatch
 import app.morphe.util.addInstructionsAtControlFlowLabel
-import app.morphe.util.cloneParameters
-import app.morphe.util.findFreeRegister
 import app.morphe.util.findInstructionIndicesReversedOrThrow
-import app.morphe.util.getReference
 import app.morphe.util.indexOfFirstInstructionOrThrow
+import app.morphe.util.indexOfFirstInstructionReversedOrThrow
 import app.morphe.util.indexOfFirstLiteralInstructionOrThrow
 import app.morphe.util.insertLiteralOverride
-import app.morphe.util.numberOfParameterRegisters
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
@@ -63,6 +68,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.immutable.ImmutableField
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
@@ -75,7 +81,7 @@ internal const val MINIMAL_BOUNDS_INTERFACE =
 val miniplayerPatch = bytecodePatch(
     name = "Miniplayer",
     description = "Adds options to change the in-app minimized player. " +
-            "Patching 21.28.206 and lower has more miniplayer types to choose from."
+            "Patching 21.28.208 and lower has more miniplayer types to choose from."
 ) {
     dependsOn(
         sharedExtensionPatch,
@@ -95,15 +101,23 @@ val miniplayerPatch = bytecodePatch(
 
         if (is_20_37_or_greater) {
             // 21.29 removed all modern miniplayers except modern 4
-            preferences += if (!is_21_29_or_greater) {
-                ListPreference("morphe_miniplayer_type")
+            if (!is_21_29_or_greater) {
+                preferences += ListPreference("morphe_miniplayer_type")
             } else {
                 // Only modern 4 is left, plus the minimal bar rebuilt on top of it.
-                ListPreference(
+                preferences += ListPreference(
                     key = "morphe_miniplayer_type",
                     entriesKey = "morphe_miniplayer_type_21_29_entries",
                     entryValuesKey = "morphe_miniplayer_type_21_29_entry_values"
                 )
+                // TODO: Eventually remove this.
+                //       Tell stable users upgrading from 21.23 where the other miniplayers went.
+                if (!is_21_31_or_greater) {
+                    preferences += NonInteractivePreference(
+                        key = "morphe_miniplayer_not_available",
+                        selectable = false
+                    )
+                }
             }
         } else {
             preferences += ListPreference(
@@ -190,16 +204,28 @@ val miniplayerPatch = bytecodePatch(
 
         // region Disable resuming miniplayer (Continue watching)
 
-        ShowMiniplayerCommandFingerprint.let {
-            it.method.apply {
-                val index = it.instructionMatches[1].index
-                val register = getInstruction<OneRegisterInstruction>(index).registerA
+        // Only skip the resume branch of the command. Other show miniplayer commands,
+        // such as "Play next in queue" from the feed when no video is open, still work.
+        (if (is_21_43_or_greater) {
+            ShowMiniplayerCommandFingerprint to 2
+        } else if (is_21_42_or_greater) {
+            ShowMiniplayerCommandLegacy2142Fingerprint to 1
+        } else {
+            ShowMiniplayerCommandLegacyFingerprint to 3
+        }).let { (fingerprint, matchIndex) ->
+            fingerprint.method.apply {
+                val index = fingerprint.instructionMatches[matchIndex].index + 1
+                val free = findFreeRegister(index)
 
-                addInstructions(
+                addInstructionsWithLabels(
                     index,
                     """
-                        invoke-static { v$register }, $EXTENSION_CLASS->disableResumingStartupMiniPlayer(Z)Z
-                        move-result v$register
+                        invoke-static {}, $EXTENSION_CLASS->disableResumingStartupMiniPlayer()Z
+                        move-result v$free
+                        if-eqz v$free, :show_resuming_miniplayer
+                        return-void
+                        :show_resuming_miniplayer
+                        nop
                     """
                 )
             }
@@ -421,6 +447,64 @@ val miniplayerPatch = bytecodePatch(
                         return-void
                         :disable_offscreen_handler
                         nop
+                    """
+                )
+            }
+        }
+
+        // endregion
+
+        // region List rebuilt after exiting fullscreen.
+
+        // After an orientation change a list is detached and attached again the next time its
+        // size changes, and it is empty for a frame. Exiting fullscreen brings the list back
+        // unchanged, and the rebuild otherwise happens later, such as when scrolling the watch
+        // page or when the home is laid out again after minimizing the player.
+        ListLayoutChangeFingerprint.let {
+            val pendingField = it.instructionMatches[8].getFieldAccessed()
+
+            // Orientation the last size of the list was laid out in.
+            val sizeOrientationField = ImmutableField(
+                it.classDef.type,
+                "patch_sizeOrientation",
+                "I",
+                AccessFlags.PUBLIC.value,
+                null,
+                null,
+                null
+            ).toMutable()
+            it.classDef.fields.add(sizeOrientationField)
+
+            it.method.apply {
+                // New size, kept as the last width and height.
+                val sizeKeptIndex = it.instructionMatches[7].index + 1
+                val orientationRegister = findFreeRegister(sizeKeptIndex)
+
+                addInstructions(
+                    sizeKeptIndex,
+                    """
+                        invoke-static { p1 }, $EXTENSION_CLASS->getListOrientation(Landroid/view/View;)I
+                        move-result v$orientationRegister
+                        iput v$orientationRegister, p0, $sizeOrientationField
+                    """
+                )
+
+                // Same size, before the list is attached. The controller register is reused there.
+                val sameSizeIndex = indexOfFirstInstructionReversedOrThrow(
+                    it.instructionMatches[5].index,
+                    Opcode.IGET_OBJECT
+                )
+                val pendingRegister = findFreeRegister(sameSizeIndex)
+                val sizeOrientationRegister = findFreeRegister(sameSizeIndex, pendingRegister)
+
+                addInstructionsAtControlFlowLabel(
+                    sameSizeIndex,
+                    """
+                        iget-boolean v$pendingRegister, p0, $pendingField
+                        iget v$sizeOrientationRegister, p0, $sizeOrientationField
+                        invoke-static { p1, v$pendingRegister, v$sizeOrientationRegister }, $EXTENSION_CLASS->getListRebuildPending(Landroid/view/View;ZI)Z
+                        move-result v$pendingRegister
+                        iput-boolean v$pendingRegister, p0, $pendingField
                     """
                 )
             }

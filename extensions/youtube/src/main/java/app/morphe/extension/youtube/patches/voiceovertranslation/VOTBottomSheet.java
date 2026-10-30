@@ -1,6 +1,6 @@
 /*
  * Copyright 2026 Morphe.
- * https://github.com/MorpheApp/morphe-patches
+ * https://github.com/MorpheApp/morphe-patches/pull/1685
  *
  * See the included NOTICE file for GPLv3 Section 7 terms that apply to this code.
  */
@@ -37,7 +37,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ScrollView;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -47,10 +46,7 @@ import java.util.List;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.shared.settings.IntegerSetting;
 import app.morphe.extension.shared.settings.preference.CustomDialogListPreference;
-import app.morphe.extension.shared.settings.preference.SeekBarPreference;
-import app.morphe.extension.shared.settings.preference.SeekBarPreference.SeekBarConfig;
 import app.morphe.extension.shared.theme.ThemeUtils;
 import app.morphe.extension.shared.ui.CustomDialog;
 import app.morphe.extension.shared.ui.Dim;
@@ -75,7 +71,6 @@ public final class VOTBottomSheet {
             ResourceType.DRAWABLE, "yt_outline_experimental_speaker_vd_theme_24");
 
     public static void show(Context context) {
-        VoiceOverTranslationPatch.preloadTestVoices();
         VoiceOverTranslationPatch.ensureTts();
 
         SheetBottomDialog.DraggableLinearLayout root = SheetBottomDialog
@@ -103,9 +98,9 @@ public final class VOTBottomSheet {
         final SheetBottomDialog.SlideDialog[] mainRef = {null};
 
         LinearLayout engineRow = makeValueRow(context, fg, str("morphe_vot_tts_voice_type"));
-        Runnable refreshEngine = () -> refreshEngineRow(engineRow);
         engineRow.setOnClickListener(v -> showEnginePicker(context, mainRef[0]));
-        refreshEngine.run();
+        EdgeTtsVoiceRepository.load(context, () -> refreshEngineRow(engineRow));
+        refreshEngineRow(engineRow);
 
         LinearLayout translationRow = makeValueRow(context, fg, str("morphe_vot_translation_service_title"));
         Runnable refreshTranslation = () -> ((TextView) translationRow.getTag())
@@ -113,7 +108,7 @@ public final class VOTBottomSheet {
         translationRow.setOnClickListener(v -> showTranslationServicePicker(context, mainRef[0]));
         refreshTranslation.run();
 
-        TextView title = makeTitle(context, str("morphe_vot_screen_title"), fg);
+        TextView title = SheetBottomDialog.createTitle(context, str("morphe_vot_screen_title"), fg);
         ((LinearLayout.LayoutParams) title.getLayoutParams()).setMargins(Dim.dp16, Dim.dp8, Dim.dp16, Dim.dp16);
         root.addView(title);
 
@@ -128,7 +123,7 @@ public final class VOTBottomSheet {
         content.addView(translationRow);
         content.addView(engineRow);
         content.addView(makeDivider(context, fg));
-        content.addView(makeSliderRow(context,
+        content.addView(SheetBottomDialog.createSliderRow(context,
                 str("morphe_vot_original_audio_volume_title"),
                 Settings.VOT_ORIGINAL_AUDIO_VOLUME,
                 fg,
@@ -136,7 +131,7 @@ public final class VOTBottomSheet {
                     Settings.VOT_ORIGINAL_AUDIO_VOLUME.save(value);
                     VoiceOverTranslationPatch.updateOriginalAudioMultiplier();
                 }));
-        content.addView(makeSliderRow(context,
+        content.addView(SheetBottomDialog.createSliderRow(context,
                 str("morphe_vot_translation_volume_title"),
                 Settings.VOT_TRANSLATION_VOLUME,
                 fg,
@@ -144,7 +139,7 @@ public final class VOTBottomSheet {
                     Settings.VOT_TRANSLATION_VOLUME.save(value);
                     VoiceOverTranslationPatch.updatePlaybackVolume();
                 }));
-        content.addView(makeSliderRow(context,
+        content.addView(SheetBottomDialog.createSliderRow(context,
                 str("morphe_vot_max_speech_rate_title"),
                 Settings.VOT_MAX_SPEECH_RATE,
                 fg,
@@ -201,19 +196,17 @@ public final class VOTBottomSheet {
         String voiceId = Settings.VOT_TTS_VOICE_TYPE.get();
         VoiceCatalog.Voice voice = VoiceCatalog.getVoice(voiceId);
 
-        if (Settings.VOT_USE_NATIVE_TTS.get() || (voice == null && VoiceCatalog.resolve(lang, null) == null)) {
+        if (Settings.VOT_USE_NATIVE_TTS.get()) {
             valueView.setText(str("morphe_vot_tts_system"));
         } else if (voice != null && (voice.languageTag.equalsIgnoreCase(VoiceCatalog.getIso639(lang)) || voice.isMultilingual)) {
             valueView.setText(voice.dialogDisplayName);
         } else {
             String defaultVoiceId = VoiceCatalog.resolve(lang, null);
             VoiceCatalog.Voice defaultVoice = VoiceCatalog.getVoice(defaultVoiceId);
-            valueView.setText(defaultVoice != null ? defaultVoice.dialogDisplayName : str("morphe_vot_tts_system"));
+            valueView.setText(defaultVoice != null ? defaultVoice.dialogDisplayName
+                    : str("morphe_vot_tts_system"));
         }
 
-        final boolean edgeAvailable = VoiceCatalog.resolve(lang, null) != null;
-        row.setAlpha(edgeAvailable ? 1f : 0.4f);
-        row.setClickable(edgeAvailable);
     }
 
     private static void showTranslationServicePicker(Context context, SheetBottomDialog.SlideDialog mainDialog) {
@@ -228,7 +221,7 @@ public final class VOTBottomSheet {
                 SheetBottomDialog.createMainLayout(context, getDialogBackgroundColor());
         pickerRoot.setPadding(Dim.dp16, 0, Dim.dp16, Dim.dp16);
         final int fg = ThemeUtils.getAppForegroundColor();
-        pickerRoot.addView(makeTitle(context, str("morphe_vot_translation_service_title"), fg));
+        pickerRoot.addView(SheetBottomDialog.createTitle(context, str("morphe_vot_translation_service_title"), fg));
 
         String selectedService = Settings.VOT_TRANSLATION_SERVICE.get();
 
@@ -309,8 +302,43 @@ public final class VOTBottomSheet {
     }
 
     private static void showEnginePicker(Context context, SheetBottomDialog.SlideDialog mainDialog) {
-        String lang = VoiceOverTranslationPatch.resolveTargetLang();
+        String lang = VoiceCatalog.getIso639(VoiceOverTranslationPatch.resolveTargetLang());
+        final int fg = ThemeUtils.getAppForegroundColor();
+        SheetBottomDialog.DraggableLinearLayout pickerRoot =
+                SheetBottomDialog.createMainLayout(context, getDialogBackgroundColor());
+        pickerRoot.setPadding(Dim.dp16, 0, Dim.dp16, Dim.dp16);
+        pickerRoot.addView(SheetBottomDialog.createTitle(context, str("morphe_vot_tts_voice_type"), fg));
+        SheetBottomDialog.SlideDialog pickerDialog =
+                SheetBottomDialog.createSlideDialog(context, pickerRoot, fadeInDuration);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout listLayout = new LinearLayout(context);
+        listLayout.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(listLayout);
 
+        int speakerRes = Utils.appIsUsingBoldIcons() ? DRAWABLE_SPEAKER_BOLD : DRAWABLE_SPEAKER;
+        final int rippleColor = Color.argb(60, Color.red(fg), Color.green(fg), Color.blue(fg));
+        populateVoiceRows(context, listLayout, pickerDialog, lang, fg, rippleColor, speakerRes);
+        pickerRoot.addView(scroll);
+        mainDialog.dismiss();
+        pickerDialog.setOnCancelListener(d -> VOTBottomSheet.show(context));
+        PipDismissHelper.dismissOnPip(pickerDialog);
+        pickerDialog.show();
+
+        EdgeTtsVoiceRepository.load(context, () -> {
+            if (!pickerDialog.isShowing()
+                    || !lang.equals(VoiceCatalog.getIso639(VoiceOverTranslationPatch.resolveTargetLang()))) {
+                return;
+            }
+            int scrollY = scroll.getScrollY();
+            populateVoiceRows(context, listLayout, pickerDialog, lang, fg, rippleColor, speakerRes);
+            scroll.post(() -> scroll.scrollTo(0, scrollY));
+        });
+    }
+
+    private static void populateVoiceRows(Context context, LinearLayout listLayout,
+                                          SheetBottomDialog.SlideDialog pickerDialog,
+                                          String lang, int fg, int rippleColor, int speakerRes) {
+        listLayout.removeAllViews();
         List<VoiceCatalog.Voice> allVoices = VoiceCatalog.getVoicesForLang(lang);
         List<VoiceCatalog.Voice> nativeVoices = new ArrayList<>();
         List<VoiceCatalog.Voice> multilingualVoices = new ArrayList<>();
@@ -332,24 +360,8 @@ public final class VOTBottomSheet {
         String selectedValue = Settings.VOT_USE_NATIVE_TTS.get()
                 ? TTS_ENGINE_SYSTEM
                 : VoiceCatalog.resolve(lang, voiceId);
-
-        final int fg = ThemeUtils.getAppForegroundColor();
-
-        SheetBottomDialog.DraggableLinearLayout pickerRoot =
-                SheetBottomDialog.createMainLayout(context, getDialogBackgroundColor());
-        pickerRoot.setPadding(Dim.dp16, 0, Dim.dp16, Dim.dp16);
-        pickerRoot.addView(makeTitle(context, str("morphe_vot_tts_voice_type"), fg));
-
-        SheetBottomDialog.SlideDialog pickerDialog =
-                SheetBottomDialog.createSlideDialog(context, pickerRoot, fadeInDuration);
-
-        ScrollView scroll = new ScrollView(context);
-        LinearLayout listLayout = new LinearLayout(context);
-        listLayout.setOrientation(LinearLayout.VERTICAL);
-        scroll.addView(listLayout);
-
-        int speakerRes = Utils.appIsUsingBoldIcons() ? DRAWABLE_SPEAKER_BOLD : DRAWABLE_SPEAKER;
-        final int rippleColor = Color.argb(60, Color.red(fg), Color.green(fg), Color.blue(fg));
+        // With no cached/online voices, System TTS remains a usable option.
+        if (selectedValue == null) selectedValue = TTS_ENGINE_SYSTEM;
 
         int maleCount = 0;
         int femaleCount = 0;
@@ -394,11 +406,7 @@ public final class VOTBottomSheet {
             }
         }
 
-        pickerRoot.addView(scroll);
-        mainDialog.dismiss();
-        pickerDialog.setOnCancelListener(d -> VOTBottomSheet.show(context));
-        PipDismissHelper.dismissOnPip(pickerDialog);
-        pickerDialog.show();
+
     }
 
     private static void addVoiceRow(Context context, LinearLayout listLayout,
@@ -536,7 +544,7 @@ public final class VOTBottomSheet {
         SheetBottomDialog.DraggableLinearLayout pickerRoot =
                 SheetBottomDialog.createMainLayout(context, getDialogBackgroundColor());
         pickerRoot.setPadding(Dim.dp16, 0, Dim.dp16, Dim.dp16);
-        pickerRoot.addView(makeTitle(context, title, ThemeUtils.getAppForegroundColor()));
+        pickerRoot.addView(SheetBottomDialog.createTitle(context, title, ThemeUtils.getAppForegroundColor()));
 
         ListView listView = new ListView(context);
         listView.setDivider(null);
@@ -553,7 +561,6 @@ public final class VOTBottomSheet {
         listView.setOnItemClickListener((parent, view, position, id) -> {
             Settings.VOT_CAPTION_LANGUAGE.save(langValues[position]);
             VoiceOverTranslationPatch.reloadTranscript();
-            VoiceOverTranslationPatch.preloadTestVoices();
             VOTBottomSheet.show(context);
             pickerDialog.dismiss();
         });
@@ -572,20 +579,6 @@ public final class VOTBottomSheet {
         return langEntries[0];
     }
 
-    private static TextView makeTitle(Context context, String text, int fgColor) {
-        TextView tv = new TextView(context);
-        tv.setText(text);
-        tv.setTextSize(18);
-        tv.setTypeface(Typeface.DEFAULT_BOLD);
-        tv.setTextColor(fgColor);
-        tv.setGravity(Gravity.CENTER_HORIZONTAL);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.setMargins(0, Dim.dp8, 0, Dim.dp16);
-        tv.setLayoutParams(params);
-        return tv;
-    }
-
     private static View makeDivider(Context context, int fgColor) {
         View divider = new View(context);
         divider.setBackgroundColor(Color.argb(30,
@@ -597,74 +590,7 @@ public final class VOTBottomSheet {
         return divider;
     }
 
-    private static LinearLayout makeSliderRow(Context context, String label, IntegerSetting setting,
-                                               int fgColor, IntConsumer onChanged) {
-        final SeekBarConfig config = SeekBarPreference.configFor(setting);
-        if (config == null) throw new IllegalStateException("No SeekBarConfig registered for " + setting.key);
-        final int initialValue = setting.get();
-
-        LinearLayout outer = new LinearLayout(context);
-        outer.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams outerParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        outerParams.setMargins(0, Dim.dp16, 0, 0);
-        outer.setLayoutParams(outerParams);
-
-        TextView labelView = new TextView(context);
-        labelView.setText(label);
-        labelView.setTextColor(fgColor);
-        labelView.setTextSize(16);
-        labelView.setTypeface(Typeface.DEFAULT_BOLD);
-        outer.addView(labelView);
-
-        LinearLayout seekRow = new LinearLayout(context);
-        seekRow.setOrientation(LinearLayout.HORIZONTAL);
-        seekRow.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams seekRowParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        seekRowParams.topMargin = Dim.dp16;
-        seekRow.setLayoutParams(seekRowParams);
-
-        SeekBar seekBar = new SeekBar(context);
-        seekBar.setMax((config.max() - config.min()) / config.step());
-        seekBar.setProgress(SeekBarPreference.valueToProgress(config, initialValue));
-        seekBar.getProgressDrawable().setColorFilter(new PorterDuffColorFilter(fgColor, PorterDuff.Mode.SRC_IN));
-        seekBar.getThumb().setColorFilter(new PorterDuffColorFilter(fgColor, PorterDuff.Mode.SRC_IN));
-        seekRow.addView(seekBar, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView valueView = new TextView(context);
-        valueView.setText(SeekBarPreference.formatLabel(initialValue, config));
-        valueView.setTextColor(fgColor);
-        valueView.setTextSize(14);
-        valueView.setMinWidth(Dim.dp40);
-        valueView.setGravity(Gravity.END);
-        seekRow.addView(valueView, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        outer.addView(seekRow);
-
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
-                if (fromUser) {
-                    final int value = SeekBarPreference.progressToValue(config, progress);
-                    valueView.setText(SeekBarPreference.formatLabel(value, config));
-                    onChanged.accept(value);
-                }
-            }
-            @Override public void onStartTrackingTouch(SeekBar bar) { }
-            @Override public void onStopTrackingTouch(SeekBar bar) { }
-        });
-
-        return outer;
-    }
-
     private static int secondaryColor(int fg) {
         return Color.argb(153, Color.red(fg), Color.green(fg), Color.blue(fg));
-    }
-
-    @FunctionalInterface
-    private interface IntConsumer {
-        void accept(int value);
     }
 }

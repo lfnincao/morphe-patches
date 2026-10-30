@@ -19,8 +19,8 @@ import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.resource.ResourceType
 import app.morphe.patcher.resourceLiteral
 import app.morphe.patcher.string
+import app.morphe.patcher.util.getReference
 import app.morphe.util.findInstructionIndicesReversed
-import app.morphe.util.getReference
 import app.morphe.util.indexOfFirstInstruction
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
@@ -190,8 +190,18 @@ internal fun seekForwarderFingerprint() = Fingerprint(
     }
 )
 
+/** Finds the player palette source's local apply method, which stores the palette entity. */
+internal object PaletteEntityFingerprint : Fingerprint(
+    returnType = "V",
+    parameters = listOf("L"),
+    filters = listOf(
+        string("YTM_PLAYER_COLOR_SAMPLE_PALETTE_ENTITY_KEY")
+    )
+)
+
 /** Finds the palette source's publish-then-apply entry point. */
 internal object PalettePublicationFingerprint : Fingerprint(
+    classFingerprint = PaletteEntityFingerprint,
     returnType = "V",
     parameters = emptyList(),
     filters = listOf(
@@ -317,6 +327,25 @@ internal object PlaybackControlViewsFingerprint : Fingerprint(
         resourceLiteral(ResourceType.ID, "player_control_play_pause_replay_button"),
         resourceLiteral(ResourceType.ID, "player_control_previous_button"),
         resourceLiteral(ResourceType.ID, "player_control_next_button")
+    )
+)
+
+/**
+ * Reads the bottomSheetPeekHeight attribute, styleable index 3. Each measure pass adds it to the
+ * drag handle and tab strip heights to get the collapsed player bottom sheet peek height.
+ */
+internal object BottomSheetPeekHeightFingerprint : Fingerprint(
+    definingClass = "Lcom/google/android/apps/youtube/music/watchpage/ui/WatchWhileLayout;",
+    name = "<init>",
+    parameters = listOf("Landroid/content/Context;", "Landroid/util/AttributeSet;"),
+    filters = listOf(
+        literal(3),
+        methodCall(
+            definingClass = "Landroid/content/res/TypedArray;",
+            name = "getDimensionPixelSize",
+            location = MatchAfterImmediately(),
+        ),
+        opcode(Opcode.MOVE_RESULT, location = MatchAfterImmediately()),
     )
 )
 
@@ -553,36 +582,32 @@ internal fun accountPeerDispatchFingerprint(peerType: String, forwarder: MethodR
     filters = listOf(methodCall(reference = forwarder)),
 )
 
-internal fun protoDefaultInstanceFingerprint(messageType: String) = Fingerprint(
-    definingClass = messageType,
-    name = "<clinit>",
-    filters = listOf(
-        fieldAccess(
-            definingClass = messageType,
-            type = messageType,
-            opcode = Opcode.SPUT_OBJECT
-        )
-    )
-)
-
 /** Generic protobuf parser inherited by the already resolved native message type. */
 internal fun protoParserFingerprint(messageHierarchy: Set<String>) = Fingerprint(
     name = "parseFrom",
+    isStatic = true,
     parameters = listOf("L", "[B", "Lcom/google/protobuf/ExtensionRegistryLite;"),
     returnType = "L",
     custom = { method, owner ->
         owner.type in messageHierarchy &&
                 method.returnType == owner.type &&
-                method.parameterTypes[0].toString() == owner.type &&
-                AccessFlags.STATIC.isSet(method.accessFlags)
-    },
+                method.parameterTypes[0].toString() == owner.type
+    }
 )
 
-/** A palette source owns an extractor producing the same type its local apply method consumes. */
-internal fun paletteExtractorFingerprint(paletteType: String, ownedTypes: Set<String>) = Fingerprint(
+/** The extractor produces the same type the palette source's local apply method consumes. */
+internal fun paletteExtractorFingerprint(paletteType: String) = Fingerprint(
     parameters = listOf("Landroid/graphics/Bitmap;"),
     returnType = paletteType,
-    custom = { _, owner -> owner.type in ownedTypes },
+)
+
+/** Finds the end of the palette extractor constructor. */
+internal fun paletteExtractorConstructorFingerprint(extractorType: String) = Fingerprint(
+    definingClass = extractorType,
+    name = "<init>",
+    filters = listOf(
+        opcode(Opcode.RETURN_VOID)
+    )
 )
 
 internal fun queueItemEndpointFingerprint(ownerType: String, commandType: String) = Fingerprint(

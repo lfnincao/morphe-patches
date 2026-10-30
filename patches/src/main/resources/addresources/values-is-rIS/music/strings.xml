@@ -16,6 +16,14 @@ Second \"item\" text"</string>
 
 -->
 <resources>
+  <!-- misc.androidauto.androidAutoPatch -->
+  <string name="morphe_music_android_auto_last_played">Síðast spilað</string>
+  <string name="morphe_music_android_auto_subscriptions">Áskriftir</string>
+  <string name="morphe_music_android_auto_videos">Myndbönd</string>
+  <string name="morphe_music_android_auto_other_results">Aðrar niðurstöður</string>
+  <string name="morphe_music_android_auto_uploaded_songs">Hlaðnar lög</string>
+  <string name="morphe_music_android_auto_uploaded_albums">Hlaðnar platnur</string>
+  <string name="morphe_music_android_auto_uploaded_artists">Hlaðnir listamenn</string>
   <!-- app.morphe.patches.music.interaction.jam -->
   <string name="morphe_music_jam_update_host_controls">Uppfæra Jam-plástur gestgjafans til að nota hlé og halda áfram</string>
   <string name="morphe_music_jam_probe_title">Deiling Jam-biðraðar</string>
@@ -51,7 +59,7 @@ Second \"item\" text"</string>
   <string name="morphe_music_jam_show_qr">Sýna QR</string>
   <string name="morphe_music_jam_done">Lokið</string>
   <string name="morphe_music_jam_invite_title">Bjóða í Jam-ið þitt</string>
-  <string name="morphe_music_jam_invite_message">Skannaðu til að tengjast og breyta þessari biðröð. Ef Jam-inu lýkur er boðið afturkallað.</string>
+  <string name="morphe_music_jam_invite_message">Skannaðu til að taka þátt og breyta í biðröðinni. Að ljúka Jam-tilrauninni skerðir boðið</string>
   <string name="morphe_music_jam_copy_link">Afrita tengil</string>
   <string name="morphe_music_jam_invitation_clip">Jam-boð</string>
   <string name="morphe_music_jam_reconnecting_toast">Jam er að endurtengjast; reyndu aftur fljótlega.</string>
@@ -64,9 +72,9 @@ Second \"item\" text"</string>
   <string name="morphe_music_jam_updating">Uppfæri Jam…</string>
   <string name="morphe_music_jam_finding_host">Leita að gestgjafanum þínum á Wi-Fi…</string>
   <string name="morphe_music_jam_waiting_people">Bíð eftir fólki</string>
-  <string name="morphe_music_jam_one_connected">%d einstaklingur tengdur</string>
-  <string name="morphe_music_jam_many_connected">%d einstaklingar tengdir</string>
-  <string name="morphe_music_jam_code_expires">Sláðu inn þennan kóða á tæki í nágrenninu. Wi-Fi Aware virkar milli aðskilinna staðarneta þegar það er stutt. Rennur út eftir %d mínútur.</string>
+  <string name="morphe_music_jam_one_connected">%s tengd persóna</string>
+  <string name="morphe_music_jam_many_connected">%s tengdir einstaklingar</string>
+  <string name="morphe_music_jam_code_expires">Sláðu inn þennan kóða á nálægu tæki. Wi-Fi Aware virkar yfir ótengdar LAN netkerfi þegar það er stytt. Rennur út eftir %s mínútur</string>
   <string name="morphe_music_jam_seek_to">Spóla að %s?</string>
   <string name="morphe_music_jam_edits_open">Breytingar opnar</string>
   <string name="morphe_music_jam_edits_locked">Breytingar læstar</string>
@@ -76,12 +84,12 @@ Second \"item\" text"</string>
   <string name="morphe_music_jam_unsupported">Ekki stutt meðan á Jam stendur</string>
   <string name="morphe_music_jam_cancelled">Hætt við tengingu</string>
   <string name="morphe_music_jam_reconnecting_host">Endurtengist gestgjafanum þínum…</string>
-  <string name="morphe_music_jam_share_prompt">Deildu biðröð. Leyfðu öllum að bæta við lögum.</string>
+  <string name="morphe_music_jam_share_prompt">Deildu biðröð. Látum alla bæta við lögum</string>
   <string name="morphe_music_jam_invite_people">Bjóða fólki</string>
   <string name="morphe_music_jam_guest_edits">Gestir geta breytt biðröðinni</string>
   <string name="morphe_music_jam_end_jam">Ljúka Jam</string>
-  <string name="morphe_music_jam_participant_help">Gestgjafinn spilar tónlistina. Bættu við, færðu eða fjarlægðu lög beint í YouTube Music-biðröðinni.</string>
-  <string name="morphe_music_jam_joining_help">Hafðu bæði tækin nálægt. Þú getur hætt við meðan við leitum að gestgjafanum.</string>
+  <string name="morphe_music_jam_participant_help">Hýsingaraðili spilar tónlistina. Bættu við, hreyfðu eða fjarlægðu lög beint í YouTube Music biðröðinni</string>
+  <string name="morphe_music_jam_joining_help">Hafðu báðin tækin nálægt. Þú getur hætt við á meðan við leitum að hýsingaraðila</string>
   <string name="morphe_music_jam_cancel_joining">Hætta við tengingu</string>
   <string name="morphe_music_jam_leave_jam">Yfirgefa Jam</string>
   <string name="morphe_music_jam_start_jam">Hefja Jam</string>
@@ -118,16 +126,9 @@ Second \"item\" text"</string>
   <string name="morphe_music_enable_audio_video_switch_summary">Reyna að skipta á milli hljóðútgáfu og opinbers tónlistarmyndbands</string>
   <!-- interaction.downloads.downloadsPatch -->
   <string name="morphe_external_downloader_screen_summary">Sæktu niður tónlistarmyndbönd, þætti eða lög með þriðja aðila niðurhal forrit</string>
-  <!-- 'Download' should be translated using the same localized wording YouTube displays for the button. -->
-  <string name="morphe_external_downloader_action_button_title">Yfirskrifa niðurhalstakkann</string>
-  <string name="morphe_external_downloader_action_button_summary">Notar valið ytri niðurhalsforrit í stað venjulega niðurhalshnappsins</string>
-  <string name="morphe_external_downloader_flyout_menu_title">Hnekkja niðurhalsvalmynd</string>
-  <string name="morphe_external_downloader_flyout_menu_summary">Notar valið ytri niðurhalsforrit í stað venjulegu niðurhalsvalmyndarinnar</string>
-  <string name="morphe_music_in_app_downloads_title">Sækja í appinu</string>
-  <string name="morphe_music_in_app_downloads_summary">Sækir hljóð inni í YouTube Music í stað þess að opna ytra niðurhalsforritið</string>
-  <string name="morphe_music_in_app_downloads_user_dialog_message">"Lög eru vistuð í einkageymslu appsins og þeim er eytt ef YouTube Music er fjarlægt.
-
-Meðan þetta er kveikt sýnir Niðurhalsflipinn þessi lög í stað Music Premium-safnsins án nettengingar. Ef slökkt er á því endurheimtist flipinn og Premium niðurhal er aldrei snert."</string>
+  <!-- 'Download' should be translated using the same localized wording YouTube displays for the menu. -->
+  <string name="morphe_external_downloader_menu_title">Nota utana komandi niðurhaldara fyrir niðurhalssvalmynd</string>
+  <string name="morphe_external_downloader_menu_summary">Valkostur í valmyndum til að hlaða niður opnar utana komandi niðurhalara í staðinn</string>
   <string name="morphe_music_downloads_screen_title">Niðurhal</string>
   <string name="morphe_music_downloads_empty">"Engin niðurhal
 Niðurhlaðin lög birtast hér"</string>
@@ -445,7 +446,7 @@ SABR spilun (slökkt á spoofun myndbandsstrauma)"</string>
   <string name="morphe_music_scrobbling_custom_regex_title">Sérsniðin regex hreinsun</string>
   <string name="morphe_music_scrobbling_custom_regex_summary">Sláðu inn sérstakt reglugerðarfyrirbæri til að fjarlægja auka texta úr lagtitlum, listamönnum eða albúmum. Dæmi: (?i)\\s*\\((clean|explicit)\\)</string>
   <string name="morphe_music_scrobbling_parse_title_title">Greina listamann og lag úr titli</string>
-  <string name="morphe_music_scrobbling_parse_title_summary">Þrækja út listamanns- og lagheiti úr vídeótitli með \" - \" skiljanum.  Nýtt fyrir endurhleypta efnis þar sem nafn rásarinnar getur verið notað sem listamaður.</string>
+  <string name="morphe_music_scrobbling_parse_title_summary">Taktu út nafn söngvara og lagheiti úr video titli með \" - \" aðskilnaði. Notagott fyrir enduruppfærslu efni þar sem kanalnummunin getur verið notuð sem söngvari</string>
   <string name="morphe_music_scrobbling_guess_album_title">Fylltu inn albúm sem vantar.</string>
   <string name="morphe_music_scrobbling_guess_album_summary">Þegar tónlistin inniheldur ekki albúm skaltu fletta því upp á Last.fm svo að scrobble þitt sé fullgert.</string>
   <!-- 'scrobbling' must be kept untranslated -->
@@ -458,11 +459,51 @@ Til þess að tryggja að scrobbling sé samstilla á meðan spilað er í bakgr
   <string name="morphe_music_lyrics_keep_screen_on_title">Haltu skjánum kveiktum meðan þú skoðar texta</string>
   <string name="morphe_music_lyrics_keep_screen_on_summary">Kemur í veg fyrir að skjárinn slökkvi á meðan textaglugginn er opinn</string>
   <string name="morphe_music_lyrics_section_service_title">Textaþjónusta</string>
-  <string name="morphe_music_lyrics_section_overlay_title">Yfirlag</string>
+  <string name="morphe_music_lyrics_section_display_title">Sýning</string>
   <string name="morphe_music_lyrics_section_sync_title">Samstilling</string>
-  <string name="morphe_music_lyrics_source_all_disabled">Allar veitur óvirkjar — innbyggðir textar og innfelldir textar</string>
+  <string name="morphe_music_lyrics_section_panel_title">Spjald</string>
+  <string name="morphe_music_lyrics_source_all_disabled">Allir veitendur óvirkir - innbyggðar lagatextar og innfelldir lagatextar</string>
   <string name="morphe_music_lyrics_source_reset_title">Endurstilla forgangsröð?</string>
   <string name="morphe_music_lyrics_source_reset_message">Endurheimta veitur í sjálfgefna forgangsröð</string>
+  <string name="morphe_music_lyrics_rime_dict_title">Rime orðalisti</string>
+  <string name="morphe_music_lyrics_rime_dict_empty">"Rime orðalisti þarf einnig UniDict: í offline orðabókarveitanda, merktu „Kínverskir og kantónskir stafasnið (UniDict)“ og láttu hlaða niður fyrst. Án þess skilar listi sem les stafir engar leesur.
+
+Merktu listar Rime Wordlist ætti að lesa, smelltu síðan á Vista til að hlaða þeim niður. Listi sem þú bættir við er fjarlægður þegar ómerkir það.
+
+Hver listi er þinn eigin orð-til-leesur tafla, .dict.yaml með línum eins og:
+Orð ham
+Dæmi din2
+Fyrsta dálkurinn er orðið, annað Leesure; auka dálkar og línur án tab er hunsað."</string>
+  <string name="morphe_music_lyrics_rime_dict_no_table">Enginn Rime orðalisti er valinn fyrir tungumálið hér að ofan. Smelltu á þetta nafn til að velja einn, eða veldu tungumál sem hefur lista</string>
+  <string name="morphe_music_lyrics_rime_dict_add">Bæta við</string>
+  <string name="morphe_music_lyrics_rime_dict_add_title">Bæta við Rime Orðalista</string>
+  <string name="morphe_music_lyrics_rime_dict_add_hint">.dict.yaml skrá, eða zip heldur eina, með línum eins og Orð ham og Dæmi din2. Listann er sóttur þegar þú merkist hann og smelltir á Vista, og leyfið hans er þitt að athuga</string>
+  <string name="morphe_music_lyrics_rime_dict_field_code">Tungmálakóði</string>
+  <string name="morphe_music_lyrics_rime_dict_field_code_hint">Tvær eða þrír stafir, eins og hak eða wuu</string>
+  <string name="morphe_music_lyrics_rime_dict_field_label">Nafn</string>
+  <string name="morphe_music_lyrics_rime_dict_field_label_hint">Sýnd undir útskrift, eins og Hakka (Meixian)</string>
+  <string name="morphe_music_lyrics_rime_dict_field_url">Vistfang orðalistans</string>
+  <string name="morphe_music_lyrics_rime_dict_field_url_hint">https:// vistfang .dict.yaml eða zip þess</string>
+  <string name="morphe_music_lyrics_rime_dict_field_char_source">Stafir ekki í orði</string>
+  <string name="morphe_music_lyrics_rime_char_source_auto">Sjálfvirkt</string>
+  <string name="morphe_music_lyrics_rime_char_source_cantonese">Kantónskir stafir</string>
+  <string name="morphe_music_lyrics_rime_char_source_pinyin">Mandarin stafir</string>
+  <string name="morphe_music_lyrics_rime_char_source_none">Engin stafsútskrift</string>
+  <string name="morphe_music_lyrics_rime_dict_incomplete">Fylltu út kóða, nafn og vistfang</string>
+  <string name="morphe_music_lyrics_rime_dict_bad_code">Kóðann verður að vera tvær eða þrír stafir, eins og hak</string>
+  <string name="morphe_music_lyrics_rime_dict_bad_url">Vistfangið verður að byrja á https://</string>
+  <string name="morphe_music_lyrics_rime_dict_bad_field">Nafnið og vistfangið má ekki innihalda lóðrétt strik</string>
+  <string name="morphe_music_lyrics_rime_dict_duplicate">%1$s hefur þegar orðatöflu</string>
+  <string name="morphe_music_lyrics_rime_dict_reserved">%1$s er lesið af innbyggðri rómverjun og getur ekki tekið orðalista</string>
+  <string name="morphe_music_lyrics_rime_dict_reserved_row">Notast ekki: þetta tungumál hefur nú þegar eigin útskrift, svo tjaldið af því til að fjarlægja það</string>
+  <string name="morphe_music_lyrics_rime_dict_added">Bætti %1$s - settu merki við það og smelltu á Vista til að sækja það</string>
+  <string name="morphe_music_lyrics_rime_dict_ready">Orðalistanir tilbúnar</string>
+  <string name="morphe_music_lyrics_rime_dict_ready_toast">Orðalistanir tilbúnar (%1$d færslur)</string>
+  <string name="morphe_music_lyrics_rime_dict_building">Les orðalista: %1$d%%</string>
+  <string name="morphe_music_lyrics_rime_dict_failed">Niðurhal orðalistans mistókst - smelltu á Vista aftur til að reyna aftur</string>
+  <string name="morphe_music_lyrics_clear_cache_title">Hreinsa vistaðar lagatexta</string>
+  <string name="morphe_music_lyrics_clear_cache_summary">Eyða %1$s MB af textunum geymdum á þessu tæki</string>
+  <string name="morphe_music_lyrics_clear_cache_done">Hreinsað %1$s MB</string>
   <string name="morphe_music_token_dialog_get_token">Sækja token</string>
   <string name="morphe_music_apple_music_token_title">Apple Music miðlanotandamerki</string>
   <string name="morphe_music_apple_music_token_dialog_instruction">"Límdu vafrakökuna media-user-token úr music.apple.com
@@ -473,7 +514,7 @@ Skref:
 3. Afritaðu gildið af \"media-user-token\""</string>
   <string name="morphe_music_apple_music_token_toast_saved">Apple Music: media-user-token vistað</string>
   <string name="morphe_music_apple_music_token_toast_cleared">Apple Music: media-user-token hreinsað</string>
-  <string name="morphe_music_apple_music_token_toast_invalid">Apple Music: ógilt media-user-token — athugaðu og reyndu aftur</string>
+  <string name="morphe_music_apple_music_token_toast_invalid">Apple Music: Ógilt miðlunar-notanda-tökn – athugaðu og reyndu aftur</string>
   <string name="morphe_music_spotify_token_title">Spotify: aðgangstákn gilt í %d mínútur</string>
   <string name="morphe_music_spotify_token_dialog_instruction">"Límdu vafrakökuna sp_dc úr Spotify.
 
@@ -483,7 +524,7 @@ Skref:
 3. Afritaðu gildið af \"sp_dc\""</string>
   <string name="morphe_music_spotify_token_toast_saved">Spotify: sp_dc vistað</string>
   <string name="morphe_music_spotify_token_toast_cleared">Spotify: sp_dc hreinsað</string>
-  <string name="morphe_music_spotify_token_toast_invalid">Spotify: ógilt sp_dc — athugaðu og reyndu aftur</string>
+  <string name="morphe_music_spotify_token_toast_invalid">Spotify: Ógilt sp_dc – athugaðu og reyndu aftur</string>
   <string name="morphe_music_apple_token_optional_hint">Apple Music tóken er valkostinn. Án þess mun Lyrically vera notað sem fallback</string>
   <string name="morphe_music_deezer_arl_title">Deezer […] Afritaðu gildi \"arl\"</string>
   <string name="morphe_music_deezer_arl_dialog_instruction">"Límdu vafrakökuna arl úr Deezer.
@@ -494,14 +535,14 @@ Skref:
 3. Afritaðu gildið af \"arl\""</string>
   <string name="morphe_music_deezer_arl_toast_saved">Deezer: arl vistað</string>
   <string name="morphe_music_deezer_arl_toast_cleared">Deezer: arl hreinsað</string>
-  <string name="morphe_music_deezer_arl_toast_invalid">Deezer: ógilt arl — athugaðu og reyndu aftur</string>
+  <string name="morphe_music_deezer_arl_toast_invalid">Deezer: Ógilt arl – athugaðu og reyndu aftur</string>
   <string name="morphe_music_musixmatch_token_title">Musixmatch Token</string>
   <string name="morphe_music_musixmatch_token_dialog_instruction">Bættu við aðgangslykli aðeins til að nota þinn eigin reikning. Hann verður að koma frá Musixmatch Android-appinu: aðgangslyklar afritaðir af musixmatch.com tilheyra hinu niðurlagða skrifborðsforriti og API-ið hafnar þeim.</string>
   <string name="morphe_music_musixmatch_token_optional_hint">Musixmatch virkar án aðgangslykils, svo þennan reit er hægt að skilja eftir auðan.</string>
   <string name="morphe_music_musixmatch_token_dialog_hint">notendatoken</string>
   <string name="morphe_music_musixmatch_token_toast_saved">Musixmatch: notandatákn vistað</string>
   <string name="morphe_music_musixmatch_token_toast_cleared">Musixmatch: notandatákn hreinsað</string>
-  <string name="morphe_music_musixmatch_token_toast_invalid">Musixmatch: ógilt notandatákn — athugaðu og reyndu aftur</string>
+  <string name="morphe_music_musixmatch_token_toast_invalid">Musixmatch: Ógilt notandatökn – athugaðu og reyndu aftur</string>
   <string name="morphe_music_youtube_cookies_title">Vafrakökur YouTube</string>
   <string name="morphe_music_youtube_cookies_dialog_instruction">"Límdu vafrakökurnar þínar af YouTube til að sækja skjátexta og tímatexta af YouTube.
 
@@ -511,17 +552,32 @@ Skref:
 Nauðsynlegar vafrakökur: SID, HSID, SAPISID, __Secure-3PAPISID, __Secure-1PAPISID, LOGIN_INFO"</string>
   <string name="morphe_music_youtube_cookies_toast_saved">YouTube: vafrakökur vistaðar</string>
   <string name="morphe_music_youtube_cookies_toast_cleared">YouTube: vafrakökur hreinsaðar</string>
-  <string name="morphe_music_youtube_cookies_toast_invalid">YouTube vafrakökurnar virðast ekki vera gildar. Endilega reyndu að afrita þær aftur.</string>
-  <string name="morphe_music_lyrics_tap_to_seek_title">Tap á línu til að flýta</string>
-  <string name="morphe_music_lyrics_tap_to_seek_summary">Að tap á línu fer í þann tíma í laginu.</string>
+  <string name="morphe_music_youtube_cookies_toast_invalid">YouTube: Ógildir vafrakökur – athugaðu og reyndu aftur</string>
+  <string name="morphe_music_lyrics_tap_to_seek_title">Ýttuðu og haltu línunni</string>
+  <string name="morphe_music_lyrics_tap_to_seek_summary">Til að fara í ákveðinn tímapunkt í laginu ýttu á línuna, haltu lengi til afrita orðið sem fingurinn þinn er á eða alla línuna ef þrýstingurinn er ekki á orði. Að gera þetta óvirkt eytir báðum valkostunum út</string>
+  <string name="morphe_music_lyrics_show_section_title">Sýna kaflamerki</string>
+  <string name="morphe_music_lyrics_show_section_summary">Merkja hvern nýjan kafla lagatextans með litlu merki, eins og erindi eða viðlag</string>
   <string name="morphe_music_lyrics_show_copy_button_title">Sýna afritunarhnapp</string>
-  <string name="morphe_music_lyrics_show_copy_button_summary">Engar vafrakökur fundust. Gakktu úr skugga um að þú sért skráð(ur) inn á YouTube og reyndu aftur.</string>
+  <string name="morphe_music_lyrics_show_copy_button_summary">Ýttuðu til að afrita upprunalega lagatexta sem hreinan texta; haltu lengi til að vista hrátt lagatextaskráarskrá í Niðurhal</string>
   <string name="morphe_music_lyrics_show_translate_button_title">Sýna þýðingarhnapp</string>
-  <string name="morphe_music_lyrics_show_translate_button_summary">Snertu til að kveikja/slökkva á þýðingu; ýttu lengi til að fá aðeins þýðingu. Notar þýðingar frá þjónustuveitu, Google Translate eða OpenAI-samhæft API.</string>
-  <string name="morphe_music_lyrics_show_romanize_button_title">Sýna umritunarhnappinn</string>
-  <string name="morphe_music_lyrics_show_romanize_button_summary">Snertu til að kveikja/slökkva á rómönskun; ýttu lengi til að fá aðeins rómönskun. Notar rómönskun frá þjónustuveitu, Google Translate eða OpenAI-samhæft API.</string>
+  <string name="morphe_music_lyrics_show_translate_button_summary">Smelltu til að víxla þýðingu; langtækja til að fá aðeins þýðingu. Notar virkar þýðiveitendur í röð þeirra</string>
+  <string name="morphe_music_lyrics_show_romanize_button_title">Sýna Rómverjun eða Transliterering hnapp</string>
+  <string name="morphe_music_lyrics_show_romanize_button_summary">Smelltu til að víxla rómverjun eða translitereringu; langtækja til að fá aðeins rómverjun eða translitereringu. Notar virkar rómverjuveitendur í röð þeirra</string>
+  <string name="morphe_music_lyrics_allow_transliteration_title">Virkja translitereringu</string>
+  <string name="morphe_music_lyrics_allow_transliteration_summary">Leyfa ekki-latínuskýringar frá lagatilfelli; þegar slökkt, haltu bara latínbókstöfum, bókstöfum með accent og hljóðtölum</string>
+  <string name="morphe_music_lyrics_local_romanization_summary">Les hvert orð af tíma lagatilfelli (orð samstilling á); Korea þarf ekki niðurhal; fimmtán ritmál deila einum CLDR niðurhal; Han stafir eru lesnir af Rime Orðalista þegar orðatalan nær yfir tungumálið</string>
+  <string name="morphe_music_lyrics_local_romanization_download_started">Að sækja útskrift orðabækur…</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_ready">Leseferðir tilbúnar (%1$d færslur)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_failed">Niðurhól mistókst - slökktu á og kveiktu aftur til að reyna aftur</string>
+  <string name="morphe_music_lyrics_local_romanization_download_confirm_title">Ótengd orðabók</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_japanese">Japanskt (SudachiDict, ~75 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_unidict">Kínverskir og Kantónsku stafir (UniDict, ~8 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_chinese">Kínverskir orð (pinyin-pro, ~17 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_cldr">Gríska, Slavneska kýrillískt (þ.á.m. rússneska, úkraínska, bulgaríska, serbneska, hvíta-rússneska, makedónska), georgíska, armenska, hebreska, arabíska, amhara og sýríska rómanisering (CLDR, ~0,5 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_building">Les %1$s: %2$d%%</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_empty">Veldu að minnsta kosti eina orðabók</string>
   <string name="morphe_music_lyrics_show_refresh_button_title">Settu inn gildar vafrakökur til að leyfa YouTube-tengingu.</string>
-  <string name="morphe_music_lyrics_show_refresh_button_summary">Pikkaðu til að skipta yfir í næsta textavalkost; haltu inni til að leita að texta eftir lagtitli og flytjanda.</string>
+  <string name="morphe_music_lyrics_show_refresh_button_summary">Ýttuðu til að skipta yfir í næstu lagatextamöguleika; haltu lengi til að leita að lagatexta eftir lagi og listamanni</string>
   <string name="morphe_music_lyrics_search_dialog_title">Leita að texta</string>
   <string name="morphe_music_lyrics_search_title_hint">Lagtitill</string>
   <string name="morphe_music_lyrics_search_artist_hint">Flytjandi</string>
@@ -530,14 +586,41 @@ Nauðsynlegar vafrakökur: SID, HSID, SAPISID, __Secure-3PAPISID, __Secure-1PAPI
   <string name="morphe_music_lyrics_saved">Vistað</string>
   <string name="morphe_music_lyrics_word_sync_title">Auðkenna samstillt orð eða atkvæði</string>
   <string name="morphe_music_lyrics_word_sync_summary">Sérsníddu texta til að sýna lög og frumtexta.</string>
+  <string name="morphe_music_lyrics_line_scale_title">Draga óvirkar línur</string>
+  <string name="morphe_music_lyrics_line_scale_summary">Teiknar hverja línu sem er ekki verið að syngja í augunum smám saman, ofan á dimmingu hennar</string>
+  <string name="morphe_music_lyrics_split_background_title">Sýna bakraddir sérstaklega</string>
+  <string name="morphe_music_lyrics_split_background_summary">Skilur bakraddir og harmoníu frá foringjalínunni. Flytur bakradd sem skrifuð er í klombum, svo sem \"(Oh) I want you\", úr sönglinunni í sína eigin dökkari línu</string>
   <string name="morphe_music_lyrics_hide_played_title">Fela spilaða texta</string>
   <string name="morphe_music_lyrics_hide_played_summary">Fela textalínur fyrir ofan línuna sem spilast núna</string>
   <string name="morphe_music_lyrics_hide_unplayed_title">Fela óspilaða texta</string>
   <string name="morphe_music_lyrics_hide_unplayed_summary">Fela textalínur fyrir neðan línuna sem spilast núna</string>
   <string name="morphe_music_lyrics_mediasession_title">Sýna MediaSession-texta á læsisskjánum</string>
+  <string name="morphe_music_lyrics_mediasession_summary">Sýnir núverandi línu á læsiskjá, Android Auto og Bluetooth. Kræfur Android 11 eða nýrra</string>
   <string name="morphe_music_lyrics_miniplayer_title">Sýna texta í smáspilara</string>
-  <string name="morphe_music_lyrics_display_artist_first_title">Birtingarröð flytjanda og titils</string>
-  <string name="morphe_music_lyrics_display_artist_first_summary">Notaðu lyklaborðið til að leita að texta. Stilltu leitarstillingarnar eftir þörfum.</string>
+  <string name="morphe_music_lyrics_miniplayer_summary">Sýnir núverandi línu í smaspilara, með lagi flyttri í undirtexta</string>
+  <string name="morphe_music_lyrics_mini_track_format_title">Snið á lagatitli/listamanni</string>
+  <string name="morphe_music_lyrics_mini_track_format_summary">Snið á lágnumri sem sýnt er með textanum í lágnumrinum og MediaSession. {t} er titillinn, {a} er listamaðurinn og {v} er útgáfan, eins og Acoustic, ef textakerfið gefur upp slíka upplýsingar. Texti á milli tveggja skila er aðeins sýndur þegar hver breyta inni í honum hefur gildi; skrifaðu \\: fyrir venjulegan skilja. Hver lína er sýnd eftir og eftir þegar textinn breytist</string>
+  <string name="morphe_music_lyrics_mini_encapsulation_title">Snið á textalínu</string>
+  <string name="morphe_music_lyrics_mini_encapsulation_summary">Snið á textalínu í lágnumrinum og MediaSession. {lrc} er línan og {n} er fjöldi sinna sem hún er sungin í röð. Texti á milli skila er aðeins sýndur þegar línan endurtekst. Notaðu \\: fyrir skilja</string>
+  <string name="morphe_music_lyrics_mini_encapsulation_invalid">Sniðið verður að innihalda {lrc}</string>
+  <string name="morphe_music_lyrics_mini_track_format_menu_summary">Snið fyrir listamannalínu og tímasetningu hreyfingar</string>
+  <string name="morphe_music_lyrics_mini_artist_min_label">Lágmarkstimi á skjá (ms)</string>
+  <string name="morphe_music_lyrics_mini_artist_max_label">Hámarkstimi á skjá (ms)</string>
+  <string name="morphe_music_lyrics_mini_artist_timing_explanation">Aðeins fyrir hreyfingar með margar linnur. Halda hverju römni í að minnsta kosti lágmarkstima. Við hámarkstima er listamannalínan færð áfram jafnvel þótt textinn sé sá sami.</string>
+  <string name="morphe_music_lyrics_mini_artist_timing_invalid">Lágmark verður að vera 0 eða hærra. Hámark verður að vera hærra en 0 og að minnsta kosti jafnt og lágmark.</string>
+  <string name="morphe_music_lyrics_mini_line_limits_title">Tökur á lengd línna</string>
+  <string name="morphe_music_lyrics_mini_line_limits_summary">Tökur á línustærð texta og listamanns, og þyngd fullbreiddarteikna</string>
+  <string name="morphe_music_lyrics_mini_line_limits_lyrics">"Taka á línustærð texta
+Skipta lengri texta í jafnvægnar hluti. 0 slökkvir á skiptingu."</string>
+  <string name="morphe_music_lyrics_mini_line_limits_artist">"Línumat fyrir listamann
+Skipti fyllta lagsmynd í hringrásarramma. 0 slökkvir á skiptingu."</string>
+  <string name="morphe_music_lyrics_mini_line_limits_weight">"Þyngd fullbreiddarteikna
+Gildir fyrir bæði mörk. Við 1,75 teljast fjórar fullbreiddarteiknir sem 7."</string>
+  <string name="morphe_music_lyrics_mini_line_limits_invalid">Sláðu inn heiltölu fyrir mörk frá 0 til 10000 og teiknþyngd stærri en 0</string>
+  <string name="morphe_music_lyrics_mini_instrumental_title">Tónlistarhlutur án söngs</string>
+  <string name="morphe_music_lyrics_mini_instrumental_summary">Sýnd í lágmarkaspilaranum og MediaSession á meðan tónlistarhlutur án söngs spilar. Hver lína er einn hreyfirammi. {t} er titillinn, {a} er listamaðurinn og {lrc} er síðasta textalínan</string>
+  <string name="morphe_music_lyrics_mini_next_offset_ms_title">Tímahliðrun lágmarkaspilarans og MediaSession</string>
+  <string name="morphe_music_lyrics_mini_next_offset_ms_summary">Breytir því hvenær næsta lína birtist í lágmörkuða spilaranum og MediaSession. Notaðu neikvætt gildi ef línurnar birtast of seint, til dæmis á læsingarskjánum</string>
   <string name="morphe_settings_music_lyrics_metadata_title">Síur</string>
   <string name="morphe_music_lyrics_custom_regex_title">Regluleg segð fyrir lýsigögn</string>
   <string name="morphe_music_lyrics_custom_regex_summary">Regluleg segð sem er notuð á titla, flytjendur og plötur áður en leitað er að textum og þegar lagt er mat á hvort tveir titlar passi saman. Skildu það eftir tómt til að slökkva á báðum. Sjálfgefna stillingin fjarlægir algengt rusl eins og „Official Video“, „Remaster“, „【插曲】“ og „- Topic“.</string>
@@ -545,6 +628,10 @@ Nauðsynlegar vafrakökur: SID, HSID, SAPISID, __Secure-3PAPISID, __Secure-1PAPI
   <string name="morphe_music_lyrics_text_filter_summary">Regluleg segð sem er eingöngu beitt á upprunalega textann (ekki þýðingar eða rómavæðingar). Skilið eftir tómt til að slökkva á.</string>
   <string name="morphe_music_lyrics_credit_line_regex_title">Upplýsingalínumerki</string>
   <string name="morphe_music_lyrics_credit_line_regex_summary">Ef textar eru ranglega síaðir, stilltu eða hreinsaðu þetta. Skilið eftir tómt til að slökkva á</string>
+  <string name="morphe_music_lyrics_force_capitalize_title">Hæfa fyrsta staf</string>
+  <string name="morphe_music_lyrics_force_capitalize_summary">Hæfir fyrsta staf hvers lagalínustróks</string>
+  <string name="morphe_music_lyrics_strip_trailing_punctuation_title">Fjarlægja punktastaðsetningu í lok</string>
+  <string name="morphe_music_lyrics_strip_trailing_punctuation_summary">Fjarlægir punktum, kommaum, skýlu- og hálfpunktum í lok lagalínna. Spurnarmerki, utrópamerki, þrír punktar, gæslumerki og svigarar eru varðveittir</string>
   <string name="morphe_music_lyrics_text_size_title">Leturstærð</string>
   <string name="morphe_music_lyrics_text_size_summary">Stærð textans.</string>
   <string name="morphe_music_lyrics_offset_ms_title">Altæk tímafærsla</string>
@@ -554,46 +641,94 @@ Nauðsynlegar vafrakökur: SID, HSID, SAPISID, __Secure-3PAPISID, __Secure-1PAPI
   <string name="morphe_music_lyrics_sb_no_video">Þetta lag hefur ekkert myndbandsauðkenni til að senda inn</string>
   <!-- Shown under the lyrics. The placeholder is a service name such as LRCLIB. -->
   <string name="morphe_music_lyrics_source_label">Uppspretta: %s</string>
+  <string name="morphe_music_lyrics_contribute_credit">Ýttu lengi á afritaðu takkann til að vista þessa LRC; ef þú getur fínstillt tímasetningarnar og deilt þeim með samfélagsveitingum værum við þakklát</string>
   <string name="morphe_music_lyrics_translated_by_google">Þýtt af Google</string>
   <string name="morphe_music_lyrics_romanized_by_google">Rómavætt af Google</string>
   <string name="morphe_music_lyrics_translated_by_ai">Þýtt af %s</string>
   <string name="morphe_music_lyrics_romanized_by_ai">Umritað af %s</string>
+  <string name="morphe_music_lyrics_romanized_by_local">Rómað af %s</string>
+  <string name="morphe_music_lyrics_romanized_by_rime">Rómverað af Rime (%s)</string>
   <!-- Tappable label under the lyrics that turns the translation on. -->
   <string name="morphe_music_lyrics_translate_hide">Þýddur</string>
   <string name="morphe_music_lyrics_translation_language_title">Þýðingartungumál</string>
+  <string name="morphe_music_lyrics_romanize_language_title">Rómverjun eða transliterering tungumál</string>
+  <string name="morphe_music_lyrics_translation_target_language">"Þýðingarmarkmál tungumáls:
+%s"</string>
+  <string name="morphe_music_lyrics_romanization_target_language">"Romanization eða transliteration markmál tungumáls:
+%s"</string>
   <string name="morphe_music_lyrics_translating">Þýðing á ferð…</string>
   <string name="morphe_music_lyrics_translate_failed">Gat ekki þýtt textann</string>
   <string name="morphe_music_lyrics_romanize_hide">Rómanseraður</string>
+  <string name="morphe_romanize_language_DEFAULT">Sjálfvirkt</string>
   <string name="morphe_music_lyrics_romanizing">Rómansera…</string>
   <string name="morphe_music_lyrics_romanize_failed">Ekki tókst að sækja texta. Athugaðu nettenginguna og reyndu aftur.</string>
   <string name="morphe_music_lyrics_translate_only">Aðeins þýtt</string>
   <string name="morphe_music_lyrics_romanize_only">Aðeins latnesk umritun</string>
+  <string name="morphe_music_lyrics_dual_only">Tvímóta hamur</string>
   <string name="morphe_music_lyrics_copied">Afritað í klemmuskrá</string>
   <string name="morphe_music_lyrics_refreshing">Endurnýjun</string>
   <string name="morphe_music_lyrics_refreshed">Endurnýjað</string>
-  <string name="morphe_music_lyrics_about_summary">"Lagatextar eru passaðir við titil og flytjanda, en óvenjuleg lýsigögn geta fundið ekkert eða ranga útgáfu. Notaðu endurnýjun til að skipta um útgáfu. Veitendur merktir með * þurfa aðgangstákn. Ekki er alltaf óskað eftir öllum virkum veitendum í þinni röð, heldur svara þeir eftir hraða sínum."</string>
-  <string name="morphe_music_lyrics_source_advice_summary">Virkjaðu aðeins þá veitendur sem þú notar, eða haltu sjálfgefna gildinu — stöðugar beiðnir geta ofhlaðið lítlar samfélagslegar lagatextasíður</string>
+  <string name="morphe_music_lyrics_transcribe_key_title">QuickLRC API lykill</string>
+  <string name="morphe_music_lyrics_transcribe_key_summary">QuickLRC transcribirer eða tímasamstillir textana fyrir núverandi lag</string>
+  <string name="morphe_music_lyrics_transcribe_key_set_summary">QuickLRC lykill vistaður. Notaðu jafnaratakann í textaleitarglugganum eða spjaldtilkynningu þegar lag hefur engin texta</string>
+  <string name="morphe_music_lyrics_transcribe_key_saved">QuickLRC API lykkil vistaður</string>
+  <string name="morphe_music_lyrics_transcribe_key_rejected">QuickLRC tók ekki við því lykli</string>
+  <string name="morphe_music_lyrics_transcribe_key_cleared">QuickLRC API lykkil eytt</string>
+  <string name="morphe_music_lyrics_transcribe_key_dialog_instruction">QuickLRC tímasetir texta sem vantar eða transcribe-ar þau úr laginu, á kostnaði eininga. Meða settum lykli bjóða lög án texta transcribe-ingu og leitarglugginn fær jafnatakk</string>
+  <string name="morphe_music_lyrics_transcribe_align">Biðja QuickLRC stillingu</string>
+  <string name="morphe_music_lyrics_transcribe_aligning">Stillir</string>
+  <string name="morphe_music_lyrics_transcribe_apply_align">Beita stillingu</string>
+  <string name="morphe_music_lyrics_transcribe_prompt">Biðja QuickLRC tekstun</string>
+  <string name="morphe_music_lyrics_transcribe_working">Textar</string>
+  <string name="morphe_music_lyrics_transcribe_cancelled">Textun hætt</string>
+  <string name="morphe_music_lyrics_transcribe_local_unsupported">Aðeins lög spiluð frá YouTube geta verið textuð</string>
+  <string name="morphe_music_lyrics_transcribe_no_text">Enginn texti til að jafna - transcribe-i þess í stað</string>
+  <string name="morphe_music_lyrics_transcribe_failed">QuickLRC gat ekki unnið þessi lög</string>
+  <string name="morphe_music_lyrics_transcribe_out_of_credits">QuickLRC stig eru útrunnin fyrir þessa lög</string>
+  <string name="morphe_music_lyrics_about_summary">"Ljóð eru passað af titli og flytjanda, óeðlilegt metadata getur fundið ekkert eða rangt útgáfu. Notaðu endurnýja til að skipta um útgáfur. Veitur merkta * þurfa token. Allir virkjuðu veitur eru ekki alltaf biðin í röð þinni, en svara byggt á hraða þeirra.
+
+Ljóð koma frá þriðja aðila þjónustu sem eru ekki tengd, stuðluð eða viðurkennd af Morphe. Hver ein er notuð eins og hún er: ljóðin, tiltækni þeirra, og leyfiþeirra halda sig við þær þjónustur og eigendur þeirra, og notkun þeirra getur verið háð þjónustumöguleikum þeirra. Hvað nær virkjaðri þjónustu er aðeins leitarupphaf þú baðst - titillinn, flytjandinn, og, þar sem þjónusta þarf það, video ID. Optional AI endpoint og QuickLRC transcription keyra aðeins eftir að þú stillingar þau, og taka ljóð texta eða track's video URL."</string>
+  <string name="morphe_music_lyrics_source_advice_summary">Virkjaðu einungis þær birgjar sem þú notar, eða haltu sjálfgefinu – stöðug beiðnur geta valdið ofhleðslu á smá samfélags síðum með textum</string>
   <string name="morphe_music_lyrics_hide_info_title">Fela upplýsingalínu</string>
   <string name="morphe_music_lyrics_hide_info_summary">Fela upplýsingalínuna sem sýnd er fyrir neðan textann</string>
   <string name="morphe_music_lyrics_swap_trans_roma_title">Víxla þýðingu og rómönskun</string>
-  <string name="morphe_music_lyrics_swap_trans_roma_summary">ON setur rómönskun fyrir neðan texta og þýðingu fyrir ofan; OFF heldur rómönskun fyrir ofan og þýðingu fyrir neðan</string>
-  <string name="morphe_music_lyrics_use_ai_translation_title">OpenAI-samhæfð þýðing</string>
-  <string name="morphe_music_lyrics_use_ai_translation_summary">Notaðu sérsniðið OpenAI-samhæft API fyrir þýðingar og umritun í stað Google Translate</string>
-  <string name="morphe_music_lyrics_ai_config_dialog_title">Stillingar gervigreindarþýðinga</string>
-  <string name="morphe_music_lyrics_ai_config_dialog_instruction">Stilltu OpenAI-samhæfðan API-endapunkt fyrir gervigreindardrifna þýðingu og umritun lagatexta.</string>
-  <string name="morphe_music_lyrics_ai_config_base_url_hint">Vefslóð API-endapunkts (t.d. https://text.pollinations.ai/openai)</string>
-  <string name="morphe_music_lyrics_ai_config_api_token_hint">API-lykill (skildu eftir auðan fyrir nafnlausan aðgang)</string>
-  <string name="morphe_music_lyrics_ai_config_model_hint">Heiti líkans (t.d. openai-fast, gpt-4o-mini)</string>
-  <string name="morphe_music_lyrics_ai_config_prompt_hint">Sniðmát fyrir fyrirmæli (breytur: {language}, {task}, {title}, {artist}, {count}, {lines})</string>
-  <string name="morphe_music_lyrics_ai_config_toast_saved">Stillingar gervigreindarþýðinga vistaðar</string>
-  <string name="morphe_music_lyrics_ai_config_toast_invalid">Ekki tókst að tengjast gervigreindarendapunkti. Athugaðu stillingarnar þínar.</string>
-  <string name="morphe_music_lyrics_ai_config_toast_reset">Stillingar gervigreindarþýðinga endurstilltar</string>
-  <string name="morphe_music_lyrics_ai_config_status_configured">Stillt</string>
-  <string name="morphe_music_lyrics_ai_config_status_not_configured">Snertu til að stilla</string>
-  <string name="morphe_music_lyrics_ai_config_status_empty_url">Grunnslóð má ekki vera tóm</string>
+  <string name="morphe_music_lyrics_swap_trans_roma_summary">ON setur rómverjun eða transliterering undir texta og þýðingu ofan; OFF heldur rómverjun eða transliterering ofan og þýðingu undan. Skýring sett yfir hvora staf flyst með honum, ofan frá stafnum til undan</string>
+  <string name="morphe_music_lyrics_force_center_title">Alltaf miðja texta</string>
+  <string name="morphe_music_lyrics_force_center_summary">ON setur hverja línu í miðju og hunsar upprunalega samstillingu, þ.m.t. duet hluta; OFF heldur samstillingunni sem textinn biður um</string>
+  <string name="morphe_music_lyrics_providers_keep_one">Að minnsta kosti einn veitandi verður að vera á</string>
+  <string name="morphe_music_lyrics_translation_provider_title">Þýðing</string>
+  <string name="morphe_music_lyrics_romanization_provider_title">Rómverjun eða transliterering</string>
+  <string name="morphe_music_lyrics_romanization_provider_local">Ótengd orðabók</string>
+  <string name="morphe_music_lyrics_romanization_provider_rime">Rime Orðalisti</string>
+  <string name="morphe_music_lyrics_use_ai_section_title">Greina hluti með AI</string>
+  <string name="morphe_music_lyrics_use_ai_section_summary">Aðeins notað þegar veitandinn sendir engin hlutanúmer eins og Chorus eða Verse, sem OpenAI samhæft módelið þitt greinir þá. Breytinga röðinni opnar líka spurninguna</string>
+  <string name="morphe_music_lyrics_ai_config_base_url_hint">API enda punkts URL (t.d. https://api.openai.com/v1/chat/completions, https://api.anthropic.com/v1/chat/completions, https://generativelanguage.googleapis.com/v1beta/openai/chat/completions)</string>
+  <string name="morphe_music_lyrics_ai_prompt_dialog_title">Sniðmát fyrir fyrirspurn</string>
+  <string name="morphe_music_lyrics_ai_prompt_dialog_hint">Plasshaldar: {language}, {task}, {title}, {artist}, {count}, {lines}</string>
+  <string name="morphe_music_lyrics_ai_prompt_toast_saved">Fyrirspurn vistuð</string>
+  <string name="morphe_music_lyrics_ai_prompt_toast_endpoint_invalid">Prompt vistað, en AI-endipunktur er enn ekki notanlegur. Uppsettu hann undir AI-stillingar fyrst</string>
+  <string name="morphe_music_lyrics_ai_prompt_toast_reset">Fyrirspurn endurstillt</string>
+  <string name="morphe_music_lyrics_ai_config_toast_saved">Stillingar fyrir þýðingu &amp; rómönun vistuðar</string>
+  <string name="morphe_music_lyrics_ai_config_toast_reset">Stillingar afturstilltar í upphafsvirðum</string>
   <string name="morphe_music_lyrics_ai_config_status_invalid_url">Grunnslóð verður að byrja á http:// eða https://</string>
-  <string name="morphe_music_lyrics_ai_config_status_empty_model">Heiti líkans má ekki vera tómt</string>
+  <string name="morphe_music_lyrics_ai_config_status_invalid">Stillingar ófullkomnar eða höfnunar af veitanum</string>
   <string name="morphe_music_lyrics_ai_config_status_validating">Sannreyni tengingu…</string>
+  <string name="morphe_music_lyrics_ai_config_status_connected">%1$s: Tengt! (%2$s)</string>
+  <string name="morphe_music_lyrics_ai_config_status_failed">%1$s: Tenging mistókst. Athugaðu stillingarnar.</string>
+  <string name="morphe_music_lyrics_ai_config_status_empty_key">Sláðu inn API lykilinn fyrst</string>
+  <string name="morphe_music_lyrics_ai_config_fetching_models">Sækist eftir líkön…</string>
+  <string name="morphe_music_lyrics_ai_config_fetch_models_success">Veldu líkan</string>
+  <string name="morphe_music_lyrics_ai_config_fetch_models_failed">Mislaðist að sækja líkana. Athugið API lykil eða tengingu.</string>
+  <string name="morphe_music_lyrics_ai_config_prompt_label">Spurning</string>
+  <string name="morphe_music_lyrics_ai_config_model_label">Líkan</string>
+  <string name="morphe_music_lyrics_ai_config_base_url_label">Grunnur-URL</string>
+  <string name="morphe_music_lyrics_ai_config_base_url_presets_title">Veldu þjónustu</string>
+  <string name="morphe_music_lyrics_ai_config_api_token_label">API lykill (valfrjáls)</string>
+  <string name="morphe_music_lyrics_ai_config_extra_body_label">Auka beiðnisnið (valfrjálst JSON)</string>
+  <string name="morphe_music_lyrics_ai_config_extra_headers_label">Auk beiðna hausar (valfrjálst JSON)</string>
+  <string name="morphe_music_lyrics_ai_config_extra_headers_hint">Kotdu nöfn og gildi, t.d. {\"api-key\": \"abc\"}. Ókottrauð gildi sem innihalda / : eða tölu er hafnað. Tómt gildi fjarlægir haus.</string>
+  <string name="morphe_music_lyrics_ai_config_extra_body_hint">Kotdu nöfn og gildi, t.d. {\"temperature\": 0.3}. Ókottrauð gildi sem innihalda / eða : er hafnað. Módel og skyddar geta ekki verið stillt hér.</string>
+  <string name="morphe_music_lyrics_ai_config_deepl_key_label">Aðgangslykill (Ókeypis eða Pro)</string>
   <!-- misc.spoof.appversion.spoofAppVersionPatch -->
   <string name="morphe_music_spoof_app_version_target_entry_8_23_51">8.23.51 - Slökkva á feitletruðum táknum</string>
   <string name="morphe_music_spoof_app_version_target_entry_9_13_51">9.13.51 - Endurheimta næst, texta og tengda flipa</string>

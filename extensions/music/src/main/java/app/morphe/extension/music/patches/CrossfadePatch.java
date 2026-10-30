@@ -524,7 +524,10 @@ public class CrossfadePatch {
             // change. The old song falls silent within about a second, whatever its buffer reports (#2748).
             if (isSabrStream()) {
                 logDebug(() -> "stopVideo(5): skip, SABR stream");
-                showSabrToastOnce();
+                if (!sabrToastShown) {
+                    sabrToastShown = true;
+                    Utils.showToastShort(str("morphe_music_crossfade_sabr_toast"));
+                }
                 return false;
             }
 
@@ -755,12 +758,6 @@ public class CrossfadePatch {
 
     private static volatile boolean sabrToastShown = false;
 
-    private static void showSabrToastOnce() {
-        if (sabrToastShown) return;
-        sabrToastShown = true;
-        Utils.showToastShort(str("morphe_music_crossfade_sabr_toast"));
-    }
-
     private static ExoPlayerAccess createNewPlayer(PlayerCoordinatorAccess coordinator) {
         try {
             SessionAccess session = (SessionAccess) coordinator.patch_getSession();
@@ -914,10 +911,6 @@ public class CrossfadePatch {
         }
     }
 
-    /**
-     * Loop enum order: LOOP_OFF, LOOP_ALL, LOOP_ONE, LOOP_DISABLED.
-     */
-    private static final int LOOP_ONE_ORDINAL = 2;
     private static volatile boolean sleepTimerEndOfTrack = false;
 
     /**
@@ -939,13 +932,20 @@ public class CrossfadePatch {
      */
     public static void onLoopStateChanged(Object loopState) {
         try {
-            boolean single = (loopState instanceof Enum)
-                    && ((Enum<?>) loopState).ordinal() == LOOP_ONE_ORDINAL;
+            // On 9.40+, this callback handles multiple event types. Update the cached
+            // repeat state only for recognized loop states, identified by enum name.
+            if (!(loopState instanceof Enum<?> state)) return;
+
+            final boolean single;
+            switch (state.name()) {
+                case "LOOP_ONE" -> single = true;
+                case "LOOP_OFF", "LOOP_ALL", "LOOP_DISABLED" -> single = false;
+                default -> { return; }
+            }
             if (single != repeatSingleActive) {
                 repeatSingleActive = single;
-                final int ord = (loopState instanceof Enum) ? ((Enum<?>) loopState).ordinal() : -1;
                 logInfo(() -> "onLoopStateChanged: repeatSingleActive=" + single
-                        + " (loop ordinal=" + ord + ")");
+                        + " (loop state=" + state.name() + ")");
             }
         } catch (Exception e) {
             logWarn(() -> "onLoopStateChanged error: " + e.getMessage());

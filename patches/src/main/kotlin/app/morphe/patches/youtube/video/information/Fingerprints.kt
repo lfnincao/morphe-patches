@@ -60,11 +60,46 @@ internal object ChannelInformationFingerprint : Fingerprint(
     )
 )
 
+/**
+ * Makes a playback the current one, such as a preloaded Short when it's scrolled to,
+ * which is not loaded again with loadVideo().
+ */
+internal fun currentPlaybackFingerprint(playerResponseType: String) = Fingerprint(
+    classFingerprint = PlayerInitFingerprint,
+    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
+    returnType = "V",
+    parameters = listOf("L"),
+    filters = listOf(
+        fieldAccess(
+            opcode = Opcode.IPUT_OBJECT,
+            definingClass = "this"
+        ),
+        // The player response of the playback.
+        methodCall(
+            returnType = playerResponseType,
+            parameters = listOf()
+        ),
+        opcode(Opcode.MOVE_RESULT_OBJECT, location = MatchAfterImmediately()),
+        opcode(Opcode.IF_EQZ, location = MatchAfterImmediately()),
+        methodCall(
+            opcode = Opcode.INVOKE_STATIC,
+            parameters = listOf(playerResponseType, "L"),
+            location = MatchAfterImmediately()
+        )
+    )
+)
+
 internal fun getChannelIdFingerprint(playerResponseType: String) = object : Fingerprint(
     accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
     returnType = "V",
     parameters = listOf("Ljava/lang/Object;"),
     filters = listOf(
+        // Is live stream.
+        methodCall(
+            definingClass = playerResponseType,
+            returnType = "Z"
+        ),
+        // Channel id. 21.17 places the live stream check far before it.
         methodCall(
             definingClass = playerResponseType,
             returnType = "Ljava/lang/String;"
@@ -240,6 +275,7 @@ internal object PlaybackSpeedMenuSpeedChangedFingerprint : Fingerprint(
     returnType = "L",
     parameters = listOf("L"),
     filters = listOf(
+        opcode(Opcode.IF_EQZ),
         fieldAccess(opcode = Opcode.IGET, type = "F")
     )
 )

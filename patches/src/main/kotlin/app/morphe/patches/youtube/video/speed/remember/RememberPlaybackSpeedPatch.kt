@@ -22,6 +22,7 @@ import app.morphe.patches.youtube.video.information.onCreateHook
 import app.morphe.patches.youtube.video.information.userSelectedPlaybackSpeedHook
 import app.morphe.patches.youtube.video.information.videoInformationPatch
 import app.morphe.patches.youtube.video.speed.custom.customPlaybackSpeedPatch
+import app.morphe.patches.youtube.video.speed.settingsMenuShortsSpeedGroup
 import app.morphe.patches.youtube.video.speed.settingsMenuVideoSpeedGroup
 import app.morphe.patches.youtube.video.videoid.hookPlayerResponseVideoId
 import app.morphe.patches.youtube.video.videoid.videoIdPatch
@@ -58,6 +59,20 @@ internal val rememberPlaybackSpeedPatch = bytecodePatch {
                 SwitchPreference("morphe_remember_playback_speed_last_selected", summary = true),
                 SwitchPreference("morphe_remember_playback_speed_last_selected_toast", summary = true),
                 SwitchPreference("morphe_disable_playback_speed_music", summary = true)
+            )
+        )
+
+        // The Shorts speed belongs with the other Shorts settings.
+        settingsMenuShortsSpeedGroup.addAll(
+            listOf(
+                ListPreference(
+                    key = "morphe_shorts_playback_speed_default",
+                    // Entries and values are set by the extension code based on the actual speeds available.
+                    entriesKey = null,
+                    entryValuesKey = null,
+                    tag = "app.morphe.extension.youtube.settings.preference.CustomVideoSpeedListPreference"
+                ),
+                SwitchPreference("morphe_shorts_remember_playback_speed", summary = true)
             )
         )
 

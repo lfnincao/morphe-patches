@@ -21,6 +21,12 @@ import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 
+internal const val WATCH_WHILE_LAYOUT_CLASS =
+    "Lcom/google/android/apps/youtube/music/watchpage/ui/WatchWhileLayout;"
+
+private const val PLAYER_PAGE_BEHAVIOR_CLASS =
+    "Lcom/google/android/apps/youtube/music/watchpage/ui/PlayerPageBehavior;"
+
 /**
  * Matches the miniplayer constructor.
  * Identified by the play/pause button resource literal and a unique string in the method body.
@@ -50,6 +56,13 @@ internal object NavigationBarTabLayoutFingerprint : Fingerprint(
         resourceLiteral(ResourceType.COLOR, "ytm_color_grey_12"),
         methodCall(name = "setBackgroundColor")
     )
+)
+
+internal object SwitchToggleColorParentFingerprint : Fingerprint(
+    classFingerprint = MiniPlayerConstructorFingerprint,
+    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
+    returnType = "V",
+    parameters = listOf("L", "J")
 )
 
 internal object SwitchToggleColorFingerprint : Fingerprint(
@@ -102,7 +115,7 @@ internal object MinimizedPlayerFingerprint : Fingerprint(
  *   >= 9.x: WatchWhileLayout
  */
 internal object MppWatchWhileLayoutFingerprint : Fingerprint(
-    definingClass = "Lcom/google/android/apps/youtube/music/watchpage/ui/WatchWhileLayout;",
+    definingClass = WATCH_WHILE_LAYOUT_CLASS,
     returnType = "V",
     parameters = listOf(),
     filters = listOf(
@@ -190,10 +203,10 @@ internal object MiniPlayerDefaultTextFingerprint : Fingerprint(
 )
 
 /**
- * 9.02+
+ * 9.02 - 9.42
  */
 internal object PlayerPageBehaviorFingerprint : Fingerprint(
-    definingClass = "Lcom/google/android/apps/youtube/music/watchpage/ui/PlayerPageBehavior;",
+    definingClass = PLAYER_PAGE_BEHAVIOR_CLASS,
     accessFlags = listOf(AccessFlags.FINAL),
     parameters = listOf(),
     returnType = "V",
@@ -202,6 +215,41 @@ internal object PlayerPageBehaviorFingerprint : Fingerprint(
         Opcode.IPUT_BOOLEAN,
         Opcode.RETURN_VOID
     )
+)
+
+/**
+ * 9.43+
+ * The first instruction match reads the player page motion field.
+ */
+internal object PlayerPageBehaviorInterceptTouchEventFingerprint : Fingerprint(
+    definingClass = PLAYER_PAGE_BEHAVIOR_CLASS,
+    name = "onInterceptTouchEvent",
+    filters = listOf(
+        fieldAccess(
+            opcode = Opcode.IGET_BOOLEAN,
+            definingClass = "this"
+        ),
+        opcode(Opcode.IF_EQZ, location = MatchAfterImmediately()),
+        fieldAccess(
+            opcode = Opcode.IGET_OBJECT,
+            definingClass = "this",
+            location = MatchAfterImmediately()
+        ),
+        methodCall(
+            opcode = Opcode.INVOKE_VIRTUAL,
+            parameters = listOf("Landroid/view/MotionEvent;"),
+            returnType = "V",
+            location = MatchAfterImmediately()
+        )
+    )
+)
+
+/**
+ * 9.43+
+ */
+internal object PlayerPageBehaviorTouchEventFingerprint : Fingerprint(
+    definingClass = PLAYER_PAGE_BEHAVIOR_CLASS,
+    name = "onTouchEvent"
 )
 
 /**

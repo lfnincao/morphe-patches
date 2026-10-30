@@ -59,25 +59,17 @@ public class SpoofVideoStreamsSideEffectsPreference extends Preference {
         super(context);
     }
 
-    private void addChangeListener() {
-        Setting.preferences.preferences.registerOnSharedPreferenceChangeListener(listener);
-    }
-
-    private void removeChangeListener() {
-        Setting.preferences.preferences.unregisterOnSharedPreferenceChangeListener(listener);
-    }
-
     @Override
     protected void onAttachedToHierarchy(PreferenceManager preferenceManager) {
         super.onAttachedToHierarchy(preferenceManager);
         updateUI();
-        addChangeListener();
+        Setting.preferences.preferences.registerOnSharedPreferenceChangeListener(listener);
     }
 
     @Override
     protected void onPrepareForRemoval() {
         super.onPrepareForRemoval();
-        removeChangeListener();
+        Setting.preferences.preferences.unregisterOnSharedPreferenceChangeListener(listener);
     }
 
     private void updateUI() {
@@ -110,8 +102,9 @@ public class SpoofVideoStreamsSideEffectsPreference extends Preference {
                     summary = str("morphe_spoof_video_streams_about_no_stable_volume")
                             + '\n' + str("morphe_spoof_video_streams_about_sign_in_to_vr_required");
             case VISIONOS_1_02, VISIONOS_1_03 ->
-                    summary = str("morphe_spoof_video_streams_about_no_stable_volume")
-                            + '\n' + str("morphe_spoof_video_streams_about_end_early");
+                    summary = str("morphe_spoof_video_streams_about_failure")
+                            + '\n' + str("morphe_spoof_video_streams_about_end_early")
+                            + '\n' + str("morphe_spoof_video_streams_about_no_stable_volume");
             case TV_SABR, TV_SABR_WII_U, TV_DASH, TV_SIMPLY ->
                     summary = str("morphe_spoof_video_streams_about_js");
             default -> Logger.printException(() -> "Unknown client: " + clientType);

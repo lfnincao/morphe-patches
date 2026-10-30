@@ -31,7 +31,7 @@ import app.morphe.extension.music.patches.lyrics.parsers.LRCParser;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.requests.Requester;
 
-public final class LunaProvider implements LyricsProvider {
+public final class LunaProvider extends ScoredSongProvider {
 
     private static final String SEARCH_URL = "https://api.qishui.com/luna/search/track";
     private static final String DETAIL_URL = "https://beta-luna.douyin.com/luna/h5/seo_track";
@@ -43,72 +43,6 @@ public final class LunaProvider implements LyricsProvider {
 
     private static final long REQUEST_THROTTLE_MS = 250;
     private static final AtomicLong lastRequestTime = new AtomicLong(0);
-
-    @Override
-    public String name() {
-        return "Luna";
-    }
-
-    @Override
-    public boolean hasCandidates() {
-        return true;
-    }
-
-    @Nullable
-    @Override
-    public FetchResult fetch(TrackInfo track) throws Exception {
-        List<ScoredSong> candidates = fetchScoredSongs(track);
-        if (candidates.isEmpty()) {
-            return null;
-        }
-        ScoredSong top = candidates.get(0);
-        return FetchResult.of(top.lyrics(), top.title(), top.artist(),
-                top.durationSec(), track);
-    }
-
-    @Override
-    public List<Lyrics.ScoredLyrics> fetchCandidates(TrackInfo track) throws Exception {
-        List<Lyrics.ScoredLyrics> scored = new ArrayList<>();
-        for (ScoredSong candidate : fetchScoredSongs(track)) {
-            scored.add(new Lyrics.ScoredLyrics(candidate.score(), candidate.lyrics()));
-        }
-        return scored;
-    }
-
-    private record ScoredSong(int score, Lyrics lyrics, String title, String artist,
-                              long durationSec) {}
-
-    private List<ScoredSong> fetchScoredSongs(TrackInfo track) throws Exception {
-        List<JSONObject> tracks = searchTracks(track);
-        if (tracks.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<ScoredSong> scored = new ArrayList<>();
-        for (JSONObject trackObj : tracks) {
-            if (scored.size() >= LyricsRequests.MAX_CANDIDATES) break;
-            String trackId = trackObj.optString("id", "");
-            if (trackId.isEmpty()) {
-                continue;
-            }
-            try {
-                Lyrics lyrics = fetchLyricsByTrackId(trackId);
-                if (lyrics != null) {
-                    String title = trackObj.optString("name", "");
-                    String artist = firstArtistName(trackObj);
-                    long durationSec = trackObj.optLong("duration", 0) / 1000;
-                    int score = LyricsRequests.scoreLyricsCandidate(
-                            title, artist, durationSec, lyrics, track);
-                    scored.add(new ScoredSong(score, lyrics, title, artist, durationSec));
-                }
-            } catch (Exception ex) {
-                Logger.printDebug(() -> "Could not fetch Luna lyrics for a track id", ex);
-            }
-        }
-
-        scored.sort((a, b) -> Integer.compare(b.score(), a.score()));
-        return scored;
-    }
 
     private static String firstArtistName(JSONObject trackObj) {
         JSONArray artists = trackObj.optJSONArray("artists");
@@ -139,6 +73,66 @@ public final class LunaProvider implements LyricsProvider {
     private static boolean isOriginalTrack(JSONObject trackObj) {
         JSONObject label = trackObj.optJSONObject("label_info");
         return label != null && label.optBoolean("is_original", false);
+    }
+
+    @Nullable
+    private static HttpURLConnection openConnection(String url, String userAgent) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new java.net.URL(url).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("User-Agent", userAgent);
+            connection.setRequestProperty("Accept", "*/*");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(15000);
+            return connection;
+        } catch (Exception ex) {
+            Logger.printDebug(() -> "Could not open Luna GET connection", ex);
+            return null;
+        }
+    }
+
+    private static String generateClientId() {
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        return String.valueOf(random.nextLong(10_000_000, 99_999_999))
+                + random.nextLong(10_000_000, 99_999_999);
+    }
+
+    @Override
+    public String name() {
+        return "Luna";
+    }
+
+    @Override
+    protected List<ScoredSong> fetchScoredSongs(TrackInfo track) throws Exception {
+        List<JSONObject> tracks = searchTracks(track);
+        if (tracks.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ScoredSong> scored = new ArrayList<>();
+        for (JSONObject trackObj : tracks) {
+            if (scored.size() >= LyricsRequests.MAX_CANDIDATES) break;
+            String trackId = trackObj.optString("id", "");
+            if (trackId.isEmpty()) {
+                continue;
+            }
+            try {
+                Lyrics lyrics = fetchLyricsByTrackId(trackId);
+                if (lyrics != null) {
+                    String title = trackObj.optString("name", "");
+                    String artist = firstArtistName(trackObj);
+                    long durationSec = trackObj.optLong("duration", 0) / 1000;
+                    int score = LyricsRequests.scoreLyricsCandidate(
+                            title, artist, durationSec, lyrics, track);
+                    scored.add(new ScoredSong(score, lyrics, title, artist, durationSec));
+                }
+            } catch (Exception ex) {
+                Logger.printDebug(() -> "Could not fetch Luna lyrics for a track id", ex);
+            }
+        }
+
+        scored.sort((a, b) -> Integer.compare(b.score(), a.score()));
+        return scored;
     }
 
     private List<JSONObject> searchTracks(TrackInfo track) throws Exception {
@@ -331,19 +325,16 @@ public final class LunaProvider implements LyricsProvider {
             }
         }
 
-        if (result.isEmpty()) {
-            String sysLang = LyricsRequests.deviceLanguage();
-            if ("zh".equals(sysLang)) {
-                JSONObject translations = lyricInfo.optJSONObject("translations");
-                if (translations != null) {
-                    String cnContent = LyricsRequests.optString(translations, "cn");
-                    if (cnContent != null && !cnContent.isEmpty()) {
-                        List<LyricsLine> cnLines = LRCParser.parseSynced(cnContent);
-                        if (!cnLines.isEmpty()) {
-                            List<LyricsLine> merged = LyricsMerge.mergeRomanization(original, cnLines);
-                            if (LyricsMerge.hasText(merged)) {
-                                result.put("zh", merged);
-                            }
+        if (result.isEmpty() && LyricsRequests.isSimplifiedChinese()) {
+            JSONObject translations = lyricInfo.optJSONObject("translations");
+            if (translations != null) {
+                String cnContent = LyricsRequests.optString(translations, "cn");
+                if (cnContent != null && !cnContent.isEmpty()) {
+                    List<LyricsLine> cnLines = LRCParser.parseSynced(cnContent);
+                    if (!cnLines.isEmpty()) {
+                        List<LyricsLine> merged = LyricsMerge.mergeRomanization(original, cnLines);
+                        if (LyricsMerge.hasText(merged)) {
+                            result.put(LyricsRequests.SIMPLIFIED_CHINESE, merged);
                         }
                     }
                 }
@@ -396,27 +387,5 @@ public final class LunaProvider implements LyricsProvider {
         }
 
         return songwriters.isEmpty() ? null : songwriters;
-    }
-
-    @Nullable
-    private static HttpURLConnection openConnection(String url, String userAgent) {
-        try {
-            HttpURLConnection connection = (HttpURLConnection) new java.net.URL(url).openConnection();
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("User-Agent", userAgent);
-            connection.setRequestProperty("Accept", "*/*");
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(15000);
-            return connection;
-        } catch (Exception ex) {
-            Logger.printDebug(() -> "Could not open Luna GET connection", ex);
-            return null;
-        }
-    }
-
-    private static String generateClientId() {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
-        return String.valueOf(random.nextLong(10_000_000, 99_999_999))
-                + random.nextLong(10_000_000, 99_999_999);
     }
 }

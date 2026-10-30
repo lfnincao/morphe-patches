@@ -10,7 +10,7 @@ package app.morphe.patches.shared.misc.request
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
-import app.morphe.util.registersUsed
+import app.morphe.patcher.util.registersUsed
 import java.lang.ref.WeakReference
 
 private lateinit var buildRequestMethod: WeakReference<MutableMethod>
@@ -22,7 +22,7 @@ internal val buildRequestPatch = bytecodePatch(
     description = "buildRequestPatch",
 ) {
     execute {
-        getBuildRequestFingerprint().let {
+        BuildRequestFingerprint.let {
             it.method.apply {
                 val builderMatch = it.instructionMatches.first()
                 builderIndex = builderMatch.index

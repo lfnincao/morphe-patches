@@ -1,4 +1,4 @@
-import org.gradle.api.tasks.JavaExec
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 group = "app.morphe"
 
@@ -20,6 +20,29 @@ val patchListGeneratorClasspath = configurations.create("patchListGeneratorClass
 val jamApk = providers.gradleProperty("jamApk")
 val jamOutput = providers.gradleProperty("jamOutput")
 
+// Resolve local composite build projects (smali, patcher) to jars for compilation,
+// same as the runtime classpath. Otherwise, both the classes directory and the jar
+// are passed to D8 by buildAndroid, and it fails with "Classpath type already present".
+configurations.compileClasspath {
+    attributes {
+        attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements.JAR))
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
     // Required due to smali, or build fails. Can be removed once smali is bumped.
     implementation(libs.guava)
@@ -32,22 +55,42 @@ dependencies {
     compileOnly(project(":patches:stub"))
 
     testImplementation(kotlin("test"))
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.1")
+    testImplementation(libs.kotlinx.coroutines.core)
+    testImplementation(libs.protobuf.javalite)
+    testRuntimeOnly(libs.junit.jupiter.engine)
 }
 
 tasks {
     test {
         useJUnitPlatform()
+        dependsOn(":extensions:youtube:generateReleaseProto", ":extensions:youtube:compileReleaseJavaWithJavac")
         jamApk.orNull?.let { systemProperty("jamApk", it) }
+        // The Android-boundary tests load release bytecode in isolated class loaders.
+        // Declare those actual classes as inputs so runtime changes invalidate cached results.
+        inputs.dir(rootProject.file(
+            "extensions/youtube/build/intermediates/javac/release/compileReleaseJavaWithJavac/classes"
+        )).withPropertyName("queueRuntimeClasses").withNormalizer(ClasspathNormalizer::class)
+        inputs.file(rootProject.file(
+            "extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/OpenVideosFullscreenHookPatch.java"
+        )).withPropertyName("queueFullscreenBoundarySource")
+        inputs.files(
+            rootProject.file("extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/queue/QueueSaveActions.java"),
+            rootProject.file("extensions/youtube/src/main/java/app/morphe/extension/youtube/patches/queue/QueueSaveFeedback.java"),
+            rootProject.file("extensions/youtube/src/main/proto/app/morphe/extension/youtube/innertube/playlist_queue.proto"),
+            rootProject.file("extensions/youtube/src/main/proto/app/morphe/extension/youtube/innertube/icon.proto")
+        ).withPropertyName("queueSaveBoundarySources")
     }
 
     register<JavaExec>("checkStringResources") {
         description = "Checks resource strings for invalid formatting"
 
-        dependsOn(build)
-
-        classpath = sourceSets["main"].runtimeClasspath
+        // Only the compiled patches and the raw string resources are needed. Using the full
+        // main runtime classpath would run processResources, which builds and minifies all extensions.
+        classpath = files(
+            sourceSets["main"].output.classesDirs,
+            configurations.runtimeClasspath,
+            layout.projectDirectory.dir("src/main/resources"),
+        )
         mainClass.set("app.morphe.patches.util.resource.CheckStringResourcesKt")
     }
 
@@ -72,6 +115,21 @@ tasks {
             val apk = jamApk.orNull
                 ?: throw GradleException("validateJam requires -PjamApk=/absolute/path/to/ytm.apk")
             setArgs(listOfNotNull(apk, jamOutput.orNull))
+        }
+    }
+
+    register<JavaExec>("validatePlaylistQueue") {
+        description = "Applies Native playlist queue to a stock APK and verifies it with Android SDK tools"
+        group = "verification"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("app.morphe.patches.youtube.interaction.nativeplaylistqueue.PlaylistQueueApkBuildKt")
+        doFirst {
+            val apk = providers.gradleProperty("playlistQueueApk").orNull
+                ?: throw GradleException("validatePlaylistQueue requires -PplaylistQueueApk=/absolute/path/youtube.apk")
+            val mode = providers.gradleProperty("playlistQueueMode").getOrElse("standalone")
+            val output = providers.gradleProperty("playlistQueueOutput").orNull
+            setArgs(listOfNotNull(apk, mode, output))
         }
     }
     // Used by gradle-semantic-release-plugin.

@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPInputStream;
 
 import app.morphe.extension.music.patches.lyrics.model.Lyrics;
+import app.morphe.extension.music.patches.lyrics.model.LyricsFilterDefaults;
 import app.morphe.extension.music.patches.lyrics.model.LyricsLine;
 import app.morphe.extension.music.patches.lyrics.model.TrackInfo;
 import app.morphe.extension.music.patches.lyrics.model.Word;
@@ -47,21 +48,35 @@ import app.morphe.extension.shared.requests.Requester;
  */
 public final class LyricsRequests {
 
+    public static final String SIMPLIFIED_CHINESE = "zh-Hans";
+    /**
+     * For the endpoints that turn away an unrecognised client. Providers that answer only
+     * to a mobile agent keep one of their own.
+     */
+    public static final String CHROME_DESKTOP_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36";
+    /** Open to anyone, in need of no token. */
+    public static final String ITUNES_SEARCH_URL = "https://itunes.apple.com/search";
+    public static final int SOFT_MIN = 2;
+    public static final int VIDEO_ID_TRUST = 10;
+    public static final int NEUTRAL = 6;
     static final int MAX_CANDIDATES = 5;
     private static final int CONNECT_TIMEOUT_MILLISECONDS = 5 * 1000;
     private static final int READ_TIMEOUT_MILLISECONDS = 5 * 1000;
-
     private static volatile boolean customMatchMode;
+    private static volatile String decorationRegexSource;
+    private static volatile java.util.regex.Pattern decorationPattern;
 
     private LyricsRequests() {
     }
 
-    public static void setCustomMatchMode(boolean on) {
-        customMatchMode = on;
-    }
-
     public static boolean isCustomMatchMode() {
         return customMatchMode;
+    }
+
+    public static void setCustomMatchMode(boolean on) {
+        customMatchMode = on;
     }
 
     static String userAgent() {
@@ -72,6 +87,118 @@ public final class LyricsRequests {
 
     public static String deviceLanguage() {
         return Locale.getDefault().getLanguage();
+    }
+
+    public static String translationLanguage() {
+        String language = Settings.LYRICS_TRANSLATION_LANGUAGE.get();
+        return "DEFAULT".equalsIgnoreCase(language)
+                ? deviceLanguage()
+                : language.toLowerCase(Locale.ROOT);
+    }
+
+    /** "Automatic" resolves to the device language, the way {@link #translationLanguage()} does. */
+    public static String romanizationLanguage() {
+        String language = Settings.LYRICS_ROMANIZE_LANGUAGE.get();
+        return "DEFAULT".equalsIgnoreCase(language)
+                ? deviceLanguage()
+                : language.toLowerCase(Locale.ROOT);
+    }
+
+    /** Whether romanization is left on "Automatic", which reads the lyrics instead. */
+    public static boolean isDefaultRomanizationLanguage() {
+        return "DEFAULT".equalsIgnoreCase(Settings.LYRICS_ROMANIZE_LANGUAGE.get());
+    }
+
+    /** The leading subtag of a BCP-47 tag, which is what two spellings of one language share. */
+    public static String primarySubtag(@Nullable String language) {
+        if (language == null) {
+            return "";
+        }
+        int idx = language.indexOf('-');
+        return (idx >= 0 ? language.substring(0, idx) : language).toLowerCase(Locale.ROOT);
+    }
+
+    @NonNull
+    public static String resolvedScript(@Nullable String language) {
+        final String declared = declaredScript(language);
+        if (!declared.isEmpty()) {
+            return declared;
+        }
+        if (!"zh".equals(primarySubtag(language))) {
+            return "";
+        }
+        final String region = chineseScriptOfRegion(regionSubtag(language));
+        if (!region.isEmpty()) {
+            return region;
+        }
+        final Locale device = Locale.getDefault();
+        final String script = device.getScript();
+        if (script != null && !script.isEmpty()) {
+            return script;
+        }
+        final String country = chineseScriptOfRegion(device.getCountry());
+        // Chinese with no region settles is read as the mainland writes it.
+        return country.isEmpty() ? "Hans" : country;
+    }
+
+    /** Whether the user reads Chinese as the mainland writes it. */
+    public static boolean isSimplifiedChinese() {
+        return "Hans".equals(resolvedScript(translationLanguage()));
+    }
+
+    @NonNull
+    private static String declaredScript(@Nullable String language) {
+        if (language == null) {
+            return "";
+        }
+        for (String part : language.split("[-_]")) {
+            // Tags arrive spelled both ways round, so the shape counts, not the casing.
+            if (part.length() == 4 && isScriptSpelling(part)) {
+                return Character.toUpperCase(part.charAt(0))
+                        + part.substring(1).toLowerCase(Locale.ROOT);
+            }
+        }
+        return "";
+    }
+
+    private static boolean isScriptSpelling(String part) {
+        for (int i = 0; i < part.length(); i++) {
+            if (!Character.isLetter(part.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @NonNull
+    private static String regionSubtag(@Nullable String language) {
+        if (language == null) {
+            return "";
+        }
+        // The leading subtag is the language, so it is skipped.
+        final String[] parts = language.split("[-_]");
+        for (int i = 1; i < parts.length; i++) {
+            final String part = parts[i];
+            if (part.length() == 2 && Character.isLetter(part.charAt(0))
+                    && Character.isLetter(part.charAt(1))) {
+                return part.toUpperCase(Locale.ROOT);
+            }
+        }
+        return "";
+    }
+
+    @NonNull
+    private static String chineseScriptOfRegion(@Nullable String region) {
+        if (region == null) {
+            return "";
+        }
+        if ("TW".equals(region) || "HK".equals(region) || "MO".equals(region)) {
+            return "Hant";
+        }
+        if ("CN".equals(region) || "SG".equals(region) || "MY".equals(region)) {
+            return "Hans";
+        }
+        return "";
     }
 
     public static long fractionToMs(String fraction) {
@@ -116,7 +243,7 @@ public final class LyricsRequests {
      * User-Agent header, and rate limits requests that do not.
      */
     static HttpURLConnection openConnection(String url) throws IOException {
-        // A canceled provider may finish one blocking request and try the next one.
+        // A cancelled lookup may still be finishing one blocking request.
         if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedIOException("Lyrics lookup cancelled");
         }
@@ -131,10 +258,9 @@ public final class LyricsRequests {
     /**
      * Opens a GET connection with configurable timeouts and extra headers.
      */
-    @SuppressWarnings("unused")
     static HttpURLConnection openConnection(String url,
                                             Map<String, String> headers) throws IOException {
-        // A canceled provider may finish one blocking request and try the next one.
+        // A cancelled lookup may still be finishing one blocking request.
         if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedIOException("Lyrics lookup cancelled");
         }
@@ -180,7 +306,7 @@ public final class LyricsRequests {
 
     private static HttpURLConnection postConnection(String url, String body, String contentType,
                                                     Map<String, String> headers) throws IOException {
-        // A canceled provider may finish one blocking request and try the next one.
+        // A cancelled lookup may still be finishing one blocking request.
         if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedIOException("Lyrics lookup cancelled");
         }
@@ -314,275 +440,6 @@ public final class LyricsRequests {
         lastRequestTime.set(System.currentTimeMillis());
     }
 
-    public static final class MusicBrainzClient {
-
-        private static final String BASE_URL = "https://musicbrainz.org/ws/2/";
-
-        private static final long REQUEST_THROTTLE_MS = 1100;
-
-        private static final int RESULT_LIMIT = 10;
-
-        private static final AtomicLong lastRequestTime = new AtomicLong();
-
-        private MusicBrainzClient() {
-        }
-
-        /** Recording titles matching {@code query}, most relevant first, de-duplicated. */
-        @NonNull
-        public static List<String> suggestTitles(@NonNull String query) {
-            String clause = phrase("recording", query);
-            if (clause == null) {
-                return List.of();
-            }
-            String url = BASE_URL + "recording?query=" + clause
-                    + "&fmt=json&limit=" + RESULT_LIMIT;
-            try {
-                JSONArray recordings = search(url).optJSONArray("recordings");
-                if (recordings == null) {
-                    return List.of();
-                }
-                LinkedHashSet<String> titles = new LinkedHashSet<>();
-                for (int i = 0; i < recordings.length(); i++) {
-                    JSONObject recording = recordings.optJSONObject(i);
-                    if (recording == null) {
-                        continue;
-                    }
-                    String title = recording.optString("title", "").trim();
-                    if (!title.isEmpty()) {
-                        titles.add(title);
-                    }
-                }
-                return List.copyOf(titles);
-            } catch (Exception ex) {
-                Logger.printDebug(() -> "MusicBrainz title suggestions failed", ex);
-                return List.of();
-            }
-        }
-
-        /** Artist names and aliases matching {@code query}, de-duplicated. */
-        @NonNull
-        public static List<String> suggestArtists(@NonNull String query) {
-            String clause = phrase("artist", query);
-            if (clause == null) {
-                return List.of();
-            }
-            String url = BASE_URL + "artist?query=" + clause
-                    + "&fmt=json&limit=" + RESULT_LIMIT;
-            try {
-                JSONArray artists = search(url).optJSONArray("artists");
-                if (artists == null) {
-                    return List.of();
-                }
-                LinkedHashSet<String> names = new LinkedHashSet<>();
-                for (int i = 0; i < artists.length(); i++) {
-                    JSONObject artist = artists.optJSONObject(i);
-                    if (artist == null) {
-                        continue;
-                    }
-                    String name = artist.optString("name", "").trim();
-                    if (!name.isEmpty()) {
-                        names.add(name);
-                    }
-                    JSONArray aliases = artist.optJSONArray("aliases");
-                    if (aliases == null) {
-                        continue;
-                    }
-                    for (int j = 0; j < aliases.length(); j++) {
-                        JSONObject alias = aliases.optJSONObject(j);
-                        if (alias == null) {
-                            continue;
-                        }
-                        String aliasName = alias.optString("name", "").trim();
-                        if (!aliasName.isEmpty()) {
-                            names.add(aliasName);
-                        }
-                    }
-                }
-                return List.copyOf(names);
-            } catch (Exception ex) {
-                Logger.printDebug(() -> "MusicBrainz artist suggestions failed", ex);
-                return List.of();
-            }
-        }
-
-        private static JSONObject search(String url) throws Exception {
-            throttle(lastRequestTime, REQUEST_THROTTLE_MS);
-            HttpURLConnection connection = openConnection(url);
-            try {
-                if (connection.getResponseCode() != Requester.HTTP_STATUS_CODE_SUCCESS) {
-                    return new JSONObject();
-                }
-                return parseGzipJsonObject(connection);
-            } finally {
-                connection.disconnect();
-            }
-        }
-
-        /**
-         * The Lucene {@code field:"phrase"} clause for the query, URL encoded, or null when the
-         * query says nothing or cannot be encoded. Only quotes and backslashes would end a quoted
-         * phrase, so everything else in the typed term is kept as it is.
-         */
-        @Nullable
-        private static String phrase(String field, String query) {
-            String trimmed = query == null ? "" : query.trim();
-            String cleaned = trimmed.replace("\\", " ").replace("\"", " ").trim();
-            if (cleaned.isEmpty()) {
-                return null;
-            }
-            try {
-                return encode(field + ":\"" + cleaned + "\"");
-            } catch (Exception ex) {
-                Logger.printDebug(() -> "MusicBrainz query encoding failed", ex);
-                return null;
-            }
-        }
-    }
-
-    public static final int SOFT_MIN = 2;
-
-    public static final int VIDEO_ID_TRUST = 10;
-
-    public static final int NEUTRAL = 6;
-
-    public enum Evidence {
-        EQUAL,
-        MATCH,
-        PARTIAL,
-        MISSING,
-        MISMATCH,
-        NONE
-    }
-
-    /**
-     * Result of evaluating a candidate's metadata against a prepared track.
-     *
-     * @param score   0–11 ranking score (title 0–5 + artist 0–3 + duration 0–2 + album 0–1)
-     * @param title   title evidence
-     * @param artist  artist evidence
-     * @param duration duration evidence (MISSING when either side unknown)
-     * @param album   album evidence
-     */
-    public record MatchVerdict(int score, Evidence title, Evidence artist,
-                               Evidence duration, Evidence album) {
-
-        public static MatchVerdict videoIdTrust() {
-            return new MatchVerdict(VIDEO_ID_TRUST, Evidence.MATCH, Evidence.MISSING,
-                    Evidence.MISSING, Evidence.MISSING);
-        }
-    }
-
-    public static final class PreparedTrack {
-        final String title;
-        final String artist;
-        final String album;
-        final int durationSec;
-        final boolean titleValid;
-
-        PreparedTrack(TrackInfo track) {
-            this.title = normalizeForMatch(track.title());
-            this.artist = normalizeForMatch(track.artist());
-            this.album = normalizeForMatch(track.album());
-            this.durationSec = track.durationSeconds();
-            this.titleValid = !this.title.isEmpty();
-        }
-
-        public MatchVerdict evaluate(@Nullable String title, @Nullable String artist,
-                                     long durationSec, @Nullable String album) {
-            final String t = normalizeForMatch(title);
-            final String a = normalizeForMatch(artist);
-            final String al = normalizeForMatch(album);
-
-            final Evidence titleEv;
-            int titleScore;
-            if (!titleValid) {
-                titleEv = Evidence.MISSING;
-                titleScore = 0;
-            } else if (t.isEmpty()) {
-                titleEv = Evidence.NONE;
-                titleScore = 0;
-            } else if (t.equals(this.title)) {
-                titleEv = Evidence.EQUAL;
-                titleScore = 5;
-            } else if (containsEither(t, this.title)) {
-                titleEv = Evidence.MATCH;
-                titleScore = 3;
-            } else {
-                final double j = jaccard(t, this.title);
-                if (j >= 0.6) {
-                    titleEv = Evidence.PARTIAL;
-                    titleScore = 2;
-                } else if (j >= 0.35) {
-                    titleEv = Evidence.PARTIAL;
-                    titleScore = 1;
-                } else {
-                    titleEv = Evidence.NONE;
-                    titleScore = 0;
-                }
-            }
-
-            final Evidence artistEv;
-            int artistScore;
-            if (a.isEmpty()) {
-                artistEv = Evidence.MISSING;
-                artistScore = 0;
-            } else if (this.artist.isEmpty()) {
-                artistEv = Evidence.MISSING;
-                artistScore = 0;
-            } else if (a.equals(this.artist)) {
-                artistEv = Evidence.MATCH;
-                artistScore = 3;
-            } else if (containsEither(a, this.artist)) {
-                artistEv = Evidence.MATCH;
-                artistScore = 3;
-            } else if (splitArtistHits(a, this.artist)) {
-                artistEv = Evidence.PARTIAL;
-                artistScore = 1;
-            } else {
-                artistEv = Evidence.MISMATCH;
-                artistScore = 0;
-            }
-
-            final Evidence durationEv;
-            int durationScore;
-            if (durationSec <= 0 || this.durationSec <= 0) {
-                durationEv = Evidence.MISSING;
-                durationScore = 0;
-            } else {
-                final long delta = Math.abs(durationSec - this.durationSec);
-                if (delta > 15) {
-                    durationEv = Evidence.MISMATCH;
-                    durationScore = 0;
-                } else if (delta <= 2) {
-                    durationEv = Evidence.MATCH;
-                    durationScore = 2;
-                } else if (delta <= 5) {
-                    durationEv = Evidence.PARTIAL;
-                    durationScore = 1;
-                } else {
-                    durationEv = Evidence.PARTIAL;
-                    durationScore = 0;
-                }
-            }
-
-            final Evidence albumEv;
-            int albumScore;
-            if (al.isEmpty() || this.album.isEmpty()) {
-                albumEv = Evidence.MISSING;
-                albumScore = 0;
-            } else if (al.equals(this.album) || containsEither(al, this.album)) {
-                albumEv = Evidence.MATCH;
-                albumScore = 1;
-            } else {
-                albumEv = Evidence.MISMATCH;
-                albumScore = 0;
-            }
-
-            return new MatchVerdict(titleScore + artistScore + durationScore + albumScore,
-                    titleEv, artistEv, durationEv, albumEv);
-        }
-    }
-
     public static PreparedTrack prepare(TrackInfo track) {
         return new PreparedTrack(track);
     }
@@ -603,8 +460,8 @@ public final class LyricsRequests {
         }
         s = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFKC);
         s = s.toLowerCase(Locale.ROOT);
-        // Compare metadata across Traditional/Simplified spellings used by different providers.
-        // ICU does not map 妳 to 你, so fold this observed title variant explicitly for matching.
+        // Providers spell metadata Traditional or Simplified, so both are compared. ICU does
+        // not map 妳 to 你, so that observed title variant is folded explicitly.
         s = CharactersConverter.toSimplified(s).replace('妳', '你');
         s = stripDecorations(s);
         s = foldPunctuation(s);
@@ -612,11 +469,8 @@ public final class LyricsRequests {
         return s;
     }
 
-    private static volatile String decorationRegexSource;
-    private static volatile java.util.regex.Pattern decorationPattern;
-
     private static String stripDecorations(String s) {
-        String regex = Settings.LYRICS_CUSTOM_REGEX.get();
+        String regex = LyricsFilterDefaults.LYRICS_CUSTOM_REGEX.get();
         if (regex.trim().isEmpty()) {
             return s;
         }
@@ -764,8 +618,8 @@ public final class LyricsRequests {
 
     public static int scoreTrackCandidate(String title, String artist, long durationSec,
                                           @Nullable String album, TrackInfo track) {
-        // Reject counter-evidence before adapters replace candidate metadata with the
-        // query metadata in FetchResult.of(lyrics, track).
+        // Evaluated before adapters swap the candidate metadata for the query metadata
+        // through FetchResult.of(lyrics, track), so a counter-matching title is still rejected.
         MatchVerdict verdict = prepare(track).evaluate(title, artist, durationSec, album);
         if (customMatchMode) {
             return rankScore(verdict);
@@ -782,7 +636,7 @@ public final class LyricsRequests {
 
     public static int syncRank(Lyrics lyrics) {
         for (LyricsLine line : lyrics.lines()) {
-            if (line.hasWords()) {
+            if (line.hasWordTimings()) {
                 return 2;
             }
         }
@@ -805,5 +659,268 @@ public final class LyricsRequests {
 
     public static int scoreSingleResult(Lyrics lyrics) {
         return 6 + syncRank(lyrics);
+    }
+
+    public enum Evidence {
+        EQUAL,
+        MATCH,
+        PARTIAL,
+        MISSING,
+        MISMATCH,
+        NONE
+    }
+
+    public static final class MusicBrainzClient {
+
+        private static final String BASE_URL = "https://musicbrainz.org/ws/2/";
+
+        private static final long REQUEST_THROTTLE_MS = 1100;
+
+        private static final int RESULT_LIMIT = 10;
+
+        private static final AtomicLong lastRequestTime = new AtomicLong();
+
+        private MusicBrainzClient() {
+        }
+
+        /** Recording titles matching {@code query}, most relevant first, de-duplicated. */
+        @NonNull
+        public static List<String> suggestTitles(@NonNull String query) {
+            String clause = phrase("recording", query);
+            if (clause == null) {
+                return List.of();
+            }
+            String url = BASE_URL + "recording?query=" + clause
+                    + "&fmt=json&limit=" + RESULT_LIMIT;
+            try {
+                JSONArray recordings = search(url).optJSONArray("recordings");
+                if (recordings == null) {
+                    return List.of();
+                }
+                LinkedHashSet<String> titles = new LinkedHashSet<>();
+                for (int i = 0; i < recordings.length(); i++) {
+                    JSONObject recording = recordings.optJSONObject(i);
+                    if (recording == null) {
+                        continue;
+                    }
+                    String title = recording.optString("title", "").trim();
+                    if (!title.isEmpty()) {
+                        titles.add(title);
+                    }
+                }
+                return List.copyOf(titles);
+            } catch (Exception ex) {
+                Logger.printDebug(() -> "MusicBrainz title suggestions failed", ex);
+                return List.of();
+            }
+        }
+
+        /** Artist names and aliases matching {@code query}, de-duplicated. */
+        @NonNull
+        public static List<String> suggestArtists(@NonNull String query) {
+            String clause = phrase("artist", query);
+            if (clause == null) {
+                return List.of();
+            }
+            String url = BASE_URL + "artist?query=" + clause
+                    + "&fmt=json&limit=" + RESULT_LIMIT;
+            try {
+                JSONArray artists = search(url).optJSONArray("artists");
+                if (artists == null) {
+                    return List.of();
+                }
+                LinkedHashSet<String> names = new LinkedHashSet<>();
+                for (int i = 0; i < artists.length(); i++) {
+                    JSONObject artist = artists.optJSONObject(i);
+                    if (artist == null) {
+                        continue;
+                    }
+                    String name = artist.optString("name", "").trim();
+                    if (!name.isEmpty()) {
+                        names.add(name);
+                    }
+                    JSONArray aliases = artist.optJSONArray("aliases");
+                    if (aliases == null) {
+                        continue;
+                    }
+                    for (int j = 0; j < aliases.length(); j++) {
+                        JSONObject alias = aliases.optJSONObject(j);
+                        if (alias == null) {
+                            continue;
+                        }
+                        String aliasName = alias.optString("name", "").trim();
+                        if (!aliasName.isEmpty()) {
+                            names.add(aliasName);
+                        }
+                    }
+                }
+                return List.copyOf(names);
+            } catch (Exception ex) {
+                Logger.printDebug(() -> "MusicBrainz artist suggestions failed", ex);
+                return List.of();
+            }
+        }
+
+        private static JSONObject search(String url) throws Exception {
+            throttle(lastRequestTime, REQUEST_THROTTLE_MS);
+            HttpURLConnection connection = openConnection(url);
+            try {
+                if (connection.getResponseCode() != Requester.HTTP_STATUS_CODE_SUCCESS) {
+                    return new JSONObject();
+                }
+                return parseGzipJsonObject(connection);
+            } finally {
+                connection.disconnect();
+            }
+        }
+
+        /**
+         * The Lucene {@code field:"phrase"} clause for the query, URL encoded, or null when the
+         * query says nothing or cannot be encoded. Only quotes and backslashes would end a quoted
+         * phrase, so everything else in the typed term is kept as it is.
+         */
+        @Nullable
+        private static String phrase(String field, String query) {
+            String trimmed = query == null ? "" : query.trim();
+            String cleaned = trimmed.replace("\\", " ").replace("\"", " ").trim();
+            if (cleaned.isEmpty()) {
+                return null;
+            }
+            try {
+                return encode(field + ":\"" + cleaned + "\"");
+            } catch (Exception ex) {
+                Logger.printDebug(() -> "MusicBrainz query encoding failed", ex);
+                return null;
+            }
+        }
+    }
+
+    /**
+     * Result of evaluating a candidate's metadata against a prepared track.
+     *
+     * @param score    0–11 ranking score (title 0–5 + artist 0–3 + duration 0–2 + album 0–1)
+     * @param title    title evidence
+     * @param artist   artist evidence
+     * @param duration duration evidence (MISSING when either side unknown)
+     * @param album    album evidence
+     */
+    public record MatchVerdict(int score, Evidence title, Evidence artist,
+                               Evidence duration, Evidence album) {
+
+        public static MatchVerdict videoIdTrust() {
+            return new MatchVerdict(VIDEO_ID_TRUST, Evidence.MATCH, Evidence.MISSING,
+                    Evidence.MISSING, Evidence.MISSING);
+        }
+    }
+
+    public static final class PreparedTrack {
+        final String title;
+        final String artist;
+        final String album;
+        final int durationSec;
+        final boolean titleValid;
+
+        PreparedTrack(TrackInfo track) {
+            this.title = normalizeForMatch(track.title());
+            this.artist = normalizeForMatch(track.artist());
+            this.album = normalizeForMatch(track.album());
+            this.durationSec = track.durationSeconds();
+            this.titleValid = !this.title.isEmpty();
+        }
+
+        public MatchVerdict evaluate(@Nullable String title, @Nullable String artist,
+                                     long durationSec, @Nullable String album) {
+            final String t = normalizeForMatch(title);
+            final String a = normalizeForMatch(artist);
+            final String al = normalizeForMatch(album);
+
+            final Evidence titleEv;
+            int titleScore;
+            if (!titleValid) {
+                titleEv = Evidence.MISSING;
+                titleScore = 0;
+            } else if (t.isEmpty()) {
+                titleEv = Evidence.NONE;
+                titleScore = 0;
+            } else if (t.equals(this.title)) {
+                titleEv = Evidence.EQUAL;
+                titleScore = 5;
+            } else if (containsEither(t, this.title)) {
+                titleEv = Evidence.MATCH;
+                titleScore = 3;
+            } else {
+                final double j = jaccard(t, this.title);
+                if (j >= 0.6) {
+                    titleEv = Evidence.PARTIAL;
+                    titleScore = 2;
+                } else if (j >= 0.35) {
+                    titleEv = Evidence.PARTIAL;
+                    titleScore = 1;
+                } else {
+                    titleEv = Evidence.NONE;
+                    titleScore = 0;
+                }
+            }
+
+            final Evidence artistEv;
+            int artistScore;
+            if (a.isEmpty()) {
+                artistEv = Evidence.MISSING;
+                artistScore = 0;
+            } else if (this.artist.isEmpty()) {
+                artistEv = Evidence.MISSING;
+                artistScore = 0;
+            } else if (a.equals(this.artist)) {
+                artistEv = Evidence.MATCH;
+                artistScore = 3;
+            } else if (containsEither(a, this.artist)) {
+                artistEv = Evidence.MATCH;
+                artistScore = 3;
+            } else if (splitArtistHits(a, this.artist)) {
+                artistEv = Evidence.PARTIAL;
+                artistScore = 1;
+            } else {
+                artistEv = Evidence.MISMATCH;
+                artistScore = 0;
+            }
+
+            final Evidence durationEv;
+            int durationScore;
+            if (durationSec <= 0 || this.durationSec <= 0) {
+                durationEv = Evidence.MISSING;
+                durationScore = 0;
+            } else {
+                final long delta = Math.abs(durationSec - this.durationSec);
+                if (delta > 15) {
+                    durationEv = Evidence.MISMATCH;
+                    durationScore = 0;
+                } else if (delta <= 2) {
+                    durationEv = Evidence.MATCH;
+                    durationScore = 2;
+                } else if (delta <= 5) {
+                    durationEv = Evidence.PARTIAL;
+                    durationScore = 1;
+                } else {
+                    durationEv = Evidence.PARTIAL;
+                    durationScore = 0;
+                }
+            }
+
+            final Evidence albumEv;
+            int albumScore;
+            if (al.isEmpty() || this.album.isEmpty()) {
+                albumEv = Evidence.MISSING;
+                albumScore = 0;
+            } else if (al.equals(this.album) || containsEither(al, this.album)) {
+                albumEv = Evidence.MATCH;
+                albumScore = 1;
+            } else {
+                albumEv = Evidence.MISMATCH;
+                albumScore = 0;
+            }
+
+            return new MatchVerdict(titleScore + artistScore + durationScore + albumScore,
+                    titleEv, artistEv, durationEv, albumEv);
+        }
     }
 }

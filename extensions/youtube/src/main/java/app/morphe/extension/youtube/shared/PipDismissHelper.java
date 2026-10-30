@@ -7,10 +7,12 @@
 
 package app.morphe.extension.youtube.shared;
 
+import androidx.annotation.Nullable;
+
+import java.util.function.Consumer;
+
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.ui.SheetBottomDialog;
-import kotlin.Unit;
-import kotlin.jvm.functions.Function1;
 
 public final class PipDismissHelper {
 
@@ -21,19 +23,30 @@ public final class PipDismissHelper {
      * and cleans up the observer when the dialog is dismissed for any reason.
      */
     public static void dismissOnPip(SheetBottomDialog.SlideDialog dialog) {
-        Function1<PlayerType, Unit> observer = new Function1<>() {
+        dismissOnPip(dialog, null);
+    }
+
+    /**
+     * Same as {@link #dismissOnPip(SheetBottomDialog.SlideDialog)}, and runs {@code onDismiss} when the dialog is dismissed.
+     */
+    public static void dismissOnPip(SheetBottomDialog.SlideDialog dialog, @Nullable Runnable onDismiss) {
+        Consumer<PlayerType> observer = new Consumer<>() {
             @Override
-            public Unit invoke(PlayerType type) {
+            public void accept(PlayerType type) {
                 if (!dialog.isShowing()) {
                     PlayerType.getOnChange().removeObserver(this);
                 } else if (type == PlayerType.WATCH_WHILE_PICTURE_IN_PICTURE) {
                     Logger.printDebug(() -> "Dismissing dialog due to PiP mode");
                     dialog.dismiss();
                 }
-                return Unit.INSTANCE;
             }
         };
         PlayerType.getOnChange().addObserver(observer);
-        dialog.setOnDismissListener(d -> PlayerType.getOnChange().removeObserver(observer));
+        dialog.setOnDismissListener(d -> {
+            PlayerType.getOnChange().removeObserver(observer);
+            if (onDismiss != null) {
+                onDismiss.run();
+            }
+        });
     }
 }

@@ -16,6 +16,14 @@ Second \"item\" text"</string>
 
 -->
 <resources>
+  <!-- misc.androidauto.androidAutoPatch -->
+  <string name="morphe_music_android_auto_last_played">Последно възпроизвеждане</string>
+  <string name="morphe_music_android_auto_subscriptions">Сабскрипции</string>
+  <string name="morphe_music_android_auto_videos">Видеа</string>
+  <string name="morphe_music_android_auto_other_results">Други резултати</string>
+  <string name="morphe_music_android_auto_uploaded_songs">Качени песни</string>
+  <string name="morphe_music_android_auto_uploaded_albums">Качени албуми</string>
+  <string name="morphe_music_android_auto_uploaded_artists">Качени изпълнители</string>
   <!-- app.morphe.patches.music.interaction.jam -->
   <string name="morphe_music_jam_update_host_controls">Актуализирайте Jam пача на хоста, за да използва пауза и възобновяване</string>
   <string name="morphe_music_jam_probe_title">Споделяне на опашката на Jam</string>
@@ -51,7 +59,7 @@ Second \"item\" text"</string>
   <string name="morphe_music_jam_show_qr">Показване на QR</string>
   <string name="morphe_music_jam_done">Готово</string>
   <string name="morphe_music_jam_invite_title">Поканете във вашия Jam</string>
-  <string name="morphe_music_jam_invite_message">Сканирайте, за да се присъедините и редактирате тази опашка. Приключването на Jam отменя поканата.</string>
+  <string name="morphe_music_jam_invite_message">Сканирайте, за да се присъедините и редактирате тази редица. Краят на Jam отменя поканата</string>
   <string name="morphe_music_jam_copy_link">Копиране на връзката</string>
   <string name="morphe_music_jam_invitation_clip">Покана за Jam</string>
   <string name="morphe_music_jam_reconnecting_toast">Jam се свързва отново; опитайте отново след малко</string>
@@ -64,9 +72,9 @@ Second \"item\" text"</string>
   <string name="morphe_music_jam_updating">Актуализиране на Jam…</string>
   <string name="morphe_music_jam_finding_host">Търсене на домакина ви в Wi-Fi мрежата…</string>
   <string name="morphe_music_jam_waiting_people">Изчакване на хора</string>
-  <string name="morphe_music_jam_one_connected">%d човек е свързан</string>
-  <string name="morphe_music_jam_many_connected">%d души са свързани</string>
-  <string name="morphe_music_jam_code_expires">Въведете този код на близко устройство. Wi-Fi Aware работи в отделни локални мрежи, когато се поддържа. Изтича след %d минути.</string>
+  <string name="morphe_music_jam_one_connected">Връзка с %s потребител</string>
+  <string name="morphe_music_jam_many_connected">Връзка с %s потребители</string>
+  <string name="morphe_music_jam_code_expires">Въведете този код на съседно устройство. Wi-Fi Aware работи чрез отделни мрежи LAN, когато е поддържано. Изтича след %s минути</string>
   <string name="morphe_music_jam_seek_to">Премини към %s?</string>
   <string name="morphe_music_jam_edits_open">Редакциите са отворени</string>
   <string name="morphe_music_jam_edits_locked">Редакциите са заключени</string>
@@ -76,12 +84,12 @@ Second \"item\" text"</string>
   <string name="morphe_music_jam_unsupported">Не се поддържа по време на Jam</string>
   <string name="morphe_music_jam_cancelled">Присъединяването е отменено</string>
   <string name="morphe_music_jam_reconnecting_host">Повторно свързване с домакина ви…</string>
-  <string name="morphe_music_jam_share_prompt">Споделете опашка. Нека всички добавят песни.</string>
+  <string name="morphe_music_jam_share_prompt">Споделяне на редица. Позволяване на добавяне на песни от всеки</string>
   <string name="morphe_music_jam_invite_people">Поканете хора</string>
   <string name="morphe_music_jam_guest_edits">Гостите могат да редактират опашката</string>
   <string name="morphe_music_jam_end_jam">Приключване на Jam</string>
-  <string name="morphe_music_jam_participant_help">Домакинът пуска музиката. Добавяйте, местете или премахвайте песни директно в опашката на YouTube Music.</string>
-  <string name="morphe_music_jam_joining_help">Дръжте двете устройства наблизо. Можете да отмените, докато търсим домакина.</string>
+  <string name="morphe_music_jam_participant_help">Хостът възпроизвежда музиката. Добавяне, преместване или премахване на песни директно в редицата YouTube Music</string>
+  <string name="morphe_music_jam_joining_help">Дръжте двете устройства близо едно до друго. Можете да откажете, докато търсим хоста</string>
   <string name="morphe_music_jam_cancel_joining">Отмяна на присъединяването</string>
   <string name="morphe_music_jam_leave_jam">Напускане на Jam</string>
   <string name="morphe_music_jam_start_jam">Стартиране на Jam</string>
@@ -118,16 +126,9 @@ Second \"item\" text"</string>
   <string name="morphe_music_enable_audio_video_switch_summary">Опит за превключване между версията на аудио записа и официалното музикално видео</string>
   <!-- interaction.downloads.downloadsPatch -->
   <string name="morphe_external_downloader_screen_summary">Изтеглете музикални видеа, подкасти или песни с помощта на приложения за изтегляне от трети страни</string>
-  <!-- 'Download' should be translated using the same localized wording YouTube displays for the button. -->
-  <string name="morphe_external_downloader_action_button_title">Заместване на бутона за изтегляне</string>
-  <string name="morphe_external_downloader_action_button_summary">Използва избрания от вас външен изтеглящ инструмент вместо стандартния бутон за действие „Изтегляне“</string>
-  <string name="morphe_external_downloader_flyout_menu_title">Заменяне на менюто за изтегляне</string>
-  <string name="morphe_external_downloader_flyout_menu_summary">Използва избрания от вас външен изтеглящ инструмент вместо стандартното флайout меню за изтегляне</string>
-  <string name="morphe_music_in_app_downloads_title">Изтегляне в приложението</string>
-  <string name="morphe_music_in_app_downloads_summary">Изтегля аудио в YouTube Music, вместо да отваря външното приложение за изтегляне.</string>
-  <string name="morphe_music_in_app_downloads_user_dialog_message">"Записите се запазват в частното хранилище на приложението и се изтриват, ако YouTube Music бъде деинсталиран.
-
-Докато това е включено, разделът „Изтегляния“ изброява тези песни вместо офлайн библиотеката на Music Premium. Изключването му възстановява раздела, а изтеглянията на Premium никога не се засягат."</string>
+  <!-- 'Download' should be translated using the same localized wording YouTube displays for the menu. -->
+  <string name="morphe_external_downloader_menu_title">Използвайте външен изтегляч за менюто Изтегляне</string>
+  <string name="morphe_external_downloader_menu_summary">Опцията Изтегляне в менютата отваря вашия външен изтегляч вместо него</string>
   <string name="morphe_music_downloads_screen_title">Изтегляния</string>
   <string name="morphe_music_downloads_empty">"Няма изтегляния
 Изтеглените песни се появяват тук"</string>
@@ -445,7 +446,7 @@ SABR възпроизвеждане (имитирането на видео по
   <string name="morphe_music_scrobbling_custom_regex_title">Почистване с потребителски regex</string>
   <string name="morphe_music_scrobbling_custom_regex_summary">Въведете потребителски регулярен израз за премахване на допълнителен текст от заглавия на песни, изпълнители или албуми. Пример: (?i)\\s*\\((clean|explicit)\\)</string>
   <string name="morphe_music_scrobbling_parse_title_title">Извличане на изпълнител и песен от заглавието</string>
-  <string name="morphe_music_scrobbling_parse_title_summary">Извличане на името на изпълнителя и песента от заглавието на видеото, използвайки разделител \" - \". Полезно за прекачени видеа, където името на канала може да се използва като изпълнител.</string>
+  <string name="morphe_music_scrobbling_parse_title_summary">Извличане на име на артист и песен от заглавието на видеото, използвайки разделител \" - \". Полезно за пренадеждан съдържание, където името на канала може да се използва като артист</string>
   <string name="morphe_music_scrobbling_guess_album_title">Попълнете липсващия албум</string>
   <string name="morphe_music_scrobbling_guess_album_summary">Когато музиката не включва албум, потърсете го в Last.fm, за да е пълен вашият scrobble.</string>
   <!-- 'scrobbling' must be kept untranslated -->
@@ -458,11 +459,51 @@ SABR възпроизвеждане (имитирането на видео по
   <string name="morphe_music_lyrics_keep_screen_on_title">Дръжте екрана включен, докато преглеждате текстовете</string>
   <string name="morphe_music_lyrics_keep_screen_on_summary">Предотвратява изключването на екрана, докато панелът с текстовете е отворен</string>
   <string name="morphe_music_lyrics_section_service_title">Услуга за текстове на песни</string>
-  <string name="morphe_music_lyrics_section_overlay_title">Наслагване</string>
+  <string name="morphe_music_lyrics_section_display_title">Показване</string>
   <string name="morphe_music_lyrics_section_sync_title">Синхронизация</string>
-  <string name="morphe_music_lyrics_source_all_disabled">Всички доставчици са изключени — вградени текстове и текстове, вградени в песента.</string>
+  <string name="morphe_music_lyrics_section_panel_title">Панел</string>
+  <string name="morphe_music_lyrics_source_all_disabled">Всички доставчици са деактивирани - вградени текстовки и вградени текстове на песни</string>
   <string name="morphe_music_lyrics_source_reset_title">Да се нулира редът на доставчиците?</string>
   <string name="morphe_music_lyrics_source_reset_message">Възстановяване на реда по подразбиране на доставчиците.</string>
+  <string name="morphe_music_lyrics_rime_dict_title">Списък с думи Rime</string>
+  <string name="morphe_music_lyrics_rime_dict_empty">"За Rime Wordlist е необходим и UniDict: в Offline Dictionary provider отбележете „Chinese and Cantonese characters (UniDict)“ и изчакайте да приключи изтеглянето. Без него списъкът с прочитани символи няма да има значение.
+
+Отбележете списъците, които Rime Wordlist трябва да чете, след което натиснете Save за изтегляне им. Списък, който сте добавили, се премахва, когато го отметнете.
+
+Всеки списък представлява ваша собственост таблица дума-превод, .dict.yaml с редове като:
+字 ham
+典 din2
+Първата колона е думата, втората нейният прочит; допълнителни колони и редове без табулация се игнорират."</string>
+  <string name="morphe_music_lyrics_rime_dict_no_table">No Rime word list is ticked for the language above. Tap this name to tick one, or pick a language that has a list</string>
+  <string name="morphe_music_lyrics_rime_dict_add">Добавяне</string>
+  <string name="morphe_music_lyrics_rime_dict_add_title">Добавете списък с думи Rime</string>
+  <string name="morphe_music_lyrics_rime_dict_add_hint">.dict.yaml файл или архив zip, съдържащ такъв, с редове като 字 ham и 典 din2. Списъкът се зарежда, когато го отметнете и натиснете Save, а лицензът ви позволява да го проверите</string>
+  <string name="morphe_music_lyrics_rime_dict_field_code">Езиков код</string>
+  <string name="morphe_music_lyrics_rime_dict_field_code_hint">Две или три букви, например hak или wuu</string>
+  <string name="morphe_music_lyrics_rime_dict_field_label">Име</string>
+  <string name="morphe_music_lyrics_rime_dict_field_label_hint">Показва се под прочитането, например Хакка (Meixian)</string>
+  <string name="morphe_music_lyrics_rime_dict_field_url">Адрес на списъка с думи</string>
+  <string name="morphe_music_lyrics_rime_dict_field_url_hint">https:// адрес на .dict.yaml или неговия архив zip</string>
+  <string name="morphe_music_lyrics_rime_dict_field_char_source">Знаци, които не са в дума</string>
+  <string name="morphe_music_lyrics_rime_char_source_auto">Автоматично</string>
+  <string name="morphe_music_lyrics_rime_char_source_cantonese">Кантонски знаци</string>
+  <string name="morphe_music_lyrics_rime_char_source_pinyin">Мандарински знаци</string>
+  <string name="morphe_music_lyrics_rime_char_source_none">Без прочитане на знака</string>
+  <string name="morphe_music_lyrics_rime_dict_incomplete">Попълнете кода, името и адреса</string>
+  <string name="morphe_music_lyrics_rime_dict_bad_code">Кодът трябва да бъде две или три букви, например hak</string>
+  <string name="morphe_music_lyrics_rime_dict_bad_url">Адресът трябва да започва с https://</string>
+  <string name="morphe_music_lyrics_rime_dict_bad_field">Името и адресът не могат да съдържат вертикална черта</string>
+  <string name="morphe_music_lyrics_rime_dict_duplicate">%1$s вече има таблица със думи</string>
+  <string name="morphe_music_lyrics_rime_dict_reserved">%1$s се чете от вградената транслитерация и не може да използва списък с думи</string>
+  <string name="morphe_music_lyrics_rime_dict_reserved_row">Не се използва: този език вече има собствен прочит, затова махнете отметката, за да го премахнете</string>
+  <string name="morphe_music_lyrics_rime_dict_added">Добавен %1$s – отметнете го и натиснете Запазване, за да го изтеглите</string>
+  <string name="morphe_music_lyrics_rime_dict_ready">Списъците с думи са готови</string>
+  <string name="morphe_music_lyrics_rime_dict_ready_toast">Готови списъци с думи (%1$d записа)</string>
+  <string name="morphe_music_lyrics_rime_dict_building">Изграждане на списъка за четене: %1$d%%</string>
+  <string name="morphe_music_lyrics_rime_dict_failed">Изтеглянето на списъка с думи беше неуспешно – натиснете Запазване отново, за да опитате пак</string>
+  <string name="morphe_music_lyrics_clear_cache_title">Изчистване на съхраняваните текстове</string>
+  <string name="morphe_music_lyrics_clear_cache_summary">Изтрийте %1$s MB текстове, запазени на това устройство</string>
+  <string name="morphe_music_lyrics_clear_cache_done">Изчистени %1$s MB</string>
   <string name="morphe_music_token_dialog_get_token">Вземи токен</string>
   <string name="morphe_music_apple_music_token_title">Apple Music Media-user-token</string>
   <string name="morphe_music_apple_music_token_dialog_instruction">"Поставете бисквитката media-user-token от music.apple.com
@@ -474,42 +515,57 @@ SABR възпроизвеждане (имитирането на видео по
 4. Копирайте стойността на \"media-user-token\""</string>
   <string name="morphe_music_apple_music_token_toast_saved">Apple Music: media-user-token е запазен</string>
   <string name="morphe_music_apple_music_token_toast_cleared">Apple Music: media-user-token е нулиран</string>
-  <string name="morphe_music_apple_music_token_toast_invalid">Apple Music: media-user-token е изтрит</string>
+  <string name="morphe_music_apple_music_token_toast_invalid">Apple Music: невалиден media-user-token - моля проверете и опитайте отново</string>
   <string name="morphe_music_spotify_token_title">Употреба на media-user-token</string>
   <string name="morphe_music_spotify_token_dialog_instruction">"Въведете media-user-token"</string>
   <string name="morphe_music_spotify_token_toast_saved">Spotify: sp_dc […] Без него Lyrically ще се използва като алтернатива.</string>
   <string name="morphe_music_spotify_token_toast_cleared">Apple Music: media-user-token липсва</string>
-  <string name="morphe_music_spotify_token_toast_invalid">Apple Music: media-user-token е невалиден</string>
+  <string name="morphe_music_spotify_token_toast_invalid">Spotify: невалиден sp_dc - моля проверете и опитайте отново</string>
   <string name="morphe_music_apple_token_optional_hint">Apple Music токенът е по избор. Без него Lyrically ще се използва като резервен вариант.</string>
   <string name="morphe_music_deezer_arl_title">Deezer […] Копирайте стойността на \"arl\"</string>
   <string name="morphe_music_deezer_arl_dialog_instruction">"Apple Music: media-user-token е забранен"</string>
   <string name="morphe_music_deezer_arl_toast_saved">Deezer: arl е запазен.</string>
   <string name="morphe_music_deezer_arl_toast_cleared">Невалиден arl, опитайте отново.</string>
-  <string name="morphe_music_deezer_arl_toast_invalid">Apple Music: media-user-token е в процес на издаване</string>
+  <string name="morphe_music_deezer_arl_toast_invalid">Deezer: невалиден arl - моля проверете и опитайте отново</string>
   <string name="morphe_music_musixmatch_token_title">Musixmatch […] Копирайте стойността на потребителския токен.</string>
   <string name="morphe_music_musixmatch_token_dialog_instruction">Добавете токен само за да използвате собствения си акаунт. Той трябва да дойде от приложението Musixmatch за Android: токените, копирани от musixmatch.com, принадлежат на оттегления десктоп клиент и API ги отхвърля.</string>
   <string name="morphe_music_musixmatch_token_optional_hint">Musixmatch работи без токен, така че това поле може да остане празно.</string>
   <string name="morphe_music_musixmatch_token_dialog_hint">Невалиден потребителски токен, опитайте отново.</string>
   <string name="morphe_music_musixmatch_token_toast_saved">Apple Music: media-user-token е актуализиран</string>
   <string name="morphe_music_musixmatch_token_toast_cleared">Apple Music: media-user-token е запазен</string>
-  <string name="morphe_music_musixmatch_token_toast_invalid">Apple Music: media-user-token е изтрит</string>
+  <string name="morphe_music_musixmatch_token_toast_invalid">Musixmatch: невалиден user token - моля проверете и опитайте отново</string>
   <string name="morphe_music_youtube_cookies_title">YouTube бисквитки</string>
   <string name="morphe_music_youtube_cookies_dialog_instruction">"Поставете […] Копирайте пълния низ за бисквитките (двойки ключ=стойност, разделени с точка и запетая)
 
 Задължителни бисквитки: SID, HSID, SSID, SAPISID, __Secure-3PAPISID, __Secure-1PAPISID, LOGIN_INFO"</string>
   <string name="morphe_music_youtube_cookies_toast_saved">YouTube: бисквитките са запазени.</string>
   <string name="morphe_music_youtube_cookies_toast_cleared">YouTube: бисквитките са изчистени.</string>
-  <string name="morphe_music_youtube_cookies_toast_invalid">YouTube: невалидни бисквитки — проверете и опитайте отново.</string>
-  <string name="morphe_music_lyrics_tap_to_seek_title">Докоснете ред, за да преместите</string>
-  <string name="morphe_music_lyrics_tap_to_seek_summary">Докосването на ред преминава към този момент в песента</string>
+  <string name="morphe_music_youtube_cookies_toast_invalid">YouTube: невалидни бисквитки - моля проверете и опитайте отново</string>
+  <string name="morphe_music_lyrics_tap_to_seek_title">Натиснете и задръжте ред</string>
+  <string name="morphe_music_lyrics_tap_to_seek_summary">Докоснете ред, за да прескочите към този момент в песента; дълго натискане, за да копирате думата под пръста ви или целия ред, ако натискането не е върху дума. Изключването премахва и двата жеста</string>
+  <string name="morphe_music_lyrics_show_section_title">Показване на етикети за секции</string>
+  <string name="morphe_music_lyrics_show_section_summary">Обозначете всяка нова секция от текста с малък етикет, като например Куплет или Припев</string>
   <string name="morphe_music_lyrics_show_copy_button_title">Покажи бутон Копиране</string>
-  <string name="morphe_music_lyrics_show_copy_button_summary">Докоснете, за да копирате оригиналния текст като обикновен текст; задръжте натиснато, за да запишете суровия файл с текста в Изтегляния.</string>
+  <string name="morphe_music_lyrics_show_copy_button_summary">Докосване за копиране на оригиналните текстове като обикновен текст; дълго натискане за запазване на изходния файл с текстове в Папки с изтегляния</string>
   <string name="morphe_music_lyrics_show_translate_button_title">Покажи бутон Превод</string>
-  <string name="morphe_music_lyrics_show_translate_button_summary">Докоснете, за да превключите превода; задръжте натиснато за само превод. Използва преводи от доставчика, Google Translate или API, съвместим с OpenAI.</string>
-  <string name="morphe_music_lyrics_show_romanize_button_title">Показване на бутона за романизиране</string>
-  <string name="morphe_music_lyrics_show_romanize_button_summary">Докоснете, за да превключите романизацията; задръжте натиснато за само романизация. Използва романизация от доставчика, Google Translate или API, съвместим с OpenAI.</string>
+  <string name="morphe_music_lyrics_show_translate_button_summary">Натиснете, за да превключвате превода; докоснете и задръжте за превод само. Използва активните доставчици на превод в изброения ред</string>
+  <string name="morphe_music_lyrics_show_romanize_button_title">Показване на бутон за транслитерация или романизиране</string>
+  <string name="morphe_music_lyrics_show_romanize_button_summary">Натиснете, за да превключвате романизирането или транслитерацията; докоснете и задръжте за романизиране или транслитерация само. Използва активните доставчици на романизация в изброения ред</string>
+  <string name="morphe_music_lyrics_allow_transliteration_title">Активиране на транслитерация</string>
+  <string name="morphe_music_lyrics_allow_transliteration_summary">Разрешаване на не-латински прочити от източника на текст; когато е изключено, оставят се само латински букви, букви с диакритични знаци и цифри за тон</string>
+  <string name="morphe_music_lyrics_local_romanization_summary">Чете всяка дума от синхронизирана по време песен (word sync включен); корейски не изисква изтегляне; четиринайсет скрипта споделят едно изтегляне CLDR; ханските знаци се четат от списъка с думи Rime, когато неговата таблица покрива езика</string>
+  <string name="morphe_music_lyrics_local_romanization_download_started">Изтегляне на речници за четене…</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_ready">Готови четения (%1$d записи)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_failed">Изтеглянето бе неуспешно – изключете и включете отново, за да опитате повторно</string>
+  <string name="morphe_music_lyrics_local_romanization_download_confirm_title">Офлайн речник</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_japanese">Японски (SudachiDict, ~75 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_unidict">Китайски и кантонски знаци (UniDict, ~8 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_chinese">Китайски думи (pinyin-pro, ~17 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_cldr">Гръцки, славянски кирилски (вкл. руски, украински, български, сръбски, беларуски, македонски), грузински, арменски, еврейски, арабски, амхарски и сирийска транслитерация (CLDR, ~0.5 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_building">Четене %1$s: %2$d%%</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_empty">Изберете поне един речник</string>
   <string name="morphe_music_lyrics_show_refresh_button_title">Показване на бутона за опресняване</string>
-  <string name="morphe_music_lyrics_show_refresh_button_summary">Докоснете, за да превключите към следващия вариант на текста; задръжте натиснато, за да търсите текст по заглавие на песен и изпълнител</string>
+  <string name="morphe_music_lyrics_show_refresh_button_summary">Докосване за превключване към следващ кандидат за текстове; дълго натискане за търсене на текстове по заглавие и изпълнител</string>
   <string name="morphe_music_lyrics_search_dialog_title">Търсене на текст</string>
   <string name="morphe_music_lyrics_search_title_hint">Заглавие на песен</string>
   <string name="morphe_music_lyrics_search_artist_hint">Изпълнител</string>
@@ -518,14 +574,41 @@ SABR възпроизвеждане (имитирането на видео по
   <string name="morphe_music_lyrics_saved">Запазено</string>
   <string name="morphe_music_lyrics_word_sync_title">Открояване на синхронизираните думи или срички</string>
   <string name="morphe_music_lyrics_word_sync_summary">Дава приоритет на текст по думи, когато е наличен. Когато текстът има тайминг на думите, откроява всяка дума или сричка в синхрон с музиката.</string>
+  <string name="morphe_music_lyrics_line_scale_title">Намаляване на неактивните редове</string>
+  <string name="morphe_music_lyrics_line_scale_summary">Рисува всеки ред, който в момента не се пее, малко по-малък, следователно го затъмнява леко</string>
+  <string name="morphe_music_lyrics_split_background_title">Показване на фоновите вокали отделно</string>
+  <string name="morphe_music_lyrics_split_background_summary">Отделя фоновите вокали и хармонията от водещия ред. Премества фонови вокали, записани в скоби, като „(О) искам те“, извън пеенето в свой собствен затъмнен ред</string>
   <string name="morphe_music_lyrics_hide_played_title">Скриване на вече изпетите редове</string>
   <string name="morphe_music_lyrics_hide_played_summary">Скриване на редовете от текста над реда, който се изпълнява в момента.</string>
   <string name="morphe_music_lyrics_hide_unplayed_title">Скриване на неизпетите редове</string>
   <string name="morphe_music_lyrics_hide_unplayed_summary">Скриване на редовете от текста под реда, който се изпълнява в момента.</string>
   <string name="morphe_music_lyrics_mediasession_title">Показване на текстовете от MediaSession на заключения екран.</string>
+  <string name="morphe_music_lyrics_mediasession_summary">Показва текущия ред на екрана за заключване, Android Auto и Bluetooth. Изисква Android 11 или по-нова версия</string>
   <string name="morphe_music_lyrics_miniplayer_title">Показване на текстовете в миниплейъра.</string>
-  <string name="morphe_music_lyrics_display_artist_first_title">Ред на показване на изпълнител и заглавие</string>
-  <string name="morphe_music_lyrics_display_artist_first_summary">Превключва реда на показване на изпълнителя и заглавието в миниплейъра и MediaSession. ВКЛ. „Изпълнител - Заглавие“, а ИЗКЛ. „Заглавие - Изпълнител“. Не засяга търсенето на текстове.</string>
+  <string name="morphe_music_lyrics_miniplayer_summary">Показва текущия ред в мини плеъра, като парчето се премества в субтитрите</string>
+  <string name="morphe_music_lyrics_mini_track_format_title">Формат на заглавието/изпълнителя на песента</string>
+  <string name="morphe_music_lyrics_mini_track_format_summary">Формат на песента, показана с текстовете в миниплеера и MediaSession. {t} е заглавието, {a} е изпълнителят и {v} е версията, например Acoustic, когато източникът на текстовете предоставя такава. Текстът между две двоеточки се показва само когато всяка променлива в него има стойност; напишете \\: за обикновено двоеточие. Всеки ред се показва поредно, като се сменя при всяка промяна на текста</string>
+  <string name="morphe_music_lyrics_mini_encapsulation_title">Формат на реда с текст</string>
+  <string name="morphe_music_lyrics_mini_encapsulation_summary">Формат на реда с текст в миниплеера и MediaSession. {lrc} е редът, а {n} е колко пъти подред се пее той. Текстът между двоеточките се показва само когато редът се повтаря. Използвайте \\: за двоеточие</string>
+  <string name="morphe_music_lyrics_mini_encapsulation_invalid">Форматът трябва да съдържа {lrc}</string>
+  <string name="morphe_music_lyrics_mini_track_format_menu_summary">Шаблон на реда с изпълнителя и времеви интервали на анимацията</string>
+  <string name="morphe_music_lyrics_mini_artist_min_label">Минимално време на екрана (ms)</string>
+  <string name="morphe_music_lyrics_mini_artist_max_label">Максимално време на екрана (ms)</string>
+  <string name="morphe_music_lyrics_mini_artist_timing_explanation">Само за многоредни анимации. Запазете всеки кадър за поне минималното време. При достигане на максималното, превъртете реда на изпълнителя, дори текстът на песента да остане същият.</string>
+  <string name="morphe_music_lyrics_mini_artist_timing_invalid">Минималната стойност трябва да бъде 0 или по-голяма. Максималната трябва да бъде по-голяма от 0 и поне колкото минималната.</string>
+  <string name="morphe_music_lyrics_mini_line_limits_title">Ограничения за дължина на реда</string>
+  <string name="morphe_music_lyrics_mini_line_limits_summary">Ограничения за редовете на текста и изпълнителя и тегло на пълноширинни символи</string>
+  <string name="morphe_music_lyrics_mini_line_limits_lyrics">"Ограничение за реда на текста
+Разделете по-дългите текстове на балансирани половини. 0 изключва разделянето."</string>
+  <string name="morphe_music_lyrics_mini_line_limits_artist">"Лимит на редовете на изпълнителя
+Разделя попълнения формат на пистата на циклиращи кадри. 0 изключва разделянето."</string>
+  <string name="morphe_music_lyrics_mini_line_limits_weight">"Тегло на знаци с пълна ширина
+Важи и за двете ограничения. При 1.75, четири знака с пълна ширина се броят като 7."</string>
+  <string name="morphe_music_lyrics_mini_line_limits_invalid">Въведете цели числа за лимитите от 0 до 10000 и тегло на знака, по-голямо от 0</string>
+  <string name="morphe_music_lyrics_mini_instrumental_title">Инструментална пауза</string>
+  <string name="morphe_music_lyrics_mini_instrumental_summary">Показва се в миниплеера и MediaSession по време на инструментална пауза. Всеки ред е един анимационен кадър. {t} е заглавието, {a} е изпълнителят, а {lrc} е последният ред от текста</string>
+  <string name="morphe_music_lyrics_mini_next_offset_ms_title">Времево отместване на миниплеера и MediaSession</string>
+  <string name="morphe_music_lyrics_mini_next_offset_ms_summary">Премества кога следващият ред се показва в минимизирания плеър и MediaSession. Използвайте отрицателна стойност, ако редовете се появяват с закъснение, например на екрана за заключване</string>
   <string name="morphe_settings_music_lyrics_metadata_title">Филтри</string>
   <string name="morphe_music_lyrics_custom_regex_title">Регулярен израз за метаданни</string>
   <string name="morphe_music_lyrics_custom_regex_summary">Регулярен израз, прилаган към заглавия, изпълнители и албуми преди търсене на текстове на песни и при оценяване дали две заглавия съвпадат. Оставете празно, за да деактивирате и двете. По подразбиране премахва често срещаните ненужни елементи като „Official Video“, „Remaster“, „【插曲】“ и „- Topic“.</string>
@@ -533,6 +616,10 @@ SABR възпроизвеждане (имитирането на видео по
   <string name="morphe_music_lyrics_text_filter_summary">Регулярен израз, прилаган само към оригиналния текст (не към преводите или романизациите). Оставете полето празно, за да деактивирате.</string>
   <string name="morphe_music_lyrics_credit_line_regex_title">Маркери за информационни редове</string>
   <string name="morphe_music_lyrics_credit_line_regex_summary">Ако редовете на текста неправилно се филтрират към долната част, коригирайте това или го изчистете. Маркери, разделени със запетая: редовете, съдържащи маркер, последван от двоеточие, се показват като информация за авторство в долната част. Оставете празно, за да деактивирате.</string>
+  <string name="morphe_music_lyrics_force_capitalize_title">Заглавна първа буква</string>
+  <string name="morphe_music_lyrics_force_capitalize_summary">Заглавна първа буква на всеки ред от текста на песента</string>
+  <string name="morphe_music_lyrics_strip_trailing_punctuation_title">Премахване на крайен пунктуационен знак</string>
+  <string name="morphe_music_lyrics_strip_trailing_punctuation_summary">Премахва точки, запетаи, двоеточия и точка и запетаи в края на редовете от текста на песента. Въпросителните знаци, удивителните знаци, многоточията, кавичките и скобите се запазват</string>
   <string name="morphe_music_lyrics_text_size_title">Размер на текста</string>
   <string name="morphe_music_lyrics_text_size_summary">Размер на текста на текста на песните</string>
   <string name="morphe_music_lyrics_offset_ms_title">Глобално отместване на времето</string>
@@ -542,46 +629,94 @@ SABR възпроизвеждане (имитирането на видео по
   <string name="morphe_music_lyrics_sb_no_video">Тази песен няма id на видеото за изпращане</string>
   <!-- Shown under the lyrics. The placeholder is a service name such as LRCLIB. -->
   <string name="morphe_music_lyrics_source_label">Източник: %s</string>
+  <string name="morphe_music_lyrics_contribute_credit">Натиснете и задръжте бутона за копиране, за да запазите този LRC; ако можете да фини настройите таймингите и да ги споделите с общността на доставчиците, бихме били благодарни</string>
   <string name="morphe_music_lyrics_translated_by_google">Преведено от Google</string>
   <string name="morphe_music_lyrics_romanized_by_google">Романизирано от Google</string>
   <string name="morphe_music_lyrics_translated_by_ai">Преведено от %s</string>
   <string name="morphe_music_lyrics_romanized_by_ai">Романизирано от %s</string>
+  <string name="morphe_music_lyrics_romanized_by_local">Транслирано от %s</string>
+  <string name="morphe_music_lyrics_romanized_by_rime">Романизирано от Rime (%s)</string>
   <!-- Tappable label under the lyrics that turns the translation on. -->
   <string name="morphe_music_lyrics_translate_hide">Преведено</string>
   <string name="morphe_music_lyrics_translation_language_title">Език на превода</string>
+  <string name="morphe_music_lyrics_romanize_language_title">Език за романизация или транслитерация</string>
+  <string name="morphe_music_lyrics_translation_target_language">"Език за превод:
+%s"</string>
+  <string name="morphe_music_lyrics_romanization_target_language">"Език за транслитерация или транслитерация:
+%s"</string>
   <string name="morphe_music_lyrics_translating">Превежда се…</string>
   <string name="morphe_music_lyrics_translate_failed">Не може да преведе текста</string>
   <string name="morphe_music_lyrics_romanize_hide">Романизирано</string>
+  <string name="morphe_romanize_language_DEFAULT">Автоматичен</string>
   <string name="morphe_music_lyrics_romanizing">Романизиране…</string>
   <string name="morphe_music_lyrics_romanize_failed">Текстът не можа да бъде романизиран.</string>
   <string name="morphe_music_lyrics_translate_only">Само превод</string>
   <string name="morphe_music_lyrics_romanize_only">Само романизирано</string>
+  <string name="morphe_music_lyrics_dual_only">Двоен режим</string>
   <string name="morphe_music_lyrics_copied">Копирано в клипборда</string>
   <string name="morphe_music_lyrics_refreshing">Опресняване</string>
   <string name="morphe_music_lyrics_refreshed">Опреснено</string>
-  <string name="morphe_music_lyrics_about_summary">"Текстовете се съпоставят по заглавие и изпълнител. Необичайни метаданни може да не намерят нищо или да намерят грешната версия. Използвайте опресняване, за да превключите версиите. Доставчиците, отбелязани с *, изискват токен. Не всички активирани доставчици винаги се запитват в реда, който сте задали, но отговарят според скоростта си."</string>
-  <string name="morphe_music_lyrics_source_advice_summary">Активирайте само доставчиците, които използвате, или запазете настройката по подразбиране — постоянните заявки могат да претоварят малките общностни сайтове за текстове на песни</string>
+  <string name="morphe_music_lyrics_transcribe_key_title">API ключ за QuickLRC</string>
+  <string name="morphe_music_lyrics_transcribe_key_summary">QuickLRC транскрибира или времесвързва текстове за текущата парче</string>
+  <string name="morphe_music_lyrics_transcribe_key_set_summary">Ключът QuickLRC е запазен. Използвайте бутона за синхронизиране в диалоговия прозорец за търсене на лирика или подсказката на панела, когато песен няма лирика</string>
+  <string name="morphe_music_lyrics_transcribe_key_saved">QuickLRC API ключът е запазен</string>
+  <string name="morphe_music_lyrics_transcribe_key_rejected">QuickLRC не приема този ключ</string>
+  <string name="morphe_music_lyrics_transcribe_key_cleared">QuickLRC API ключът е изчистен</string>
+  <string name="morphe_music_lyrics_transcribe_key_dialog_instruction">QuickLRC времеево маркира лирики, които нямат такива, или ги транскрибира от песента, срещу кредити. С зададен ключ, песни без лирика предлагат транскрипция и диалоговият прозорец за търсение получава бутон за синхронизиране</string>
+  <string name="morphe_music_lyrics_transcribe_align">Заявка за синхронизиране от QuickLRC</string>
+  <string name="morphe_music_lyrics_transcribe_aligning">Синхронизиране</string>
+  <string name="morphe_music_lyrics_transcribe_apply_align">Приложи синхронизиране</string>
+  <string name="morphe_music_lyrics_transcribe_prompt">Заявка за транскрипция от QuickLRC</string>
+  <string name="morphe_music_lyrics_transcribe_working">Транскрибиране</string>
+  <string name="morphe_music_lyrics_transcribe_cancelled">Транскрипцията е прекратена</string>
+  <string name="morphe_music_lyrics_transcribe_local_unsupported">Само песни, пуснати от YouTube, могат да бъдат транскрибирани</string>
+  <string name="morphe_music_lyrics_transcribe_no_text">Няма лирика за синхронизиране – вместо това транскрибираме</string>
+  <string name="morphe_music_lyrics_transcribe_failed">QuickLRC не мога да обработи тази песен</string>
+  <string name="morphe_music_lyrics_transcribe_out_of_credits">Кредитите за QuickLRC са изчерпани за тази песен</string>
+  <string name="morphe_music_lyrics_about_summary">"Текстовете на песните се съпоставят по заглавие и изпълнител; необичайните метаданни може да не върнат резултат или да покажат грешната версия. Използвайте refresh за смяна на версиите. Доставчиците, означени с *, изискват токен. Всички активирани доставчици не винаги се заявяват във вашия ред, но отговарят според скоростта си.
+
+Текстовете идват от услуги на трети страни, които нямат връзка с Morphe, не са спонсорирани или одобрени от него. Всяка от тях се използва както е предоставена: текстовете, наличността им и лицензирането остават при тези услуги и лицензиращите ги страни, а използването им може да подлежи на техните условия за ползване. До активираната услуга достига само заявката за справка - заглавието, изпълнителят и, където е необходимо, видео ID-то. Опитивият AI endpoint и транскрипцията QuickLRC се изпълняват само след като ги конфигурирате, и получават текста на песента или URL адреса на видеото на трака."</string>
+  <string name="morphe_music_lyrics_source_advice_summary">Активирайте само доставчиците, които използвате, или запазете настройките по подразбиране – постоянните заявки могат да презатворят малките общностни сайтове за текстове</string>
   <string name="morphe_music_lyrics_hide_info_title">Скриване на реда с кредитна информация</string>
   <string name="morphe_music_lyrics_hide_info_summary">Скриване на реда с кредитна информация, показан под текста.</string>
   <string name="morphe_music_lyrics_swap_trans_roma_title">Размяна на превода и романизацията</string>
-  <string name="morphe_music_lyrics_swap_trans_roma_summary">ВКЛ. поставя романизацията под текста и превода над него; ИЗКЛ. оставя романизацията над текста и превода под него.</string>
-  <string name="morphe_music_lyrics_use_ai_translation_title">OpenAI-съвместим превод</string>
-  <string name="morphe_music_lyrics_use_ai_translation_summary">Използвайте персонализиран OpenAI-съвместим API за превод и романизация вместо Google Translate</string>
-  <string name="morphe_music_lyrics_ai_config_dialog_title">Настройки за AI превод</string>
-  <string name="morphe_music_lyrics_ai_config_dialog_instruction">Конфигурирайте крайната точка на API, съвместим с OpenAI, за превод на текстове на песни и романизация с изкуствен интелект.</string>
-  <string name="morphe_music_lyrics_ai_config_base_url_hint">URL на крайната точка на API (напр. https://text.pollinations.ai/openai)</string>
-  <string name="morphe_music_lyrics_ai_config_api_token_hint">API ключ (оставете празно за анонимен достъп)</string>
-  <string name="morphe_music_lyrics_ai_config_model_hint">Име на модела (напр. openai-fast, gpt-4o-mini)</string>
-  <string name="morphe_music_lyrics_ai_config_prompt_hint">Шаблон за подкана (променливи: {language}, {task}, {title}, {artist}, {count}, {lines})</string>
-  <string name="morphe_music_lyrics_ai_config_toast_saved">Настройките за AI превод са запазени</string>
-  <string name="morphe_music_lyrics_ai_config_toast_invalid">Не можа да се свърже с AI крайната точка. Моля, проверете настройките си.</string>
-  <string name="morphe_music_lyrics_ai_config_toast_reset">Настройките за AI превод са нулирани</string>
-  <string name="morphe_music_lyrics_ai_config_status_configured">Конфигурирано</string>
-  <string name="morphe_music_lyrics_ai_config_status_not_configured">Докоснете, за да конфигурирате</string>
-  <string name="morphe_music_lyrics_ai_config_status_empty_url">Базовият URL не може да бъде празен</string>
+  <string name="morphe_music_lyrics_swap_trans_roma_summary">ВКЛ включва романизация или транслитерация под текстовe и превод над тях; ИЗКЛ пази романизация или транслитерация над и превод под. Прочит, поставен върху всяка сричка, се движи с нея – отгоре ѝ към отдолу</string>
+  <string name="morphe_music_lyrics_force_center_title">Винаги центрирай текста</string>
+  <string name="morphe_music_lyrics_force_center_summary">ВКЛ поставя всеки ред в средата и игнорира подравняването от източника, включително страни дуета; ИЗКЛ запазва подравняването, което искат текстовете</string>
+  <string name="morphe_music_lyrics_providers_keep_one">Трябва да остане най-малко един активен доставчик</string>
+  <string name="morphe_music_lyrics_translation_provider_title">Превод</string>
+  <string name="morphe_music_lyrics_romanization_provider_title">Романизация или транслитерация</string>
+  <string name="morphe_music_lyrics_romanization_provider_local">Офлайн речник</string>
+  <string name="morphe_music_lyrics_romanization_provider_rime">Списък с думи Rime</string>
+  <string name="morphe_music_lyrics_use_ai_section_title">Разпознаване на секции чрез AI</string>
+  <string name="morphe_music_lyrics_use_ai_section_summary">Използва се само когато доставчикът няма етикети за секции като Припев или Куплет, които тогава разпознава вашият модел, съвместим с OpenAI. Редактирането на реда също отваря неговия подсказка</string>
+  <string name="morphe_music_lyrics_ai_config_base_url_hint">URL адрес на API endpoint (напр. https://api.openai.com/v1/chat/completions, https://api.anthropic.com/v1/chat/completions, https://generativelanguage.googleapis.com/v1beta/openai/chat/completions)</string>
+  <string name="morphe_music_lyrics_ai_prompt_dialog_title">Шаблон за подкана</string>
+  <string name="morphe_music_lyrics_ai_prompt_dialog_hint">Запълнители: {language}, {task}, {title}, {artist}, {count}, {lines}</string>
+  <string name="morphe_music_lyrics_ai_prompt_toast_saved">Подканата е запазена</string>
+  <string name="morphe_music_lyrics_ai_prompt_toast_endpoint_invalid">Подканването е запазено, но AI крайният接口 все още не е годен. Конфигурирайте го първо в Настройки на AI</string>
+  <string name="morphe_music_lyrics_ai_prompt_toast_reset">Подканата е нулирана</string>
+  <string name="morphe_music_lyrics_ai_config_toast_saved">Настройките за превод &amp; романизация са запазени</string>
+  <string name="morphe_music_lyrics_ai_config_toast_reset">Настройките са възстановени по подразбиране</string>
   <string name="morphe_music_lyrics_ai_config_status_invalid_url">Базовият URL трябва да започва с http:// или https://</string>
-  <string name="morphe_music_lyrics_ai_config_status_empty_model">Името на модела не може да бъде празно</string>
+  <string name="morphe_music_lyrics_ai_config_status_invalid">Настройките са непълни или отхвърлени от доставчика</string>
   <string name="morphe_music_lyrics_ai_config_status_validating">Проверка на връзката…</string>
+  <string name="morphe_music_lyrics_ai_config_status_connected">%1$s: Свързан! (%2$s)</string>
+  <string name="morphe_music_lyrics_ai_config_status_failed">%1$s: Свързването бе неуспешно. Проверете настройките.</string>
+  <string name="morphe_music_lyrics_ai_config_status_empty_key">Първо въведете API ключ</string>
+  <string name="morphe_music_lyrics_ai_config_fetching_models">Извличане на модели…</string>
+  <string name="morphe_music_lyrics_ai_config_fetch_models_success">Изберете модел</string>
+  <string name="morphe_music_lyrics_ai_config_fetch_models_failed">Неуспешно извличане на моделите. Проверете API ключа или връзката.</string>
+  <string name="morphe_music_lyrics_ai_config_prompt_label">Подсказка</string>
+  <string name="morphe_music_lyrics_ai_config_model_label">Модел</string>
+  <string name="morphe_music_lyrics_ai_config_base_url_label">Базов URL</string>
+  <string name="morphe_music_lyrics_ai_config_base_url_presets_title">Избор на услуга</string>
+  <string name="morphe_music_lyrics_ai_config_api_token_label">API ключ (по желание)</string>
+  <string name="morphe_music_lyrics_ai_config_extra_body_label">Допълнително тяло на заявката (опционален JSON)</string>
+  <string name="morphe_music_lyrics_ai_config_extra_headers_label">Допълнителни заглавки за заявка (по желание JSON)</string>
+  <string name="morphe_music_lyrics_ai_config_extra_headers_hint">Заключвайте именa и стойности в кавички, напр. {\"api-key\": \"abc\"}. Незаключена стойност, съдържаща / : или число, се отхвърля. Пrazna стойност премахва заглавка.</string>
+  <string name="morphe_music_lyrics_ai_config_extra_body_hint">Заключвайте именa и стойности в кавички, напр. {\"temperature\": 0.3}. Незаключена стойност, съдържаща / или :, се отхвърля. Моделът и съобщенията не могат да бъдат задавани тук.</string>
+  <string name="morphe_music_lyrics_ai_config_deepl_key_label">Ключ за автентификация (Free или Pro)</string>
   <!-- misc.spoof.appversion.spoofAppVersionPatch -->
   <string name="morphe_music_spoof_app_version_target_entry_8_23_51">8.23.51 - Деактивиране на удебелени икони</string>
   <string name="morphe_music_spoof_app_version_target_entry_9_13_51">9.13.51 - Възстановяване на разделите Up next, Lyrics и Related</string>

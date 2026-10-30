@@ -2,7 +2,6 @@ package app.morphe.extension.youtube.shared;
 
 import androidx.annotation.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
@@ -52,6 +51,14 @@ public final class EngagementPanel {
         return checkIdsInQueue(videoDescriptionPanelName);
     }
 
+    /**
+     * @return The id of the panel opened last, or null if no panel is open.
+     */
+    @Nullable
+    public static String getLastOpenedPanelId() {
+        return engagementPanelIds.peekLast();
+    }
+
     public static boolean checkIdsInQueue(List<String> ids) {
         if (ids == null) {
             return false;
@@ -62,9 +69,5 @@ public final class EngagementPanel {
             }
         }
         return false;
-    }
-
-    public static List<String> getCurrentOpenedPanels() {
-        return new ArrayList<>(engagementPanelIds);
     }
 }

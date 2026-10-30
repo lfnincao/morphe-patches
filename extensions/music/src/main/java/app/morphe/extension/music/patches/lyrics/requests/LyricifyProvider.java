@@ -29,17 +29,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import app.morphe.extension.music.patches.lyrics.model.Lyrics;
 import app.morphe.extension.music.patches.lyrics.model.LyricsLine;
 import app.morphe.extension.music.patches.lyrics.model.TrackInfo;
-import app.morphe.extension.shared.Logger;
 import app.morphe.extension.music.patches.lyrics.parsers.LyricifyParser;
+import app.morphe.extension.shared.Logger;
 
 public final class LyricifyProvider implements LyricsProvider {
 
     private static final String API_BASE =
             "https://api.lyricify.app/lyrics/get/mobile/new";
 
-    private static final String USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                    + "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36";
+    private static final String USER_AGENT = LyricsRequests.CHROME_DESKTOP_USER_AGENT;
 
     private static final long REQUEST_THROTTLE_MS = 500;
 
@@ -49,130 +47,6 @@ public final class LyricifyProvider implements LyricsProvider {
 
     private static final ConcurrentHashMap<String, Resolved> resolvedCache =
             new ConcurrentHashMap<>();
-
-    private record Resolved(String isrc, List<String> titles, List<String> artists) {}
-
-    @Override
-    public String name() {
-        return "Lyricify";
-    }
-
-    @Nullable
-    @Override
-    public FetchResult fetch(TrackInfo track) throws Exception {
-        final String cacheKey = track.title().toLowerCase(Locale.ROOT)
-                + "|" + track.artist().toLowerCase(Locale.ROOT);
-        Resolved resolved = resolvedCache.get(cacheKey);
-        if (resolved == null) {
-            resolved = resolveFromCreditsFm(track.title(), track.artist());
-            if (resolved != null) {
-                resolvedCache.put(cacheKey, resolved);
-            }
-        }
-        if (resolved == null) {
-            return null;
-        }
-        final String isrc = resolved.isrc();
-
-        final String username = generateUsername();
-        final String isrcParam = base64NoWrap(isrc);
-        final String isrcEncoded = LyricsRequests.encode(isrcParam);
-
-        final String url = API_BASE
-                + "?username=" + username
-                + "&isrc=" + isrcEncoded;
-
-        LyricsRequests.throttle(lastRequestTime, REQUEST_THROTTLE_MS);
-        final HttpURLConnection conn = openApi(url);
-
-        final int code = conn.getResponseCode();
-        if (code != 200) {
-            LyricsRequests.logFailure(name(), conn);
-            conn.disconnect();
-            return null;
-        }
-
-        final String json = LyricsRequests.parseGzipString(conn);
-        conn.disconnect();
-
-        if (json.isEmpty()) {
-            return null;
-        }
-
-        JSONObject response = new JSONObject(json);
-
-        if (response.optBoolean("isInstrumental", false)) {
-            return null;
-        }
-
-        final String text = LyricsRequests.optString(response, "text");
-        if (text == null || text.isEmpty()) {
-            return null;
-        }
-
-        final int offset = response.optInt("offset", 0);
-        final String writer = LyricsRequests.optString(response, "writer");
-        final String trans = LyricsRequests.optString(response, "trans");
-
-        final boolean isSyllable = text.contains("[from:AppleSyllable]");
-        final List<LyricsLine> lines;
-        if (isSyllable) {
-            lines = LyricifyParser.parseSyllable(text, offset);
-        } else {
-            lines = LyricifyParser.parseLines(text, offset);
-        }
-
-        if (lines.isEmpty()) {
-            return null;
-        }
-
-        final List<String> creditLines = new ArrayList<>();
-        if (writer != null && !writer.isEmpty()) {
-            creditLines.add("Written by " + writer);
-        }
-
-        final Map<String, List<LyricsLine>> translations;
-        final String deviceLang = LyricsRequests.deviceLanguage();
-        if ("zh".equals(deviceLang) && trans != null && !trans.isEmpty()) {
-            final List<String> translatedTexts = LyricifyParser.parseTranslation(trans, offset);
-            if (!translatedTexts.isEmpty()) {
-                while (translatedTexts.size() < lines.size()) {
-                    translatedTexts.add("");
-                }
-                final List<LyricsLine> translationLines = new ArrayList<>(lines.size());
-                for (int i = 0; i < lines.size(); i++) {
-                    final LyricsLine original = lines.get(i);
-                    final String tText = translatedTexts.get(i);
-                    if (tText.isEmpty()) {
-                        translationLines.add(new LyricsLine(
-                                original.startTimeMs(), original.endTimeMs(), "", List.of()));
-                    } else {
-                        translationLines.add(new LyricsLine(
-                                original.startTimeMs(), original.endTimeMs(), tText, List.of()));
-                    }
-                }
-                translations = Map.of("zh", Collections.unmodifiableList(translationLines));
-            } else {
-                translations = null;
-            }
-        } else {
-            translations = null;
-        }
-
-        final String formatType = isSyllable ? "lys" : "lyl";
-        return FetchResult.searched(new Lyrics(
-                lines,
-                name(),
-                true,
-                null,
-                translations,
-                null,
-                creditLines.isEmpty() ? null : creditLines,
-                text,
-                formatType,
-                null),
-                resolved.titles(), resolved.artists(), 0L, track);
-    }
 
     private static HttpURLConnection openApi(String url) throws IOException {
         final HttpURLConnection conn =
@@ -253,8 +127,129 @@ public final class LyricifyProvider implements LyricsProvider {
         return sb.toString();
     }
 
-    private static String base64NoWrap(String input) {
-        return Base64.encodeToString(
-                input.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+    @Override
+    public String name() {
+        return "Lyricify";
+    }
+
+    @Nullable
+    @Override
+    public FetchResult fetch(TrackInfo track) throws Exception {
+        final String cacheKey = track.title().toLowerCase(Locale.ROOT)
+                + "|" + track.artist().toLowerCase(Locale.ROOT);
+        Resolved resolved = resolvedCache.get(cacheKey);
+        if (resolved == null) {
+            resolved = resolveFromCreditsFm(track.title(), track.artist());
+            if (resolved != null) {
+                resolvedCache.put(cacheKey, resolved);
+            }
+        }
+        if (resolved == null) {
+            return null;
+        }
+        final String isrc = resolved.isrc();
+
+        final String username = generateUsername();
+        final String isrcParam = Base64.encodeToString(
+                isrc.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+        final String isrcEncoded = LyricsRequests.encode(isrcParam);
+
+        final String url = API_BASE
+                + "?username=" + username
+                + "&isrc=" + isrcEncoded;
+
+        LyricsRequests.throttle(lastRequestTime, REQUEST_THROTTLE_MS);
+        final HttpURLConnection conn = openApi(url);
+
+        final int code = conn.getResponseCode();
+        if (code != 200) {
+            LyricsRequests.logFailure(name(), conn);
+            conn.disconnect();
+            return null;
+        }
+
+        final String json = LyricsRequests.parseGzipString(conn);
+        conn.disconnect();
+
+        if (json.isEmpty()) {
+            return null;
+        }
+
+        JSONObject response = new JSONObject(json);
+
+        if (response.optBoolean("isInstrumental", false)) {
+            return null;
+        }
+
+        final String text = LyricsRequests.optString(response, "text");
+        if (text == null || text.isEmpty()) {
+            return null;
+        }
+
+        final int offset = response.optInt("offset", 0);
+        final String writer = LyricsRequests.optString(response, "writer");
+        final String trans = LyricsRequests.optString(response, "trans");
+
+        final boolean isSyllable = text.contains("[from:AppleSyllable]");
+        final List<LyricsLine> lines;
+        if (isSyllable) {
+            lines = LyricifyParser.parseSyllable(text, offset);
+        } else {
+            lines = LyricifyParser.parseLines(text, offset);
+        }
+
+        if (lines.isEmpty()) {
+            return null;
+        }
+
+        final List<String> creditLines = new ArrayList<>();
+        if (writer != null && !writer.isEmpty()) {
+            creditLines.add("Written by " + writer);
+        }
+
+        final Map<String, List<LyricsLine>> translations;
+        if ("zh".equals(LyricsRequests.primarySubtag(LyricsRequests.translationLanguage()))
+                && trans != null && !trans.isEmpty()) {
+            final List<String> translatedTexts = LyricifyParser.parseTranslation(trans, offset);
+            if (!translatedTexts.isEmpty()) {
+                while (translatedTexts.size() < lines.size()) {
+                    translatedTexts.add("");
+                }
+                final List<LyricsLine> translationLines = new ArrayList<>(lines.size());
+                for (int i = 0; i < lines.size(); i++) {
+                    final LyricsLine original = lines.get(i);
+                    final String tText = translatedTexts.get(i);
+                    if (tText.isEmpty()) {
+                        translationLines.add(new LyricsLine(
+                                original.startTimeMs(), original.endTimeMs(), "", List.of()));
+                    } else {
+                        translationLines.add(new LyricsLine(
+                                original.startTimeMs(), original.endTimeMs(), tText, List.of()));
+                    }
+                }
+                translations = Map.of("zh", Collections.unmodifiableList(translationLines));
+            } else {
+                translations = null;
+            }
+        } else {
+            translations = null;
+        }
+
+        final String formatType = isSyllable ? "lys" : "lyl";
+        return FetchResult.searched(new Lyrics(
+                        lines,
+                        name(),
+                        true,
+                        null,
+                        translations,
+                        null,
+                        creditLines.isEmpty() ? null : creditLines,
+                        text,
+                        formatType,
+                        null),
+                resolved.titles(), resolved.artists(), 0L, track);
+    }
+
+    private record Resolved(String isrc, List<String> titles, List<String> artists) {
     }
 }

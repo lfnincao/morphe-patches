@@ -81,8 +81,7 @@ public final class LyricsFileSaver {
             formatType = "txt";
         }
 
-        String fileName = sanitizeFileName(track.artist() + " - " + track.title())
-                + "." + formatType;
+        String fileName = fileName(track, lyrics, formatType);
 
         ContentResolver resolver = context.getContentResolver();
         ContentValues values = new ContentValues();
@@ -158,10 +157,10 @@ public final class LyricsFileSaver {
         StringBuilder sb = new StringBuilder(50 * lines.size());
         for (LyricsLine line : lines) {
             sb.append('[')
-              .append(LRCParser.formatCentiseconds(line.startTimeMs()))
-              .append(']')
-              .append(line.text())
-              .append('\n');
+                    .append(LRCParser.formatCentiseconds(line.startTimeMs()))
+                    .append(']')
+                    .append(line.text())
+                    .append('\n');
         }
         return sb.toString();
     }
@@ -171,9 +170,9 @@ public final class LyricsFileSaver {
         sb.append("[type:LyricifyLines]\n");
         for (LyricsLine line : lines) {
             sb.append('[').append(line.startTimeMs())
-              .append(',').append(line.endTimeMs())
-              .append(']').append(line.text())
-              .append('\n');
+                    .append(',').append(line.endTimeMs())
+                    .append(']').append(line.text())
+                    .append('\n');
         }
         return sb.toString();
     }
@@ -190,8 +189,8 @@ public final class LyricsFileSaver {
                     Word word = words.get(j);
                     long durMs = word.endMs() - word.startMs();
                     sb.append(word.text())
-                      .append('(').append(word.startMs())
-                      .append(',').append(durMs).append(')');
+                            .append('(').append(word.startMs())
+                            .append(',').append(durMs).append(')');
                 }
             } else {
                 sb.append(line.text());
@@ -229,8 +228,16 @@ public final class LyricsFileSaver {
     }
 
     private static String sanitizeFileName(String name) {
-        // Remove characters illegal in file names on most filesystems.
         return name.replaceAll("[\\\\/:*?\"<>|]", "_").replaceAll("\\s+", " ").trim();
+    }
+
+    private static String fileName(TrackInfo track, Lyrics lyrics, String formatType) {
+        String name = sanitizeFileName(track.artist() + " - " + track.title());
+        String provider = sanitizeFileName(lyrics.providerName());
+        if (!provider.isEmpty()) {
+            name += " [" + provider + "]";
+        }
+        return name + "." + formatType;
     }
 
     private static String getMimeType(String formatType) {

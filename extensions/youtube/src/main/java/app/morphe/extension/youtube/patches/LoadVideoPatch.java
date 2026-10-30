@@ -9,6 +9,7 @@ package app.morphe.extension.youtube.patches;
 
 import static app.morphe.extension.shared.StringRef.str;
 
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -16,13 +17,16 @@ import android.net.Uri;
 import android.os.Parcelable;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.lang.ref.WeakReference;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.youtube.patches.playback.speed.RememberPlaybackSpeedPatch;
+import app.morphe.extension.youtube.patches.queue.NativePlaylistQueuePatch;
 import app.morphe.extension.youtube.shared.PlayerType;
 
 @SuppressWarnings("unused")
@@ -37,13 +41,118 @@ public final class LoadVideoPatch {
         Parcelable patch_getIntentParcelable(Intent intent);
     }
 
+    /**
+     * Interface to deliver intents to the main activity, as {@link Activity#onNewIntent(Intent)} is protected.
+     */
+    public interface MainActivityInterface {
+        // Method is added during patching.
+        void patch_onNewIntent(Intent intent);
+    }
+
+    /**
+     * Interface to use obfuscated methods of the class that decides if videos in feeds can play.
+     */
+    public interface InlinePlaybackInterface {
+        // Methods are added during patching.
+        void patch_blockInlinePlayback(int reason);
+        void patch_unblockInlinePlayback(int reason);
+    }
+
+    /**
+     * Reason added to the reasons YouTube uses to block playback in feeds (such as 3, 4 and 5).
+     */
+    private static final int INLINE_PLAYBACK_BLOCK_REASON = 6835;
+
+    /**
+     * Unblocks playback in feeds if the player does not open again.
+     */
+    private static final long INLINE_PLAYBACK_BLOCK_TIMEOUT_MILLISECONDS = 10_000;
+
     private static WeakReference<PlayerInterface> playerInterfaceRef = new WeakReference<>(null);
+
+    private static WeakReference<InlinePlaybackInterface> inlinePlaybackInterfaceRef = new WeakReference<>(null);
+
+    private static boolean inlinePlaybackBlocked;
+
+    /**
+     * Incremented each time playback in feeds is blocked, so the timeout of an older block does nothing.
+     */
+    private static int inlinePlaybackBlockId;
+
+    private static final Consumer<PlayerType> unblockInlinePlaybackOnPlayerOpen = type -> {
+        if (type.isMaximizedOrFullscreen()) {
+            unblockInlinePlayback();
+        }
+    };
 
     /**
      * Injection point.
      */
     public static void initialize(@NonNull PlayerInterface playerInterfaceInit) {
         playerInterfaceRef = new WeakReference<>(Objects.requireNonNull(playerInterfaceInit));
+    }
+
+    /**
+     * Injection point.
+     */
+    public static void initializeInlinePlayback(@NonNull InlinePlaybackInterface inlinePlaybackInterface) {
+        inlinePlaybackInterfaceRef = new WeakReference<>(Objects.requireNonNull(inlinePlaybackInterface));
+    }
+
+    /**
+     * Once the player is dismissed, the video of the feed below it can start playing in the feed.
+     * The player opened next then plays that video instead, with a black screen and a page that never loads.
+     * Playback in feeds is blocked until the player opens again.
+     * Opens that finish minimized can release the returned token once their player is accepted.
+     *
+     * @return the block generation, or zero if feed playback has not initialized.
+     */
+    public static int blockInlinePlaybackUntilPlayerOpens() {
+        InlinePlaybackInterface inlinePlaybackInterface = inlinePlaybackInterfaceRef.get();
+        if (inlinePlaybackInterface == null) {
+            Logger.printDebug(() -> "Cannot block playback in feeds, interface is not set");
+            return 0;
+        }
+
+        if (!inlinePlaybackBlocked) {
+            Logger.printDebug(() -> "Blocking playback in feeds");
+            inlinePlaybackInterface.patch_blockInlinePlayback(INLINE_PLAYBACK_BLOCK_REASON);
+            inlinePlaybackBlocked = true;
+            PlayerType.getOnChange().addObserver(unblockInlinePlaybackOnPlayerOpen);
+        }
+
+        final int blockId = ++inlinePlaybackBlockId;
+        Utils.runOnMainThreadDelayed(() -> {
+            if (blockId == inlinePlaybackBlockId) {
+                unblockInlinePlayback();
+            }
+        }, INLINE_PLAYBACK_BLOCK_TIMEOUT_MILLISECONDS);
+        return blockId;
+    }
+
+    /** A completed or cancelled open must not release a newer operation's protection. */
+    public static void releaseInlinePlaybackBlock(int blockId) {
+        if (blockId != 0 && blockId == inlinePlaybackBlockId) {
+            unblockInlinePlayback();
+        }
+    }
+
+    private static void unblockInlinePlayback() {
+        if (!inlinePlaybackBlocked) {
+            return;
+        }
+        inlinePlaybackBlocked = false;
+        PlayerType.getOnChange().removeObserver(unblockInlinePlaybackOnPlayerOpen);
+
+        InlinePlaybackInterface inlinePlaybackInterface = inlinePlaybackInterfaceRef.get();
+        if (inlinePlaybackInterface != null) {
+            Logger.printDebug(() -> "Unblocking playback in feeds");
+            inlinePlaybackInterface.patch_unblockInlinePlayback(INLINE_PLAYBACK_BLOCK_REASON);
+        }
+    }
+
+    public static boolean isPlayerInterfaceAvailable() {
+        return playerInterfaceRef.get() != null;
     }
 
     @SuppressWarnings("ExtractMethodRecommender")
@@ -57,18 +166,20 @@ public final class LoadVideoPatch {
 
             PlayerInterface playerInterface = playerInterfaceRef.get();
             if (playerInterface == null) {
-                Utils.showToastShort(str("morphe_dismiss_player_not_available_toast"));
+                Utils.showSnackbarShort(str("morphe_dismiss_player_not_available_toast"));
                 return;
             }
 
-            // Must use player response video id, otherwise reloading a video that isn't opening
-            // can use the wrong video id. Response video id may be a feed Short that was scrolled
-            // past but not opened.
-            String videoId = VideoInformation.lastPlayerResponseIsShort()
-                    ? VideoInformation.getVideoId() // Player response may be a Short in the feed.
-                    : VideoInformation.getPlayerResponseVideoId();
+            String videoId = VideoInformation.getStartingOrPlayingVideoId();
             String playlistId = VideoInformation.getPlaylistId();
             final long videoTime = VideoInformation.getVideoTime();
+            Runnable queueReload = NativePlaylistQueuePatch.isPatchIncluded()
+                    ? NativePlaylistQueuePatch.prepareVideoReload(videoId) : null;
+            if (queueReload != null) {
+                // A converted queue can retain its source playlist in the playing
+                // response. Reload only this video, not that replaced playlist.
+                playlistId = "";
+            }
             String parameterSeparator = "&";
             StringBuilder builder = new StringBuilder(videoId);
             if (!playlistId.isEmpty()) {
@@ -85,7 +196,7 @@ public final class LoadVideoPatch {
             String builderString = "https://www.youtube.com/watch?v=" + builder;
             Logger.printDebug(() -> "Opening: " + builderString);
 
-            openVideoIntent(builderString, true);
+            openVideoIntent(builderString, true, queueReload);
         } catch (Exception ex) {
             Logger.printException(() -> "Failed to reload video", ex);
         }
@@ -94,13 +205,17 @@ public final class LoadVideoPatch {
     public static PlayerInterface getPlayerInterface() {
         PlayerInterface playerInterface = playerInterfaceRef.get();
         if (playerInterface == null) {
-            Utils.showToastShort(str("morphe_dismiss_player_not_available_toast"));
+            Utils.showSnackbarShort(str("morphe_dismiss_player_not_available_toast"));
             return null;
         }
         return playerInterface;
     }
 
     public static void openVideoIntent(String url, boolean closeCurrentPlayerInstance) {
+        openVideoIntent(url, closeCurrentPlayerInstance, null);
+    }
+
+    private static void openVideoIntent(String url, boolean closeCurrentPlayerInstance, @Nullable Runnable onDispatch) {
         int loadVideoDelay = 0;
 
         // Close the current player instance.
@@ -109,6 +224,7 @@ public final class LoadVideoPatch {
             RememberPlaybackSpeedPatch.preservePlaybackParametersForReload();
         }
         if (closeCurrentPlayerInstance && (playerInterface = getPlayerInterface()) != null) {
+            blockInlinePlaybackUntilPlayerOpens();
             playerInterface.patch_dismissPlayer();
 
             loadVideoDelay = 500;
@@ -125,6 +241,7 @@ public final class LoadVideoPatch {
             Intent intent = new Intent("android.intent.action.VIEW", Uri.parse(url));
             intent.setPackage(context.getPackageName());
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (onDispatch != null) onDispatch.run();
             context.startActivity(intent);
         }, loadVideoDelay);
     }
@@ -156,12 +273,31 @@ public final class LoadVideoPatch {
         }
     }
 
-    private static boolean checkDismissPlayerAvailability(PlayerInterface playerInterface) {
-        if (playerInterface == null) {
-            Utils.showToastShort(str("morphe_dismiss_player_not_available_toast"));
+    /**
+     * Starts a video by handing the watch intent to the running activity, which does not need the app to be on screen.
+     */
+    public static boolean deliverVideoIntentInProcess(String videoId) {
+        try {
+            PlayerInterface playerInterface = playerInterfaceRef.get();
+            Activity activity = Utils.getActivity();
+            if (playerInterface == null || !(activity instanceof MainActivityInterface mainActivity)) {
+                return false;
+            }
+
+            Intent intent = new Intent();
+            intent.setComponent(new ComponentName(
+                    activity,
+                    "com.google.android.apps.youtube.app.watchwhile.InternalMainActivity"
+            ));
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            intent.putExtra("android.intent.extra.inventory_identifier", new String[]{"vnd.youtube://" + videoId});
+            intent.putExtra("watch", playerInterface.patch_getIntentParcelable(intent));
+
+            mainActivity.patch_onNewIntent(intent);
+            return true;
+        } catch (Exception ex) {
+            Logger.printException(() -> "deliverVideoIntentInProcess failure", ex);
             return false;
         }
-
-        return true;
     }
 }

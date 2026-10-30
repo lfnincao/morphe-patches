@@ -53,6 +53,36 @@ internal object AutoplayInactivityLimitFingerprint : Fingerprint(
     )
 )
 
+// Playback progress can trigger the prompt independently of the autoplay overlay.
+internal object InactivityLimitFingerprint : Fingerprint(
+    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
+    returnType = "V",
+    parameters = listOf("Ljava/lang/Object;"),
+    filters = listOf(
+        literal(126827209L),
+        fieldAccess(
+            opcode = Opcode.SGET_OBJECT,
+            definingClass = "Ljava/util/concurrent/TimeUnit;",
+            name = "SECONDS"
+        ),
+        methodCall(
+            opcode = Opcode.INVOKE_VIRTUAL,
+            definingClass = "Ljava/util/concurrent/TimeUnit;",
+            name = "toMillis",
+            location = MatchAfterWithin(5)
+        ),
+        opcode(Opcode.CMP_LONG, location = MatchAfterWithin(2)),
+        opcode(Opcode.IF_LEZ, location = MatchAfterImmediately()),
+        fieldAccess(
+            opcode = Opcode.SGET_OBJECT,
+            definingClass = "Ljava/util/concurrent/TimeUnit;",
+            name = "MILLISECONDS",
+            location = MatchAfterImmediately()
+        ),
+        opcode(Opcode.IF_GTZ, location = MatchAfterWithin(20))
+    )
+)
+
 /**
  * Autoplay overlay method that decides if the 'Video paused. Continue watching?' confirm dialog
  * is shown when a video ends.
@@ -65,7 +95,6 @@ internal object AutoplayConfirmDialogEnabledFingerprint : Fingerprint(
         literal(45381478L),
         methodCall(
             opcode = Opcode.INVOKE_VIRTUAL,
-            parameters = listOf("J", "Z"),
             returnType = "Z",
             location = MatchAfterWithin(2)
         ),
@@ -77,7 +106,7 @@ internal object AutoplayConfirmDialogEnabledFingerprint : Fingerprint(
         ),
         methodCall(
             opcode = Opcode.INVOKE_VIRTUAL,
-            definingClass = "Lj\$/util/Optional;",
+            definingClass = $$"Lj$/util/Optional;",
             name = "isPresent",
             location = MatchAfterWithin(6)
         )
@@ -106,7 +135,7 @@ internal object AutoplayConfirmDialogEnabledLegacyFingerprint : Fingerprint(
         ),
         methodCall(
             opcode = Opcode.INVOKE_VIRTUAL,
-            definingClass = "Lj\$/util/Optional;",
+            definingClass = $$"Lj$/util/Optional;",
             name = "isPresent",
             location = MatchAfterWithin(6)
         )

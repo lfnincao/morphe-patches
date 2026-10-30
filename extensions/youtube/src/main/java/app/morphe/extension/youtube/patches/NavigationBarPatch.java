@@ -15,13 +15,19 @@ import static app.morphe.extension.shared.StringRef.str;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewStub;
+import android.view.WindowInsets;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.ChecksSdkIntAtLeast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -42,6 +48,7 @@ import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.shared.settings.BaseActivityHook;
 import app.morphe.extension.shared.settings.IntegerSetting;
+import app.morphe.extension.shared.ui.Dim;
 import app.morphe.extension.youtube.innertube.GuideResponseOuterClass.Accessibility;
 import app.morphe.extension.youtube.innertube.GuideResponseOuterClass.AccessibilityData;
 import app.morphe.extension.youtube.innertube.GuideResponseOuterClass.ButtonRenderer;
@@ -80,13 +87,53 @@ public final class NavigationBarPatch {
 
     private static final boolean SWAP_CREATE_WITH_NOTIFICATIONS_BUTTON = Settings.SWAP_CREATE_WITH_NOTIFICATIONS_BUTTON.get();
 
-    private static final boolean DISABLE_TRANSLUCENT_NAVIGATION = Settings.DISABLE_TRANSLUCENT_NAVIGATION.get();
+    public enum NavigationBarStyle {
+        /**
+         * The feature flags of the translucent navigation bar are left to the account,
+         * and the fixes for what they break are off.
+         */
+        DEFAULT,
+        TRANSLUCENT,
+        /**
+         * Translucent, without the blurred background.
+         */
+        TRANSPARENT,
+        /**
+         * Transparent, painted over with the app background.
+         */
+        OPAQUE
+    }
+
+    /**
+     * The flags of the translucent navigation bar are also overridden without this patch,
+     * see {@link #isNavigationBarBehindSystemButtons(boolean)}. They are then left to the account.
+     */
+    private static final NavigationBarStyle NAVIGATION_BAR_STYLE = isPatchIncluded()
+            ? Settings.NAVIGATION_BAR_STYLE.get()
+            : NavigationBarStyle.DEFAULT;
 
     private static final boolean NARROW_NAVIGATION_BUTTONS = Settings.NARROW_NAVIGATION_BUTTONS.get();
 
     private static final boolean DISABLE_AUTO_HIDE_NAVIGATION_BAR = Settings.DISABLE_AUTO_HIDE_NAVIGATION_BAR.get();
 
     private static final boolean HIDE_NAVIGATION_BAR = Settings.HIDE_NAVIGATION_BAR.get();
+
+    private static final boolean HIDE_SHORTS_NAVIGATION_BAR = Settings.HIDE_SHORTS_NAVIGATION_BAR.get();
+
+    /**
+     * The view the Shorts player is in, inside the layout of the Shorts player fragment.
+     */
+    private static final int shortsPlayerContainerId = HIDE_SHORTS_NAVIGATION_BAR
+            ? ResourceUtils.getIdentifier(ResourceType.ID, "fragment_container_view")
+            : 0;
+
+    /**
+     * If the room below the Shorts player is set by {@link #setShortsPlayerBottomInset(View)}.
+     * The system navigation buttons are read from the window insets, available from Android 11.
+     */
+    @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.R)
+    private static final boolean SETS_SHORTS_PLAYER_BOTTOM_ROOM = HIDE_SHORTS_NAVIGATION_BAR
+            && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
 
     private static final boolean HIDE_NAVIGATION_NEW_CONTENT_DOT = Settings.HIDE_NAVIGATION_NEW_CONTENT_DOT.get();
 
@@ -125,8 +172,21 @@ public final class NavigationBarPatch {
             return;
         }
 
-        if (HIDE_NAVIGATION_NEW_CONTENT_DOT) {
-            hideNewContentDot(tabView);
+        // The dot is a stub that is inflated when the tab has new content, and the app shows and
+        // hides it again later. It is hidden right before every draw, so no frame shows it. The
+        // theme patch keeps the color of the dot the same way.
+        if (HIDE_NAVIGATION_NEW_CONTENT_DOT && newContentDotId != 0) {
+            try {
+                tabView.getViewTreeObserver().addOnPreDrawListener(() -> {
+                    View dot = tabView.findViewById(newContentDotId);
+                    if (dot != null && !(dot instanceof ViewStub) && dot.getVisibility() == View.VISIBLE) {
+                        dot.setVisibility(View.INVISIBLE);
+                    }
+                    return true;
+                });
+            } catch (Exception ex) {
+                Logger.printException(() -> "navigationTabCreated new content dot failure", ex);
+            }
         }
 
         if (Boolean.TRUE.equals(shouldHideMap.get(button))) {
@@ -139,29 +199,6 @@ public final class NavigationBarPatch {
      */
     public static void hideNavigationButtonLabels(TextView navigationLabelsView) {
         Utils.hideViewUnderCondition(Settings.HIDE_NAVIGATION_BUTTON_LABELS, navigationLabelsView);
-    }
-
-    /**
-     * The dot is a stub that is inflated when the tab has new content, and the app shows and
-     * hides it again later. It is hidden right before every draw, so no frame shows it. The
-     * theme patch keeps the color of the dot the same way.
-     */
-    private static void hideNewContentDot(View tabView) {
-        try {
-            if (newContentDotId == 0) {
-                return;
-            }
-
-            tabView.getViewTreeObserver().addOnPreDrawListener(() -> {
-                View dot = tabView.findViewById(newContentDotId);
-                if (dot != null && !(dot instanceof ViewStub) && dot.getVisibility() == View.VISIBLE) {
-                    dot.setVisibility(View.INVISIBLE);
-                }
-                return true;
-            });
-        } catch (Exception ex) {
-            Logger.printException(() -> "hideNewContentDot failure", ex);
-        }
     }
 
     /**
@@ -193,18 +230,443 @@ public final class NavigationBarPatch {
     }
 
     /**
+     * Value of the navigation bar covering the system navigation buttons flag first read by the app,
+     * or null if not read yet.
+     */
+    @Nullable
+    private static volatile Boolean accountCoversSystemButtons;
+
+    /**
+     * Value of the feed behind the navigation bar flag first read by the app, or null if not read yet.
+     */
+    @Nullable
+    private static volatile Boolean accountFeedBehindNavigationBar;
+
+    /**
+     * The translucent navigation bar comes from feature flags that not every account gets, so they
+     * are turned on to make the bar look the same on every account. With the navigation bar covering
+     * the system navigation buttons and the feed laid out behind it, the navigation bar and the pages
+     * make room for the system navigation buttons, which is only right when the window is drawn behind
+     * them. That comes from the edge to edge top bar feature flag, so without it the room is added twice:
+     * the navigation bar is raised and an empty bar is left at the bottom
+     * (<a href="https://github.com/MorpheApp/morphe-patches/issues/3825">...</a>), or the pages and
+     * the Shorts player end the height of the navigation bar above it
+     * (<a href="https://github.com/MorpheApp/morphe-patches/issues/4159">...</a>,
+     * <a href="https://github.com/MorpheApp/morphe-patches/issues/4173">...</a>).
+     * <p>
+     * The app draws the window behind the system navigation buttons only on Android 12 and later,
+     * so on older versions the flags are always turned off, or the room is added twice
+     * (<a href="https://github.com/MorpheApp/morphe-patches/issues/3864">...</a>).
+     * <p>
+     * With {@link NavigationBarStyle#DEFAULT} the flags are left to the account, but they are still
+     * turned off without the edge to edge layout, which the Hide status bar patch can turn off
+     * for an account that has both.
+     *
+     * @param original The value the account first got, so all the classes that read the flag
+     *                 use the same value even if the account value changes while the app starts,
+     *                 the same as the edge to edge top bar flag.
+     */
+    private static boolean isNavigationBarBehindSystemButtons(boolean original) {
+        try {
+            // Some devices keep the window above the system navigation buttons also with the edge
+            // to edge layout, as found at a previous app start by the Hide status bar patch.
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || HideStatusBarPatch.isWindowAboveNavigationBar()) {
+                return false;
+            }
+
+            Boolean edgeToEdge = HideStatusBarPatch.isEdgeToEdgeTopBar();
+            // Null if not known yet, or the Hide status bar patch is not included.
+            // The edge to edge layout is then the one of the account, which the flags of the account follow.
+            if (edgeToEdge == null) {
+                return original;
+            }
+
+            return edgeToEdge && (original || NAVIGATION_BAR_STYLE != NavigationBarStyle.DEFAULT);
+        } catch (Exception ex) {
+            Logger.printException(() -> "isNavigationBarBehindSystemButtons failure", ex);
+            return original;
+        }
+    }
+
+    /**
+     * Injection point.
+     * <p>
+     * The navigation bar covers the system navigation buttons, see
+     * {@link #isNavigationBarBehindSystemButtons(boolean)}.
+     */
+    public static boolean useTranslucentNavigationBar(boolean original) {
+        Boolean accountValue = accountCoversSystemButtons;
+        final boolean firstRead = accountValue == null;
+        if (firstRead) {
+            accountValue = original;
+            accountCoversSystemButtons = accountValue;
+        }
+
+        final boolean translucent = isNavigationBarBehindSystemButtons(accountValue);
+        if (firstRead) {
+            Logger.printDebug(() -> "Navigation bar covers system buttons: " + translucent + " (account: " + original
+                    + ", edge to edge: " + HideStatusBarPatch.isEdgeToEdgeTopBar()
+                    + ", window above navigation bar: " + HideStatusBarPatch.isWindowAboveNavigationBar()
+                    + ", style: " + NAVIGATION_BAR_STYLE + ")");
+        }
+        translucentNavigationBarForced = NAVIGATION_BAR_STYLE != NavigationBarStyle.DEFAULT && translucent;
+        navigationBarCoversSystemButtons = translucent;
+        return translucent;
+    }
+
+    /**
+     * If the app was last told the navigation bar covers the system navigation buttons,
+     * with any navigation bar style.
+     */
+    private static volatile boolean navigationBarCoversSystemButtons;
+
+    static boolean isNavigationBarCoveringSystemButtons() {
+        return navigationBarCoversSystemButtons;
+    }
+
+    /**
+     * Injection point.
+     * <p>
+     * The feed is laid out behind the navigation bar. It follows the navigation bar covering
+     * the system navigation buttons: some pages add the navigation bar height below their content
+     * when the navigation bar covers the system navigation buttons, as they are expected to be
+     * laid out behind it, and the list padding for the navigation bar is only set with the edge
+     * to edge layout. See {@link #isNavigationBarBehindSystemButtons(boolean)}.
+     */
+    public static boolean useFeedBehindNavigationBar(boolean original) {
+        Boolean accountValue = accountFeedBehindNavigationBar;
+        final boolean firstRead = accountValue == null;
+        if (firstRead) {
+            accountValue = original;
+            accountFeedBehindNavigationBar = accountValue;
+        }
+
+        final boolean feedBehind = isNavigationBarBehindSystemButtons(accountValue);
+        if (firstRead) {
+            Logger.printDebug(() -> "Feed behind navigation bar: " + feedBehind + " (account: " + original + ")");
+        }
+        return feedBehind;
+    }
+
+    /**
+     * If {@link #useTranslucentNavigationBar(boolean)} turned the translucent navigation bar on.
+     * The fixes for what its feature flags break are only needed then, and stay off if the flags
+     * are no longer turned on by this patch.
+     */
+    private static volatile boolean translucentNavigationBarForced;
+
+    /**
+     * Injection point.
+     */
+    public static boolean isTranslucentNavigationBarForced() {
+        return translucentNavigationBarForced;
+    }
+
+    /**
+     * Injection point.
+     * <p>
+     * With the navigation bar covering the system navigation buttons, the room below the bar fixed
+     * at the bottom of some pages, such as the reply bar of the comment replies, already holds
+     * the system navigation buttons. The flag adds the navigation bar height to it as well, so an
+     * empty band is left between the two bars (<a href="https://github.com/MorpheApp/morphe-patches/issues/2300">...</a>).
+     */
+    public static boolean useFixedBottomBarRoom(boolean original) {
+        return original && !translucentNavigationBarForced;
+    }
+
+    /**
+     * Injection point.
+     * <p>
+     * The blurred, translucent background of the navigation bar only changes how the bar looks,
+     * not the room left for the system navigation buttons, so it is turned on from Android 12 also
+     * when the window is not drawn edge to edge. With {@link NavigationBarStyle#OPAQUE}, it follows
+     * {@link #isNavigationBarBehindSystemButtons(boolean)} instead. With {@link NavigationBarStyle#DEFAULT}
+     * it is left to the account.
+     */
+    public static boolean useTranslucentNavigationBarBackground(boolean original) {
+        if (NAVIGATION_BAR_STYLE == NavigationBarStyle.DEFAULT) {
+            return original;
+        }
+
+        final boolean translucent;
+        if (NAVIGATION_BAR_STYLE != NavigationBarStyle.OPAQUE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            translucent = true;
+        } else {
+            translucent = isNavigationBarBehindSystemButtons(original);
+        }
+
+        translucentNavigationBarBackgroundForced = translucent;
+        return translucent;
+    }
+
+    /**
+     * If {@link #useTranslucentNavigationBarBackground(boolean)} turned the translucent background
+     * of the navigation bar on. The fixes for what the blur and the feed behind the navigation bar
+     * break are only needed then.
+     */
+    private static volatile boolean translucentNavigationBarBackgroundForced;
+
+    /**
+     * Injection point.
+     */
+    public static boolean isTranslucentNavigationBarBackgroundForced() {
+        return translucentNavigationBarBackgroundForced;
+    }
+
+    /**
+     * Injection point.
+     * <p>
+     * The blurred background of the navigation bar draws a copy of the watch layout, so the player
+     * surface is drawn twice in every frame, at two positions. Android 12 and 13 send the two
+     * positions to the surface from two threads at the same time, and the app crashes while
+     * the player moves, such as when it is slowly dragged down to the miniplayer
+     * (<a href="https://github.com/MorpheApp/morphe-patches/pull/3684#issuecomment-6322984709">...</a>).
+     * With {@link NavigationBarStyle#TRANSPARENT} and {@link NavigationBarStyle#OPAQUE} the copy
+     * is not drawn, so the bar keeps its translucent color, without the blur.
+     *
+     * @param hardwareAccelerated If the canvas is hardware accelerated, which the blur is drawn for.
+     */
+    public static boolean useNavigationBarBlur(boolean hardwareAccelerated) {
+        return hardwareAccelerated && !(translucentNavigationBarBackgroundForced
+                && (NAVIGATION_BAR_STYLE == NavigationBarStyle.TRANSPARENT
+                || NAVIGATION_BAR_STYLE == NavigationBarStyle.OPAQUE));
+    }
+
+    public static int getKeyboardMargin(int original) {
+        return FixPagePaddingPatch.getKeyboardMargin(original);
+    }
+
+    static boolean isKeyboardMarginRemoved() {
+        return FixPagePaddingPatch.isKeyboardMarginRemoved();
+    }
+    /**
+     * Injection point.
+     * <p>
+     * When the navigation bar covers the system navigation buttons, the bottom window inset is
+     * added to its height and bottom padding. With the keyboard open, that inset also holds
+     * the keyboard, so the bar grows as tall as the keyboard and covers the page
+     * (<a href="https://github.com/MorpheApp/morphe-patches/issues/3909">...</a>). The page above then ends
+     * the height of the system bars below the top of the keyboard, so only that much room is left.
+     * Only with the feature flags turned on by {@link #useTranslucentNavigationBar(boolean)}.
+     */
+    public static int getNavigationBarBottomPadding(View navigationBar, int original) {
+        int padding = original;
+        try {
+            if (translucentNavigationBarForced && original != 0
+                    && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                WindowInsets insets = navigationBar.getRootWindowInsets();
+                if (insets != null && insets.isVisible(WindowInsets.Type.ime())) {
+                    padding = Math.min(original, insets.getInsets(WindowInsets.Type.systemBars()).bottom);
+                }
+            }
+
+            padding = setSlimStatusBarRoom(navigationBar, padding);
+        } catch (Exception ex) {
+            Logger.printException(() -> "getNavigationBarBottomPadding failure", ex);
+        }
+        return padding;
+    }
+
+    /**
+     * The bar shown below the navigation bar when the connection is lost or comes back
+     * ("No connection", "Back online").
+     */
+    private static final int SLIM_STATUS_BAR = ResourceUtils.getIdentifier(
+            ResourceType.ID, "slim_status_bar");
+
+    private static final int PIVOT_BAR = ResourceUtils.getIdentifier(
+            ResourceType.ID, "pivot_bar");
+
+    /**
+     * The navigation bar, with a method added during patching.
+     */
+    public interface PivotBarAccess {
+        /**
+         * Sets the room the navigation bar leaves below itself for the system navigation buttons,
+         * which is added to its height.
+         */
+        void patch_setSystemButtonsRoom(int room);
+    }
+
+    /**
+     * If the slim status bar is shown below the navigation bar.
+     */
+    private static volatile boolean slimStatusBarShown;
+
+    /**
+     * The room for the system navigation buttons the app last gave the navigation bar.
+     */
+    private static volatile int systemButtonsRoom;
+
+    /**
+     * When the navigation bar covers the system navigation buttons, the slim status bar is laid out
+     * below it, behind the buttons, which cover it. While the slim status bar is shown, the room for
+     * the buttons is left below the slim status bar instead of below the navigation bar.
+     * Only with the feature flags turned on by {@link #useTranslucentNavigationBar(boolean)}.
+     *
+     * @return The room the navigation bar leaves for the system navigation buttons.
+     */
+    private static int setSlimStatusBarRoom(View navigationBar, int room) {
+        if (!translucentNavigationBarForced || !(navigationBar instanceof PivotBarAccess)) {
+            return room;
+        }
+
+        systemButtonsRoom = room;
+        View slimStatusBar = navigationBar.getParent() instanceof ViewGroup container
+                ? container.findViewById(SLIM_STATUS_BAR)
+                : null;
+        final boolean moveRoom = slimStatusBarShown && slimStatusBar != null && room > 0;
+        if (slimStatusBar != null) {
+            // The top padding is the padding of the slim status bar itself.
+            final int bottomPadding = slimStatusBar.getPaddingTop() + (moveRoom ? room : 0);
+            if (slimStatusBar.getPaddingBottom() != bottomPadding) {
+                slimStatusBar.setPadding(slimStatusBar.getPaddingLeft(), slimStatusBar.getPaddingTop(),
+                        slimStatusBar.getPaddingRight(), bottomPadding);
+            }
+        }
+        return moveRoom ? 0 : room;
+    }
+
+    /**
+     * Injection point.
+     * <p>
+     * The window insets are not sent again when the slim status bar is shown or hidden,
+     * so the room for the system navigation buttons is moved whenever that happens.
+     *
+     * @param bottomBarContainer The container of the navigation bar and the slim status bar.
+     */
+    public static void watchSlimStatusBar(View bottomBarContainer) {
+        if (SLIM_STATUS_BAR == 0 || PIVOT_BAR == 0) return;
+
+        try {
+            bottomBarContainer.addOnLayoutChangeListener((view, left, top, right, bottom,
+                                                          oldLeft, oldTop, oldRight, oldBottom) -> {
+                try {
+                    View slimStatusBar = view.findViewById(SLIM_STATUS_BAR);
+                    final boolean shown = slimStatusBar != null && slimStatusBar.getVisibility() == View.VISIBLE;
+                    if (shown == slimStatusBarShown) return;
+                    slimStatusBarShown = shown;
+
+                    if (translucentNavigationBarForced
+                            && view.findViewById(PIVOT_BAR) instanceof PivotBarAccess access) {
+                        View navigationBar = (View) access;
+                        final int room = systemButtonsRoom;
+                        view.post(() -> {
+                            final int navigationBarRoom = setSlimStatusBarRoom(navigationBar, room);
+                            access.patch_setSystemButtonsRoom(navigationBarRoom);
+                            navigationBar.setPadding(navigationBar.getPaddingLeft(), navigationBar.getPaddingTop(),
+                                    navigationBar.getPaddingRight(), navigationBarRoom);
+                        });
+                    }
+                } catch (Exception ex) {
+                    Logger.printException(() -> "watchSlimStatusBar layout failure", ex);
+                }
+            });
+        } catch (Exception ex) {
+            Logger.printException(() -> "watchSlimStatusBar failure", ex);
+        }
+    }
+
+    /**
+     * Injection point.
+     * <p>
+     * With the translucent navigation bar turned on, the window is drawn behind the system
+     * navigation buttons, the navigation bar makes room for them, and the pages end above
+     * the navigation bar. With the navigation bar hidden in the Shorts player, nothing makes that
+     * room, so the Shorts player is drawn behind the system navigation buttons
+     * (<a href="https://github.com/MorpheApp/morphe-patches/issues/3908">...</a>). The Shorts player then makes
+     * the room itself.
+     * <p>
+     * The room the Shorts player reserves for the navigation bar depends on how it's opened,
+     * so with the navigation bar hidden that room is left out ({@link #getShortsPlayerBottomRoom(int)}),
+     * and the Shorts player always ends a slight room above the system navigation buttons,
+     * or the seekbar thumb at the bottom of the Shorts player overlaps them.
+     *
+     * @param shortsFragmentLayout The layout of the Shorts player fragment.
+     */
+    public static void setShortsPlayerBottomInset(View shortsFragmentLayout) {
+        if (!SETS_SHORTS_PLAYER_BOTTOM_ROOM) {
+            return;
+        }
+
+        try {
+            shortsFragmentLayout.addOnLayoutChangeListener((view, left, top, right, bottom,
+                                                            oldLeft, oldTop, oldRight, oldBottom) -> {
+                try {
+                    WindowInsets insets = view.getRootWindowInsets();
+                    View shortsPlayerContainer = view.findViewById(shortsPlayerContainerId);
+                    if (insets == null || shortsPlayerContainer == null) return;
+
+                    // The window can already end above the system navigation buttons, such as
+                    // without the translucent navigation bar, so only the room still missing
+                    // is added. The padding added here is left out, or the room would be counted twice.
+                    final int navigationButtonsHeight = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
+                    int[] location = new int[2];
+                    shortsPlayerContainer.getLocationInWindow(location);
+                    final int roomBelow = view.getRootView().getHeight()
+                            - (location[1] + shortsPlayerContainer.getHeight())
+                            - view.getPaddingBottom();
+                    final int padding = Math.max(0, navigationButtonsHeight + Dim.dp12 - roomBelow);
+
+                    if (view.getPaddingBottom() != padding) {
+                        view.post(() -> view.setPadding(view.getPaddingLeft(), view.getPaddingTop(),
+                                view.getPaddingRight(), padding));
+                    }
+
+                    // The room is drawn with the background of the layout, which follows the app theme.
+                    // The system navigation buttons over the Shorts player are light in both themes,
+                    // so with the light theme they cannot be seen. The room is black like the Shorts player.
+                    if (!(view.getBackground() instanceof ColorDrawable background)
+                            || background.getColor() != Color.BLACK) {
+                        view.setBackgroundColor(Color.BLACK);
+                    }
+                } catch (Exception ex) {
+                    Logger.printException(() -> "setShortsPlayerBottomInset layout failure", ex);
+                }
+            });
+        } catch (Exception ex) {
+            Logger.printException(() -> "setShortsPlayerBottomInset failure", ex);
+        }
+    }
+
+    /**
+     * Injection point.
+     *
+     * @param original The room the Shorts player reserves below itself for the navigation bar.
+     */
+    public static int getShortsPlayerBottomRoom(int original) {
+        return SETS_SHORTS_PLAYER_BOTTOM_ROOM ? 0 : original;
+    }
+
+    /**
      * Injection point.
      *
      * @param bottomBarContainer The container of the navigation bar, which also covers the area
      *                           behind the system navigation buttons or gesture handle.
      */
     public static void setNavigationBarOpaque(View bottomBarContainer) {
-        if (!DISABLE_TRANSLUCENT_NAVIGATION) return;
+        if (NAVIGATION_BAR_STYLE != NavigationBarStyle.OPAQUE) return;
 
         try {
             OpaqueSystemBars.apply(bottomBarContainer);
         } catch (Exception ex) {
             Logger.printException(() -> "setNavigationBarOpaque failure", ex);
+        }
+    }
+
+    /**
+     * Injection point.
+     *
+     * @param original The color the app theme gives the system navigation buttons.
+     */
+    public static int getSystemNavigationBarColor(int original) {
+        if (NAVIGATION_BAR_STYLE != NavigationBarStyle.OPAQUE) return original;
+
+        try {
+            return OpaqueSystemBars.systemNavigationBarColor(original);
+        } catch (Exception ex) {
+            Logger.printException(() -> "getSystemNavigationBarColor failure", ex);
+            return original;
         }
     }
 
@@ -273,17 +735,6 @@ public final class NavigationBarPatch {
                 Logger.printException(() -> "Failed to set search bar OnClickListener", ex);
             }
         }
-    }
-
-    /**
-     * Injection point.
-     */
-    public static boolean useTranslucentNavigation(boolean original) {
-        if (DISABLE_TRANSLUCENT_NAVIGATION) {
-            return false;
-        }
-
-        return original;
     }
 
     /**
@@ -542,12 +993,64 @@ public final class NavigationBarPatch {
                     continue;
                 }
 
-                ButtonRenderer createButton = openUploadInCreationModes(buttons.getButtonRenderer());
-                if (createButton == null) {
+                // The upload buttons of the create button open the upload endpoint in the creation modes.
+                // Nothing is changed if the create button has no upload button.
+                ButtonRenderer createButton = buttons.getButtonRenderer();
+                NavigationEndpoint endpoint = createButton.getNavigationEndpoint();
+                if (!endpoint.hasCreationEntrySheetEndpoint()) {
                     return;
                 }
+                CreationEntrySheetEndpoint sheetEndpoint = endpoint.getCreationEntrySheetEndpoint();
+                ButtonSheetRenderer sheet = sheetEndpoint.getButtonSheetSupportedRenderers().getButtonSheetRenderer();
+                ButtonSheetRenderer.Builder sheetBuilder = sheet.toBuilder();
+                boolean replaced = false;
+
+                for (int j = 0, count = sheet.getButtonsCount(); j < count; j++) {
+                    Buttons button = sheet.getButtons(j);
+                    ButtonRenderer buttonRenderer = button.getButtonRenderer();
+                    NavigationEndpoint uploadEndpoint = buttonRenderer.getNavigationEndpoint();
+                    if (!button.hasButtonRenderer() || !uploadEndpoint.hasShortsCreationEndpoint()) {
+                        continue;
+                    }
+
+                    // The only mode button of the creation modes opens the upload endpoint.
+                    ButtonRenderer modeButton = buttonRenderer.toBuilder()
+                            .clearNavigationEndpoint()
+                            .setCommand(uploadEndpoint)
+                            .build();
+                    CreationModesSwitcherRenderer switcher = CreationModesSwitcherRenderer.newBuilder()
+                            .addModeButtons(Buttons.newBuilder().setButtonRenderer(modeButton))
+                            .addModes(CreationMode.CREATION_MODE_UPLOADS)
+                            .setDefaultMode(CreationMode.CREATION_MODE_UPLOADS)
+                            .build();
+                    CreationModesCommand creationModesCommand = CreationModesCommand.newBuilder()
+                            .setCreationModesControlsRenderer(CreationModesControlsRendererHolder.newBuilder()
+                                    .setCreationModesControlsRenderer(CreationModesControlsRenderer.newBuilder()
+                                            .setCreationModesSwitcherRenderer(CreationModesSwitcherRendererHolder.newBuilder()
+                                                    .setCreationModesSwitcherRenderer(switcher))))
+                            .build();
+
+                    NavigationEndpoint creationModesEndpoint = uploadEndpoint.toBuilder()
+                            .clearShortsCreationEndpoint()
+                            .setCreationModesCommand(creationModesCommand)
+                            .build();
+                    sheetBuilder.setButtons(j, button.toBuilder().setButtonRenderer(
+                            buttonRenderer.toBuilder().setNavigationEndpoint(creationModesEndpoint)));
+                    replaced = true;
+                }
+                if (!replaced) {
+                    return;
+                }
+
+                CreationEntrySheetEndpoint creationModesSheetEndpoint = sheetEndpoint.toBuilder()
+                        .setButtonSheetSupportedRenderers(sheetEndpoint.getButtonSheetSupportedRenderers().toBuilder()
+                                .setButtonSheetRenderer(sheetBuilder))
+                        .build();
+                ButtonRenderer creationModesCreateButton = createButton.toBuilder()
+                        .setNavigationEndpoint(endpoint.toBuilder().setCreationEntrySheetEndpoint(creationModesSheetEndpoint))
+                        .build();
                 rawButtonList.set(i, parseWithRegistry(rawButtons,
-                        buttons.toBuilder().setButtonRenderer(createButton).build().toByteArray(),
+                        buttons.toBuilder().setButtonRenderer(creationModesCreateButton).build().toByteArray(),
                         getGeneratedRegistry()));
                 Logger.printDebug(() -> "Toolbar create button opens the upload in the creation modes");
                 return;
@@ -572,67 +1075,6 @@ public final class NavigationBarPatch {
      */
     private static ExtensionRegistryLite getGeneratedRegistry() {
         return null; // Modified during patching.
-    }
-
-    /**
-     * @return The create button whose upload buttons open the upload endpoint in the creation modes,
-     *         or null if the create button has no upload button.
-     */
-    @Nullable
-    private static ButtonRenderer openUploadInCreationModes(ButtonRenderer createButton) {
-        NavigationEndpoint endpoint = createButton.getNavigationEndpoint();
-        if (!endpoint.hasCreationEntrySheetEndpoint()) {
-            return null;
-        }
-        CreationEntrySheetEndpoint sheetEndpoint = endpoint.getCreationEntrySheetEndpoint();
-        ButtonSheetRenderer sheet = sheetEndpoint.getButtonSheetSupportedRenderers().getButtonSheetRenderer();
-        ButtonSheetRenderer.Builder sheetBuilder = sheet.toBuilder();
-        boolean replaced = false;
-
-        for (int i = 0, count = sheet.getButtonsCount(); i < count; i++) {
-            Buttons button = sheet.getButtons(i);
-            ButtonRenderer buttonRenderer = button.getButtonRenderer();
-            NavigationEndpoint uploadEndpoint = buttonRenderer.getNavigationEndpoint();
-            if (!button.hasButtonRenderer() || !uploadEndpoint.hasShortsCreationEndpoint()) {
-                continue;
-            }
-
-            // The only mode button of the creation modes opens the upload endpoint.
-            ButtonRenderer modeButton = buttonRenderer.toBuilder()
-                    .clearNavigationEndpoint()
-                    .setCommand(uploadEndpoint)
-                    .build();
-            CreationModesSwitcherRenderer switcher = CreationModesSwitcherRenderer.newBuilder()
-                    .addModeButtons(Buttons.newBuilder().setButtonRenderer(modeButton))
-                    .addModes(CreationMode.CREATION_MODE_UPLOADS)
-                    .setDefaultMode(CreationMode.CREATION_MODE_UPLOADS)
-                    .build();
-            CreationModesCommand creationModesCommand = CreationModesCommand.newBuilder()
-                    .setCreationModesControlsRenderer(CreationModesControlsRendererHolder.newBuilder()
-                            .setCreationModesControlsRenderer(CreationModesControlsRenderer.newBuilder()
-                                    .setCreationModesSwitcherRenderer(CreationModesSwitcherRendererHolder.newBuilder()
-                                            .setCreationModesSwitcherRenderer(switcher))))
-                    .build();
-
-            NavigationEndpoint creationModesEndpoint = uploadEndpoint.toBuilder()
-                    .clearShortsCreationEndpoint()
-                    .setCreationModesCommand(creationModesCommand)
-                    .build();
-            sheetBuilder.setButtons(i, button.toBuilder().setButtonRenderer(
-                    buttonRenderer.toBuilder().setNavigationEndpoint(creationModesEndpoint)));
-            replaced = true;
-        }
-        if (!replaced) {
-            return null;
-        }
-
-        CreationEntrySheetEndpoint creationModesSheetEndpoint = sheetEndpoint.toBuilder()
-                .setButtonSheetSupportedRenderers(sheetEndpoint.getButtonSheetSupportedRenderers().toBuilder()
-                        .setButtonSheetRenderer(sheetBuilder))
-                .build();
-        return createButton.toBuilder()
-                .setNavigationEndpoint(endpoint.toBuilder().setCreationEntrySheetEndpoint(creationModesSheetEndpoint))
-                .build();
     }
 
     /**

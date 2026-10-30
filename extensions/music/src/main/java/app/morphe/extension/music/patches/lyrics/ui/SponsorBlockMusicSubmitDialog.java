@@ -9,6 +9,7 @@ package app.morphe.extension.music.patches.lyrics.ui;
 
 import static app.morphe.extension.shared.StringRef.str;
 
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -101,10 +102,12 @@ final class SponsorBlockMusicSubmitDialog {
 
         final OffsetSliderView offsetSlider = new OffsetSliderView(context);
         offsetSlider.setValue(manager.getTemporaryOffsetMs());
-        offsetSlider.setOnOffsetChanged(ms -> {
+        offsetSlider.listener = ms -> {
             manager.setTemporaryOffsetMs(ms);
+            // Same offset the panel drags, so it saves it the same way.
+            manager.persistTemporaryOffsetMs();
             onOffsetSync.accept(ms);
-        });
+        };
 
         final Runnable refreshTimes = () -> {
             startView.setText(formatTimeMs(times[0]));
@@ -192,7 +195,8 @@ final class SponsorBlockMusicSubmitDialog {
                     Utils.runOnBackgroundThread(() -> submitSegment(
                             videoId, category, start, end, videoLength, manager));
                 },
-                () -> { },
+                () -> {
+                },
                 str("morphe_sb_settings_copy"),
                 () -> copySpan(context, videoId, times),
                 false);
@@ -232,7 +236,7 @@ final class SponsorBlockMusicSubmitDialog {
         if (stored) {
             scheduleSegmentRefresh(videoId, manager);
         } else {
-            dropDialogPreview(manager, videoId, startMs, endMs);
+            Utils.runOnMainThread(() -> manager.clearDialogSegment(videoId, startMs, endMs));
         }
     }
 
@@ -243,11 +247,6 @@ final class SponsorBlockMusicSubmitDialog {
                 SkipSegments.prefetch(videoId);
             }
         }, REFRESH_DELAY_MS);
-    }
-
-    private static void dropDialogPreview(LyricsManager manager, String videoId,
-                                          long startMs, long endMs) {
-        Utils.runOnMainThread(() -> manager.clearDialogSegment(videoId, startMs, endMs));
     }
 
     private static void copySpan(Context context, String videoId, long[] times) {
@@ -278,6 +277,7 @@ final class SponsorBlockMusicSubmitDialog {
         return params;
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private static void bindTimeView(TextView view, long[] times, int[] slots, int index,
                                      Runnable refreshTimes) {
         final long[] downSample = new long[1];
@@ -381,17 +381,13 @@ final class SponsorBlockMusicSubmitDialog {
                     ThemeUtils.getCancelOrNeutralButtonBackgroundColor()));
         }
 
-        void setOnOffsetChanged(IntConsumer listener) {
-            this.listener = listener;
+        private static int clamp(int ms) {
+            return Math.max(-RANGE_MS, Math.min(RANGE_MS, ms));
         }
 
         void setValue(int ms) {
             offsetMs = clamp(ms);
             invalidate();
-        }
-
-        private static int clamp(int ms) {
-            return Math.max(-RANGE_MS, Math.min(RANGE_MS, ms));
         }
 
         private void apply(int ms) {
@@ -413,6 +409,7 @@ final class SponsorBlockMusicSubmitDialog {
             setMeasuredDimension(w, h);
         }
 
+        @SuppressLint("ClickableViewAccessibility")
         @Override
         public boolean onTouchEvent(@NonNull MotionEvent event) {
             final float x = event.getX();

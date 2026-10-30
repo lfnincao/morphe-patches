@@ -15,6 +15,12 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.string
+import app.morphe.patcher.util.cloneParameters
+import app.morphe.patcher.util.findFreeRegister
+import app.morphe.patcher.util.p0Register
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
+import app.morphe.patcher.util.registersUsed
+import app.morphe.patcher.util.returnEarly
 import app.morphe.patches.all.misc.crashlog.crashLogPatch
 import app.morphe.patches.all.misc.fix.openurllinks.removeLinkVerification
 import app.morphe.patches.all.misc.resources.addAppResources
@@ -33,16 +39,14 @@ import app.morphe.patches.reddit.misc.version.is_2026_30_0_or_greater
 import app.morphe.patches.reddit.misc.version.versionCheckPatch
 import app.morphe.patches.reddit.shared.Constants.COMPATIBILITY_REDDIT
 import app.morphe.patches.shared.misc.checks.experimentalAppNoticePatch
+import app.morphe.patches.util.resource.editText
+import app.morphe.patches.util.resource.transformStringResources
 import app.morphe.util.ResourceGroup
-import app.morphe.util.cloneParameters
 import app.morphe.util.copyResources
-import app.morphe.util.findElementByAttributeValue
-import app.morphe.util.findFreeRegister
-import app.morphe.util.p0Register
-import app.morphe.util.registersUsed
-import app.morphe.util.returnEarly
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 
 private const val EXTENSION_CLASS =
     "Lapp/morphe/extension/reddit/settings/RedditActivityHook;"
@@ -70,14 +74,9 @@ val settingsPatch = bytecodePatch(
             execute {
                 if (is_2026_25_0_or_greater) {
                     // Change menu item title to Morphe.
-                    get("res").walk().forEach { file ->
-                        if ("strings.xml" == file.name) {
-                            document(file.absolutePath).use { document ->
-                                document.documentElement.childNodes.findElementByAttributeValue(
-                                    "name",
-                                    "label_privacy_policy"
-                                )?.textContent = "Morphe"
-                            }
+                    decode("res/values*/strings.xml").forEach { path ->
+                        this[path].editText { text ->
+                            text.transformStringResources(setOf("label_privacy_policy")) { "Morphe" }
                         }
                     }
                 }
@@ -251,6 +250,32 @@ val settingsPatch = bytecodePatch(
                     """
                 )
             }
+        }
+
+        // Override finish() to show the restart dialog when closing the settings.
+        WebBrowserActivityOnCreateFingerprint.classDef.let { activityClass ->
+            ImmutableMethod(
+                activityClass.type,
+                "finish",
+                emptyList(),
+                "V",
+                AccessFlags.PUBLIC.value,
+                null,
+                null,
+                MutableMethodImplementation(2)
+            ).toMutable().apply {
+                addInstructionsWithLabels(
+                    0,
+                    """
+                        invoke-static { p0 }, $EXTENSION_CLASS->handleFinish(Landroid/app/Activity;)Z
+                        move-result v0
+                        if-nez v0, :handled
+                        invoke-super { p0 }, ${activityClass.superclass}->finish()V
+                        :handled
+                        return-void
+                    """
+                )
+            }.let(activityClass.methods::add)
         }
     }
 }

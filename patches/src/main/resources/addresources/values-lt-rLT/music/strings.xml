@@ -16,6 +16,14 @@ Second \"item\" text"</string>
 
 -->
 <resources>
+  <!-- misc.androidauto.androidAutoPatch -->
+  <string name="morphe_music_android_auto_last_played">Paskutinį kartą paleista</string>
+  <string name="morphe_music_android_auto_subscriptions">Prenumeratos</string>
+  <string name="morphe_music_android_auto_videos">Vaizdo įrašai</string>
+  <string name="morphe_music_android_auto_other_results">Kiti rezultatai</string>
+  <string name="morphe_music_android_auto_uploaded_songs">Įkeltos dainos</string>
+  <string name="morphe_music_android_auto_uploaded_albums">Įkelti albumai</string>
+  <string name="morphe_music_android_auto_uploaded_artists">Įkelti atlikėjai</string>
   <!-- app.morphe.patches.music.interaction.jam -->
   <string name="morphe_music_jam_update_host_controls">Atnaujinkite pagrindinio įrenginio „Jam“ pataisą, kad būtų galima naudoti pristabdymą ir tęsimą</string>
   <string name="morphe_music_jam_probe_title">„Jam“ eilės bendrinimas</string>
@@ -51,7 +59,7 @@ Second \"item\" text"</string>
   <string name="morphe_music_jam_show_qr">Rodyti QR</string>
   <string name="morphe_music_jam_done">Atlikta</string>
   <string name="morphe_music_jam_invite_title">Pakviesti į savo „Jam“</string>
-  <string name="morphe_music_jam_invite_message">Nuskaitykite, kad prisijungtumėte prie šios eilės ir ją redaguotumėte. Baigus „Jam“ sesiją kvietimas nustoja galioti.</string>
+  <string name="morphe_music_jam_invite_message">Skenuokite, kad prisijungtumėte ir redaguotumėte šią eilę. Baigus „Jam</string>
   <string name="morphe_music_jam_copy_link">Kopijuoti nuorodą</string>
   <string name="morphe_music_jam_invitation_clip">„Jam“ kvietimas</string>
   <string name="morphe_music_jam_reconnecting_toast">„Jam“ vėl jungiasi; bandykite dar kartą po akimirkos</string>
@@ -64,9 +72,9 @@ Second \"item\" text"</string>
   <string name="morphe_music_jam_updating">Atnaujinama „Jam“…</string>
   <string name="morphe_music_jam_finding_host">Ieškoma jūsų pagrindinio įrenginio per „Wi-Fi“…</string>
   <string name="morphe_music_jam_waiting_people">Laukiama žmonių</string>
-  <string name="morphe_music_jam_one_connected">Prisijungė %d asmuo</string>
-  <string name="morphe_music_jam_many_connected">Prisijungė %d žmonių</string>
-  <string name="morphe_music_jam_code_expires">Įveskite šį kodą netoliese esančiame įrenginyje. Kai palaikoma, „Wi-Fi Aware“ veikia per skirtingus LAN. Galioja %d min.</string>
+  <string name="morphe_music_jam_one_connected">%s prisijungęs</string>
+  <string name="morphe_music_jam_many_connected">%s prisijungusių</string>
+  <string name="morphe_music_jam_code_expires">Įveskite šį kodą artimoje įrenginyje. „Wi-Fi Aware“ veikia skirtinguose LAN, jei tai palaikoma. Baigsis po %s min.</string>
   <string name="morphe_music_jam_seek_to">Peršokti prie %s?</string>
   <string name="morphe_music_jam_edits_open">Redagavimas įjungtas</string>
   <string name="morphe_music_jam_edits_locked">Redagavimas užrakintas</string>
@@ -76,12 +84,12 @@ Second \"item\" text"</string>
   <string name="morphe_music_jam_unsupported">Nepalaikoma „Jam“ metu</string>
   <string name="morphe_music_jam_cancelled">Prisijungimas atšauktas</string>
   <string name="morphe_music_jam_reconnecting_host">Jungiamasi iš naujo prie jūsų pagrindinio įrenginio…</string>
-  <string name="morphe_music_jam_share_prompt">Bendrinkite eilę. Leiskite visiems pridėti dainų.</string>
+  <string name="morphe_music_jam_share_prompt">Bendrinkite eilę. Leiskite visiems pridėti dainas</string>
   <string name="morphe_music_jam_invite_people">Pakviesti žmones</string>
   <string name="morphe_music_jam_guest_edits">Svečiai gali redaguoti eilę</string>
   <string name="morphe_music_jam_end_jam">Baigti „Jam“</string>
-  <string name="morphe_music_jam_participant_help">Muziką groja pagrindinis įrenginys. Dainas galite pridėti, perkelti arba pašalinti tiesiogiai „YouTube Music“ eilėje.</string>
-  <string name="morphe_music_jam_joining_help">Laikykite abu įrenginius netoliese. Kol ieškome pagrindinio įrenginio, galite atšaukti.</string>
+  <string name="morphe_music_jam_participant_help">Gleuvas groja muziką. Pridėkite, perkelt arba pašalinkite dainas tiesiogiai YouTube Music eilėje</string>
+  <string name="morphe_music_jam_joining_help">Laikykite abu įrenginius vietoje. Galite atšaukti, kol ieškome gleuvo</string>
   <string name="morphe_music_jam_cancel_joining">Atšaukti prisijungimą</string>
   <string name="morphe_music_jam_leave_jam">Išeiti iš „Jam“</string>
   <string name="morphe_music_jam_start_jam">Pradėti „Jam“</string>
@@ -118,16 +126,9 @@ Second \"item\" text"</string>
   <string name="morphe_music_enable_audio_video_switch_summary">Bandyti perjungti garso takelio versiją ir oficialų muzikinį vaizdo įrašą</string>
   <!-- interaction.downloads.downloadsPatch -->
   <string name="morphe_external_downloader_screen_summary">Atsisiųskite muzikos vaizdo įrašus, tinklalaides ar dainas trečiųjų šalių atsisiuntimo programėlėmis</string>
-  <!-- 'Download' should be translated using the same localized wording YouTube displays for the button. -->
-  <string name="morphe_external_downloader_action_button_title">Pakeisti atsisiuntimo mygtuką</string>
-  <string name="morphe_external_downloader_action_button_summary">Naudoja jūsų pasirinktą išorinę atsisiuntimo programėlę vietoj standartinio atsisiuntimo veiksmų mygtuko</string>
-  <string name="morphe_external_downloader_flyout_menu_title">Pakeisti atsisiuntimo meniu</string>
-  <string name="morphe_external_downloader_flyout_menu_summary">Naudoja jūsų pasirinktą išorinę atsisiuntimo programėlę vietoj standartinio atsisiuntimo išskleidžiamojo meniu</string>
-  <string name="morphe_music_in_app_downloads_title">Atsisiųsti programėlėje</string>
-  <string name="morphe_music_in_app_downloads_summary">Atsisiunčia garsą „YouTube Music“ programėlėje, o ne atidaro išorinę atsisiuntimo programėlę</string>
-  <string name="morphe_music_in_app_downloads_user_dialog_message">"Kūriniai išsaugomi privačioje programėlės saugykloje ir ištrinami, jei „YouTube Music“ pašalinama.
-
-Kol ši parinktis įjungta, skirtuke „Atsisiuntimai“ rodomi šie kūriniai vietoj „Music Premium“ bibliotekos, skirtos naudoti neprisijungus. Išjungus šią parinktį skirtukas atkuriamas, o „Premium“ atsisiuntimai niekada nepaveikiami."</string>
+  <!-- 'Download' should be translated using the same localized wording YouTube displays for the menu. -->
+  <string name="morphe_external_downloader_menu_title">Naudoti išorinę atsisiuntimo programą meniu „Atsisiųsti“</string>
+  <string name="morphe_external_downloader_menu_summary">Meniu parinktis „Atsisiųsti“ atveria jūsų išorinę atsisiuntimo programą vietoje</string>
   <string name="morphe_music_downloads_screen_title">Atsisiuntimai</string>
   <string name="morphe_music_downloads_empty">"Atsisiuntimų nėra
 Atsisiųsti kūriniai rodomi čia"</string>
@@ -445,7 +446,7 @@ SABR atkūrimas („Spoofinti vaizdo srautus“ išjungta)"</string>
   <string name="morphe_music_scrobbling_custom_regex_title">Pasirinktinis regex valymas</string>
   <string name="morphe_music_scrobbling_custom_regex_summary">Įveskite pasirinktinę reguliariąją išraišką, kad pašalintumėte papildomą tekstą iš dainų pavadinimų, atlikėjų ar albumų. Pavyzdys: (?i)\s*\((clean|explicit)\)</string>
   <string name="morphe_music_scrobbling_parse_title_title">Išskirti atlikėją ir kūrinį iš pavadinimo</string>
-  <string name="morphe_music_scrobbling_parse_title_summary">Išskirkite atlikėją ir kūrinio pavadinimą iš vaizdo įrašo pavadinimo naudodami skirtuką „ - “. Naudinga pakartotinai įkeltam turiniui, kai kanalo pavadinimas gali būti naudojamas kaip atlikėjas.</string>
+  <string name="morphe_music_scrobbling_parse_title_summary">Ištraukite atlikėjo ir dainos pavadinimą iš vaizdo įrašo pavadinimo naudodami \" - \" skydiklį. Naudinga perkrautai turinio, kai kanalo pavadinimas gali būti naudojamas kaip atlikėjas</string>
   <string name="morphe_music_scrobbling_guess_album_title">Užpildyti trūkstamą albumą</string>
   <string name="morphe_music_scrobbling_guess_album_summary">Kai muzikoje nenurodytas albumas, ieškoti jo „Last.fm“, kad jūsų scrobble būtų užbaigtas</string>
   <!-- 'scrobbling' must be kept untranslated -->
@@ -458,11 +459,51 @@ Kad scrobbling būtų sinchronizuojamas foninio atkūrimo metu, įsitikinkite, k
   <string name="morphe_music_lyrics_keep_screen_on_title">Palikti ekraną įjungtą žiūrint dainų tekstus</string>
   <string name="morphe_music_lyrics_keep_screen_on_summary">Neleidžia ekranui išsijungti, kai atidarytas dainų tekstų skydelis</string>
   <string name="morphe_music_lyrics_section_service_title">Dainų tekstų paslauga</string>
-  <string name="morphe_music_lyrics_section_overlay_title">Perdanga</string>
+  <string name="morphe_music_lyrics_section_display_title">Rodinys</string>
   <string name="morphe_music_lyrics_section_sync_title">Sinchronizacija</string>
-  <string name="morphe_music_lyrics_source_all_disabled">Visi tiekėjai išjungti – lieka įtaisytieji ir įdėtieji dainų tekstai</string>
+  <string name="morphe_music_lyrics_section_panel_title">Skydelis</string>
+  <string name="morphe_music_lyrics_source_all_disabled">Visi teikėjai išjungti – integruoti žodžiai ir įterpti žodžiai</string>
   <string name="morphe_music_lyrics_source_reset_title">Atstatyti tiekėjų eilę?</string>
   <string name="morphe_music_lyrics_source_reset_message">Grąžinti tiekėjus į numatytąją prioriteto eilę</string>
+  <string name="morphe_music_lyrics_rime_dict_title">Rime žodynas</string>
+  <string name="morphe_music_lyrics_rime_dict_empty">"Žodžių sąrašas „Rime“ taip pat reikalauja UniDict: veiklos srities „Nėra interneto ryšio žodyno teikėjas“ išrinkite „Kinų ir kantoniečių raumenys (UniDict)“ ir leiskite jam baigti atsisiuntimą. Be to, sąrašą, skaitant simbolius, gausi skaitymo.
+
+Išrinkite sąrašus „Rime Wordlist“ skaityti, tada spustelėkite Išsaugoti atsisiųsti juos. Sąrašas, kurį pridėjote, pašalinamas, kai jūs nurodysite jį.
+
+Kiekvienas sąrašas yra jūsų asmeninis žodis-į-kaip lentelės, .dict.yaml su eilėmis:
+字 ham
+典 din2
+Pirmas stulpelis yra žodis, antras jo skaitymas; papildomi stulpeliai ir eilutės be tabuliacijos ignoruojamos."</string>
+  <string name="morphe_music_lyrics_rime_dict_no_table">Viršutinėje kalboje nėra pasirinkto joks Rime žodžių sąrašas. Bakstelėkite šią pavadinimą, kad pažymėtumėte viena iš jų, arba pasirinkite kalbą, turinti sąrašą</string>
+  <string name="morphe_music_lyrics_rime_dict_add">Pridėti</string>
+  <string name="morphe_music_lyrics_rime_dict_add_title">Pridėti Rime žodžių sąrašą</string>
+  <string name="morphe_music_lyrics_rime_dict_add_hint">.dict.yaml failas arba zipas laikantis vieno, su eilėmis kaip 字 ham ir 典 din2. Sąrašas gaunamas, kai išrenkate jį ir spustelėkite Išsaugoti, ir licencija yra jūsų tikrinti</string>
+  <string name="morphe_music_lyrics_rime_dict_field_code">Kalbos kodas</string>
+  <string name="morphe_music_lyrics_rime_dict_field_code_hint">Du ar trys raidės, pvz., hak arba wuu</string>
+  <string name="morphe_music_lyrics_rime_dict_field_label">Pavadinimas</string>
+  <string name="morphe_music_lyrics_rime_dict_field_label_hint">Rodoma po tarimu, pvz., Hakka (Meixian)</string>
+  <string name="morphe_music_lyrics_rime_dict_field_url">Žodžių sąrašo adresas</string>
+  <string name="morphe_music_lyrics_rime_dict_field_url_hint">https:// adresas .dict.yaml failo ar jo zip archyvo</string>
+  <string name="morphe_music_lyrics_rime_dict_field_char_source">Simboliai, kurie nėra žodyje</string>
+  <string name="morphe_music_lyrics_rime_char_source_auto">Automatinis</string>
+  <string name="morphe_music_lyrics_rime_char_source_cantonese">Kantonų kalbos simboliai</string>
+  <string name="morphe_music_lyrics_rime_char_source_pinyin">Mandarin kalbos simboliai</string>
+  <string name="morphe_music_lyrics_rime_char_source_none">Nėra jokio simbolio tarimo</string>
+  <string name="morphe_music_lyrics_rime_dict_incomplete">Užpildykite kodą, pavadinimą ir adresą</string>
+  <string name="morphe_music_lyrics_rime_dict_bad_code">Kodas privalo būti dviejų ar trijų raidžių, pvz., hak</string>
+  <string name="morphe_music_lyrics_rime_dict_bad_url">Adresas turi prasidėti https://</string>
+  <string name="morphe_music_lyrics_rime_dict_bad_field">Pavadinimas ir adresas negali turėti vertikaliajo brūkšnio</string>
+  <string name="morphe_music_lyrics_rime_dict_duplicate">%1$s jau turi žodžių lentelę</string>
+  <string name="morphe_music_lyrics_rime_dict_reserved">%1$s yra skaitomas numatytaios transkripcijos sistema ir negali naudoti žodžių sąrašo</string>
+  <string name="morphe_music_lyrics_rime_dict_reserved_row">Nenaudojama: ši kalba jau turi savo tarimą, todėl pašalinkite ją nuimdamas pažymėjimą</string>
+  <string name="morphe_music_lyrics_rime_dict_added">%1$s buvo pridėtas – pažymėkite jį ir bakstelkite Išsaugoti, kad jį atsisiųstų</string>
+  <string name="morphe_music_lyrics_rime_dict_ready">Žodžių sąrašai paruošti</string>
+  <string name="morphe_music_lyrics_rime_dict_ready_toast">Žodžių sąrašai paruošti (%1$d elementų)</string>
+  <string name="morphe_music_lyrics_rime_dict_building">Tarimo žodžių sąrašas: %1$d%%</string>
+  <string name="morphe_music_lyrics_rime_dict_failed">Žodžių sąrašo atsisiuntimas nepavyko – vėl bakstelkite Išsaugoti, kad kartotųsi</string>
+  <string name="morphe_music_lyrics_clear_cache_title">Išvalyti išsaugotus tekstus</string>
+  <string name="morphe_music_lyrics_clear_cache_summary">Ištrinkite %1$s MB teksto, saugomo šiuo įrenginiu</string>
+  <string name="morphe_music_lyrics_clear_cache_done">Išvalyta %1$s MB</string>
   <string name="morphe_music_token_dialog_get_token">Gauti prieigos raktą</string>
   <string name="morphe_music_apple_music_token_title">„Apple Music“ media-user-token</string>
   <string name="morphe_music_apple_music_token_dialog_instruction">"Įklijuokite media-user-token slapuką iš music.apple.com
@@ -473,7 +514,7 @@ Veiksmai:
 3. Nukopijuokite „media-user-token“ reikšmę"</string>
   <string name="morphe_music_apple_music_token_toast_saved">„Apple Music“: media-user-token išsaugotas</string>
   <string name="morphe_music_apple_music_token_toast_cleared">„Apple Music“: media-user-token išvalytas</string>
-  <string name="morphe_music_apple_music_token_toast_invalid">„Apple Music“: neteisingas media-user-token – patikrinkite ir bandykite dar kartą</string>
+  <string name="morphe_music_apple_music_token_toast_invalid">Apple Music: neteisingas media-user-token - prašom patikrinti ir bandyti dar kartą</string>
   <string name="morphe_music_spotify_token_title">Spotify SpDc</string>
   <string name="morphe_music_spotify_token_dialog_instruction">"Įklijuokite sp_dc slapuką iš „Spotify“.
 
@@ -483,7 +524,7 @@ Veiksmai:
 3. Nukopijuokite „sp_dc“ reikšmę"</string>
   <string name="morphe_music_spotify_token_toast_saved">„Spotify“: sp_dc išsaugotas</string>
   <string name="morphe_music_spotify_token_toast_cleared">„Spotify“: sp_dc išvalytas</string>
-  <string name="morphe_music_spotify_token_toast_invalid">„Spotify“: neteisingas sp_dc – patikrinkite ir bandykite dar kartą</string>
+  <string name="morphe_music_spotify_token_toast_invalid">Spotify: neteisingas sp_dc - prašom patikrinti ir bandyti dar kartą</string>
   <string name="morphe_music_apple_token_optional_hint">„Apple Music“ prieigos raktas yra neprivalomas. Be jo kaip atsarginė priemonė bus naudojama „Lyrically“</string>
   <string name="morphe_music_deezer_arl_title">Deezer ARL</string>
   <string name="morphe_music_deezer_arl_dialog_instruction">"Įklijuokite arl slapuką iš „Deezer“.
@@ -494,14 +535,14 @@ Veiksmai:
 3. Nukopijuokite „arl“ reikšmę"</string>
   <string name="morphe_music_deezer_arl_toast_saved">„Deezer“: arl išsaugotas</string>
   <string name="morphe_music_deezer_arl_toast_cleared">„Deezer“: arl išvalytas</string>
-  <string name="morphe_music_deezer_arl_toast_invalid">„Deezer“: neteisingas arl – patikrinkite ir bandykite dar kartą</string>
+  <string name="morphe_music_deezer_arl_toast_invalid">Deezer: neteisingas arl - prašom patikrinti ir bandyti dar kartą</string>
   <string name="morphe_music_musixmatch_token_title">Musixmatch prieigos raktas</string>
   <string name="morphe_music_musixmatch_token_dialog_instruction">Pridėkite prieigos raktą tik tuo atveju, jei norite naudoti savo paskyrą. Jis turi būti iš „Musixmatch“ Android programėlės: iš musixmatch.com nukopijuoti prieigos raktai priklauso nebenaudojamam darbalaukio klientui ir API juos atmeta</string>
   <string name="morphe_music_musixmatch_token_optional_hint">„Musixmatch“ veikia ir be prieigos rakto, todėl šis laukas gali likti tuščias</string>
   <string name="morphe_music_musixmatch_token_dialog_hint">vartotojo prieigos raktas</string>
   <string name="morphe_music_musixmatch_token_toast_saved">„Musixmatch“: vartotojo prieigos raktas išsaugotas</string>
   <string name="morphe_music_musixmatch_token_toast_cleared">„Musixmatch“: vartotojo prieigos raktas išvalytas</string>
-  <string name="morphe_music_musixmatch_token_toast_invalid">„Musixmatch“: neteisingas vartotojo prieigos raktas – patikrinkite ir bandykite dar kartą</string>
+  <string name="morphe_music_musixmatch_token_toast_invalid">Musixmatch: neteisingas vartotojo token - prašom patikrinti ir bandyti dar kartą</string>
   <string name="morphe_music_youtube_cookies_title">„YouTube“ slapukai</string>
   <string name="morphe_music_youtube_cookies_dialog_instruction">"Įklijuokite „YouTube“ slapukus, kad iš „YouTube“ gautumėte subtitrus ir laiko tekstą.
 
@@ -513,17 +554,32 @@ Veiksmai:
 Reikalingi slapukai: SID, HSID, SSID, SAPISID, __Secure-3PAPISID, __Secure-1PAPISID, LOGIN_INFO"</string>
   <string name="morphe_music_youtube_cookies_toast_saved">„YouTube“: slapukai išsaugoti</string>
   <string name="morphe_music_youtube_cookies_toast_cleared">„YouTube“: slapukai išvalyti</string>
-  <string name="morphe_music_youtube_cookies_toast_invalid">„YouTube“: neteisingi slapukai – patikrinkite ir bandykite dar kartą</string>
-  <string name="morphe_music_lyrics_tap_to_seek_title">Bakstelėkite eilutę, kad peršoktumėte prie jos</string>
-  <string name="morphe_music_lyrics_tap_to_seek_summary">Bakstelėjus eilutę peršokama į tą dainos momentą</string>
+  <string name="morphe_music_youtube_cookies_toast_invalid">YouTube: neteisingi slapukai - prašom patikrinti ir bandyti dar kartą</string>
+  <string name="morphe_music_lyrics_tap_to_seek_title">Palieskite ir laikykite eilutę</string>
+  <string name="morphe_music_lyrics_tap_to_seek_summary">Paspauskite ant eilutės, kad pereitumėte į tą muzikos momentą; ilgai paspauskite, kad nukopijuotumėte žodį po pirštu arba visą eilutę, jei paspaudimas nėra ant žodžio. Išjungus veikia abu gestai</string>
+  <string name="morphe_music_lyrics_show_section_title">Rodyti dalių žymes</string>
+  <string name="morphe_music_lyrics_show_section_summary">Pažymėkite kiekvieną naują dainos teksto dalį maža žyme, pvz., posmas arba priedainis</string>
   <string name="morphe_music_lyrics_show_copy_button_title">Rodyti kopijavimo mygtuką</string>
-  <string name="morphe_music_lyrics_show_copy_button_summary">Bakstelėkite, kad nukopijuotumėte originalius dainų tekstus kaip paprastąjį tekstą; ilgai paspauskite, kad išsaugotumėte neapdorotą dainų teksto šaltinio failą „Atsisiuntimai“</string>
+  <string name="morphe_music_lyrics_show_copy_button_summary">Spustelėkite, kad nukopijuotumėte originalius tekstus kaip paprastą tekstą; ilgai paspauskite, kad išsaugotumėte žaliavinių tekstų failą atsisiuntimų aplanke</string>
   <string name="morphe_music_lyrics_show_translate_button_title">Rodyti vertimo mygtuką</string>
-  <string name="morphe_music_lyrics_show_translate_button_summary">Bakstelėkite, kad įjungtumėte / išjungtumėte vertimą; ilgai paspauskite, kad gautumėte tik vertimą. Naudoja tiekėjų vertimus, „Google“ vertėją arba su „OpenAI“ suderinamą API</string>
-  <string name="morphe_music_lyrics_show_romanize_button_title">Rodyti romanizavimo mygtuką</string>
-  <string name="morphe_music_lyrics_show_romanize_button_summary">Bakstelėkite, kad įjungtumėte / išjungtumėte romanizaciją; ilgai paspauskite, kad gautumėte tik romanizaciją. Naudoja tiekėjų romanizaciją, „Google“ vertėją arba su „OpenAI“ suderinamą API</string>
+  <string name="morphe_music_lyrics_show_translate_button_summary">Bakstelėkite, kad perjungtumėte vertimą; ilgai paspauskite, kad gautumėte tik vertimą. Naudoja įgalintus vertimo tiekėjus jų nustatytąja tvarka</string>
+  <string name="morphe_music_lyrics_show_romanize_button_title">Rodyti Transkripcijos arba Transliteravimo mygtuką</string>
+  <string name="morphe_music_lyrics_show_romanize_button_summary">Bakstelėkite, kad perjungtumėte transliteravimą arba transliteraciją; ilgai paspauskite, kad gautumėte tik transliteravimą arba transliteraciją. Naudoja įgalintus transliteravimo tiekėjus jų nustatytąja tvarka</string>
+  <string name="morphe_music_lyrics_allow_transliteration_title">Įjungti transliteravimą</string>
+  <string name="morphe_music_lyrics_allow_transliteration_summary">Leisti ne lotyniškus tarimus iš teksto šaltinio; kai išjungta, paliekamos tik lotyniškos raidės, raidės su diakritiniais ženklais ir tonų skaitmenys</string>
+  <string name="morphe_music_lyrics_local_romanization_summary">Skaito kiekvieną laiko sinchronizavimo dainų tekstą (žodžio sinchronizavimas įjungtas); Korėjietiškam nereikia atsisiųsti; keturiolika raštų dalijasi vienu CLDR atsisiuntimu; Han rašmenis skaito Rime žodynas, kai jo žodžių lentelė apima kalbą</string>
+  <string name="morphe_music_lyrics_local_romanization_download_started">Atsisiunčiami tarimo žodynai…</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_ready">Skaitymai paruošti (%1$d įrašų)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_failed">Atsisiuntimas nepavyko. Perkraukite nustatymą ir bandykite dar kartą</string>
+  <string name="morphe_music_lyrics_local_romanization_download_confirm_title">Nešliožiamasis žodynas</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_japanese">Japonų (SudachiDict, ~75 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_unidict">Kinų ir kantonų kalbų simboliai (UniDict, ~8 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_chinese">Kinų žodžiai (pinyin-pro, ~17 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_cldr">Graikų, slavų kirilikos (įskaitant rusų, ukrainiečių, bulgarų, serbų, baltarusių, makedonų), gruzinų, armėnų, hebrajų, arabų, amharų ir sirų kalbų transliteravimas (CLDR, ~0.5 MB)</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_building">Skaitmenų %1$s: %2$d%%</string>
+  <string name="morphe_music_lyrics_local_romanization_dict_empty">Pasirinkite bent vieną žodyną</string>
   <string name="morphe_music_lyrics_show_refresh_button_title">Rodyti atnaujinimo mygtuką</string>
-  <string name="morphe_music_lyrics_show_refresh_button_summary">Bakstelėkite, kad perjungtumėte į kitą dainų tekstų variantą; ilgai paspauskite, kad ieškotumėte dainų tekstų pagal dainos pavadinimą ir atlikėją</string>
+  <string name="morphe_music_lyrics_show_refresh_button_summary">Paspauskite, kad pereitumėte prie kitos teksto kandidatūros; ilgai paspauskite, kad ieškotumėte tekstų pagal dainos pavadinimą ir atlikėją</string>
   <string name="morphe_music_lyrics_search_dialog_title">Ieškoti dainų tekstų</string>
   <string name="morphe_music_lyrics_search_title_hint">Dainos pavadinimas</string>
   <string name="morphe_music_lyrics_search_artist_hint">Atlikėjas</string>
@@ -532,14 +588,41 @@ Reikalingi slapukai: SID, HSID, SSID, SAPISID, __Secure-3PAPISID, __Secure-1PAPI
   <string name="morphe_music_lyrics_saved">Išsaugota</string>
   <string name="morphe_music_lyrics_word_sync_title">Paryškinti sinchronizuotus žodžius ar skiemenis</string>
   <string name="morphe_music_lyrics_word_sync_summary">Teikti pirmenybę žodis po žodžio sinchronizuotiems dainų tekstams, kai jie prieinami. Kai dainų tekstai turi žodžių laiką, kiekvienas žodis ar skiemuo paryškinamas pagal muziką</string>
+  <string name="morphe_music_lyrics_line_scale_title">Suskleisti neveikiančias eilutes</string>
+  <string name="morphe_music_lyrics_line_scale_summary">Nupiešia kiekvieną eilutę, kuri dabar nėra atliekama, šiek tiek mažesnę, viršutinįjį lygį nuslopinant</string>
+  <string name="morphe_music_lyrics_split_background_title">Rodyti foninę vokalinę atskirai</string>
+  <string name="morphe_music_lyrics_split_background_summary">Atskiria foninę vokalą ir harmoniją nuo pagrindinės linijos. Foninė vokalo užrašyta kabutėse, pvz., „(Oh) aš tavęs trošku“, perkeliama iš dainuojamos linijos į tamsesnę savo eilutę</string>
   <string name="morphe_music_lyrics_hide_played_title">Slėpti jau atkurtus dainų tekstus</string>
   <string name="morphe_music_lyrics_hide_played_summary">Slėpti dainų teksto eilutes virš šiuo metu grojamos eilutės</string>
   <string name="morphe_music_lyrics_hide_unplayed_title">Slėpti neatkurtus dainų tekstus</string>
   <string name="morphe_music_lyrics_hide_unplayed_summary">Slėpti dainų teksto eilutes žemiau šiuo metu grojamos eilutės</string>
   <string name="morphe_music_lyrics_mediasession_title">Rodyti „MediaSession“ dainų tekstus užrakintame ekrane</string>
+  <string name="morphe_music_lyrics_mediasession_summary">Rodo esamą eilutę atrakintame ekrane, „Android Auto“ ir Bluetooth. Reikia Android 11 ar naujesnės versijos</string>
   <string name="morphe_music_lyrics_miniplayer_title">Rodyti mini grotuvo dainų tekstus</string>
-  <string name="morphe_music_lyrics_display_artist_first_title">Atlikėjo ir pavadinimo rodymo tvarka</string>
-  <string name="morphe_music_lyrics_display_artist_first_summary">Perjungia atlikėjo ir pavadinimo rodymo tvarką mini grotuve ir „MediaSession“. ĮJUNGUS – „Atlikėjas – Pavadinimas“, IŠJUNGUS – „Pavadinimas – Atlikėjas“. Dainų tekstų paieškai įtakos neturi</string>
+  <string name="morphe_music_lyrics_miniplayer_summary">Rodo esamą eilutę mini grotuve, perkeliant takelį į subtitrą</string>
+  <string name="morphe_music_lyrics_mini_track_format_title">Dainos pavadinimo ir atlikėjo formatas</string>
+  <string name="morphe_music_lyrics_mini_track_format_summary">Takto formatas, rodomas kartu su dainos žodžiais Miniplayeryje ir MediaSession. {t} yra pavadinimas, {a} – atlikėjas, o {v} – versija (pvz., akustinė), jei žodžių šaltinis ją nurodo. Tekstas tarp dviejų dvitaškių yra rodomas tik tada, kai kiekviena jame esanti kintamoji turi reikšmę; paprastai dvitaškiai rašykite \\:. Kiekviena eilutė yra rodoma po eilutės, keičdamasi kartu su dainos žodžiais</string>
+  <string name="morphe_music_lyrics_mini_encapsulation_title">Dainos žodžių eilutės formatas</string>
+  <string name="morphe_music_lyrics_mini_encapsulation_summary">Dainos žodžių eilutės formatas Miniplayeryje ir MediaSession. {lrc} yra eilutė, o {n} – kiek kartų iš eilgos ji yra dainuojama. Tekstas tarp dvitaškių yra rodomas tik tada, kai eilutė kartojasi. Dvitaškiai naudokite \\:</string>
+  <string name="morphe_music_lyrics_mini_encapsulation_invalid">Formatas privalo содержаti {lrc}</string>
+  <string name="morphe_music_lyrics_mini_track_format_menu_summary">Atlikėjo eilutės šablonas ir animacijos laikymas</string>
+  <string name="morphe_music_lyrics_mini_artist_min_label">Minimalus ekrano rodymo laikas (ms)</string>
+  <string name="morphe_music_lyrics_mini_artist_max_label">Maksimalus ekrano rodymo laikas (ms)</string>
+  <string name="morphe_music_lyrics_mini_artist_timing_explanation">Tik daugiaeilinėms animacijoms. Kiekvieną kadrą rodyti bent minimalų laiką. Pasiekus maksimalų laiką, atlikėjo eilutė slenka toliau net ir jei dainos žodžiai išlieka tie patys.</string>
+  <string name="morphe_music_lyrics_mini_artist_timing_invalid">Minimali reikšmė turi būti 0 arba didesnė. Maksimali reikšmė turi būti didesnė už 0 ir ne mažiau nei minimali.</string>
+  <string name="morphe_music_lyrics_mini_line_limits_title">Eilutės ilgio apribojimai</string>
+  <string name="morphe_music_lyrics_mini_line_limits_summary">Dainos žodžių ir atlikėjo eilutės apribojimai bei viso pločio simbolių svoris</string>
+  <string name="morphe_music_lyrics_mini_line_limits_lyrics">"Dainos žodžių eilutės riba
+Ilgesni žodžiai bus padalinti į subalansuotas puses. 0 išjungia skaldymą."</string>
+  <string name="morphe_music_lyrics_mini_line_limits_artist">"Atlikėjo eilutės riba
+Suskirstykite užpildytą takelio formatą į besukančius kadrus. 0 išjungia skirstymą."</string>
+  <string name="morphe_music_lyrics_mini_line_limits_weight">"Pilno pločio simbolio svoris
+Taikoma abiems riboms. Nustatant 1,75, keturi pilno pločio simboliai counted kaip 7."</string>
+  <string name="morphe_music_lyrics_mini_line_limits_invalid">Įveskite sveikąjį skaičių riboms nuo 0 iki 10000 ir simbolio svorį, kuris yra didesnis nei 0</string>
+  <string name="morphe_music_lyrics_mini_instrumental_title">Instrumentinė pertrauka</string>
+  <string name="morphe_music_lyrics_mini_instrumental_summary">Rodoma miniplayeryje ir „MediaSession“ instrumentinės pertraukos metu. Kiekviena eilutė yra vienas animacijos kadras. {t} yra pavadinimas, {a} – atlikėjas, o {lrc} – paskutinė dainos teksto eilutė</string>
+  <string name="morphe_music_lyrics_mini_next_offset_ms_title">Miniplayerio ir „MediaSession“ laiko poslinkis</string>
+  <string name="morphe_music_lyrics_mini_next_offset_ms_summary">Nustato, kada Miniplayeryje ir MediaSession rodoma kitka eilutė. Jei eilutės pasirodo pervėlai, pavyzdžiui, užrakinto ekrano, naudokite neigiamą reikšmę</string>
   <string name="morphe_settings_music_lyrics_metadata_title">Filtrai</string>
   <string name="morphe_music_lyrics_custom_regex_title">Metaduomenų regex</string>
   <string name="morphe_music_lyrics_custom_regex_summary">Reguliarioji išraiška taikoma pavadinimams, atlikėjams ir albumams prieš ieškant dainų tekstų ir vertinant, ar du pavadinimai sutampa. Palikite tuščią, kad išjungtumėte abi funkcijas. Numatytasis variantas pašalina įprastą papildomą tekstą, pvz., „Official Video“, „Remaster“, „【插曲】“ ir „- Topic“</string>
@@ -547,6 +630,10 @@ Reikalingi slapukai: SID, HSID, SSID, SAPISID, __Secure-3PAPISID, __Secure-1PAPI
   <string name="morphe_music_lyrics_text_filter_summary">Reguliarioji išraiška taikoma tik originaliam dainų tekstui (ne vertimams ar romanizacijoms). Palikite tuščią, kad išjungtumėte</string>
   <string name="morphe_music_lyrics_credit_line_regex_title">Informacinių eilučių žymekliai</string>
   <string name="morphe_music_lyrics_credit_line_regex_summary">Jei dainų tekstai klaidingai nukeliami į apačią, pakoreguokite arba išvalykite šį lauką. Žymekliai, atskirti kableliais: eilutės, turinčios žymeklį, po kurio yra dvitaškis, rodomos kaip informacija apie autorius apačioje. Palikite tuščią, kad išjungtumėte</string>
+  <string name="morphe_music_lyrics_force_capitalize_title">Rašyti pirmą raidę didžiuoju</string>
+  <string name="morphe_music_lyrics_force_capitalize_summary">Kiekvienos dainos žodžių eilutės pirmą raidę rašo didžiuoju</string>
+  <string name="morphe_music_lyrics_strip_trailing_punctuation_title">Pašalinti skyrybos ženklus pabaigoje</string>
+  <string name="morphe_music_lyrics_strip_trailing_punctuation_summary">Pašalina taškus, kvertes, dvitaškius ir pusetaškius dainos žodžių eilučių pabaigoje. Klausmės ženklai, šaukeliai, daugtaškiai, citatos ir skliaustai išlieka</string>
   <string name="morphe_music_lyrics_text_size_title">Teksto dydis</string>
   <string name="morphe_music_lyrics_text_size_summary">Dainų teksto dydis</string>
   <string name="morphe_music_lyrics_offset_ms_title">Bendras laiko poslinkis</string>
@@ -556,46 +643,94 @@ Reikalingi slapukai: SID, HSID, SSID, SAPISID, __Secure-3PAPISID, __Secure-1PAPI
   <string name="morphe_music_lyrics_sb_no_video">Šis kūrinys neturi vaizdo įrašo id, kurį būtų galima pateikti</string>
   <!-- Shown under the lyrics. The placeholder is a service name such as LRCLIB. -->
   <string name="morphe_music_lyrics_source_label">Šaltinis: %s</string>
+  <string name="morphe_music_lyrics_contribute_credit">Ilgai paspauskite kopijavimo mygtuką, kad išsaugotumėte šią LRC; jei jums pavyktų sukalibruoti laiko žymėjimus ir pasidalinti jais su bendruomenės teikėjais, būtume dėkingi</string>
   <string name="morphe_music_lyrics_translated_by_google">Išvertė „Google“</string>
   <string name="morphe_music_lyrics_romanized_by_google">Romanizavo „Google“</string>
   <string name="morphe_music_lyrics_translated_by_ai">Išvertė %s</string>
   <string name="morphe_music_lyrics_romanized_by_ai">Romanizavo %s</string>
+  <string name="morphe_music_lyrics_romanized_by_local">Romanizavo %s</string>
+  <string name="morphe_music_lyrics_romanized_by_rime">Transkribuota Rime (%s)</string>
   <!-- Tappable label under the lyrics that turns the translation on. -->
   <string name="morphe_music_lyrics_translate_hide">Išversta</string>
   <string name="morphe_music_lyrics_translation_language_title">Vertimo kalba</string>
+  <string name="morphe_music_lyrics_romanize_language_title">Transliteracijos arba transliteravimo kalba</string>
+  <string name="morphe_music_lyrics_translation_target_language">"Verčiamo kalbos taikinys:
+%s"</string>
+  <string name="morphe_music_lyrics_romanization_target_language">"Romanizavimo arba transliteracijos taikinio kalba:
+%s"</string>
   <string name="morphe_music_lyrics_translating">Verčiama…</string>
   <string name="morphe_music_lyrics_translate_failed">Nepavyko išversti dainų tekstų</string>
   <string name="morphe_music_lyrics_romanize_hide">Romanizuota</string>
+  <string name="morphe_romanize_language_DEFAULT">Automatinis</string>
   <string name="morphe_music_lyrics_romanizing">Romanizuojama…</string>
   <string name="morphe_music_lyrics_romanize_failed">Nepavyko romanizuoti dainų tekstų</string>
   <string name="morphe_music_lyrics_translate_only">Tik išversta</string>
   <string name="morphe_music_lyrics_romanize_only">Tik romanizuota</string>
+  <string name="morphe_music_lyrics_dual_only">Dvigodis režimas</string>
   <string name="morphe_music_lyrics_copied">Nukopijuota į iškarpinę</string>
   <string name="morphe_music_lyrics_refreshing">Atnaujinama</string>
   <string name="morphe_music_lyrics_refreshed">Atnaujinta</string>
-  <string name="morphe_music_lyrics_about_summary">"Dainų tekstai atrenkami pagal pavadinimą ir atlikėją; neįprasti metaduomenys gali nieko nerasti arba rasti netinkamą versiją. Naudokite atnaujinimą, kad perjungtumėte versijas. Tiekėjai, pažymėti *, reikalauja prieigos rakto. Įjungti tiekėjai ne visada apklausiami jūsų nurodyta tvarka, o atsako pagal savo greitį"</string>
-  <string name="morphe_music_lyrics_source_advice_summary">Įjunkite tik tuos tiekėjus, kuriuos naudojate, arba palikite numatytuosius – nuolatinės užklausos gali perkrauti mažas bendruomenės dainų tekstų svetaines</string>
+  <string name="morphe_music_lyrics_transcribe_key_title">QuickLRC API raktas</string>
+  <string name="morphe_music_lyrics_transcribe_key_summary">QuickLRC transkribuoja arba suderina dainų tekstus pagal dabartinį takelį</string>
+  <string name="morphe_music_lyrics_transcribe_key_set_summary">QuickLRC raktas išsaugotas. Naudokite sutapatinimo mygtuką dainų žodžių paieškos dialoge arba skydelio užklausą, kai takelyje nėra dainų žodžių</string>
+  <string name="morphe_music_lyrics_transcribe_key_saved">QuickLRC API raktas išsaugotas</string>
+  <string name="morphe_music_lyrics_transcribe_key_rejected">QuickLRC priėmė tą raktą</string>
+  <string name="morphe_music_lyrics_transcribe_key_cleared">QuickLRC API raktas išvalytas</string>
+  <string name="morphe_music_lyrics_transcribe_key_dialog_instruction">QuickLRC suderina laikus dainų žodžiams, kurių jų nėra, arba transkribuoja juos iš takelio, naudojantis kreditais. Turint nustatytą raktą, takeliai be dainų žodžių siūlo transkripciją, o paieškos dialoge atsiranda sutapatinimo mygtukas</string>
+  <string name="morphe_music_lyrics_transcribe_align">Prašyti QuickLRC sinchronizuoti</string>
+  <string name="morphe_music_lyrics_transcribe_aligning">Sinchronizuojama</string>
+  <string name="morphe_music_lyrics_transcribe_apply_align">Taikyti sinchronizavimą</string>
+  <string name="morphe_music_lyrics_transcribe_prompt">Prašyti QuickLRC transkribuoti</string>
+  <string name="morphe_music_lyrics_transcribe_working">Transkribuojama</string>
+  <string name="morphe_music_lyrics_transcribe_cancelled">Transkripcija atšaukta</string>
+  <string name="morphe_music_lyrics_transcribe_local_unsupported">Transkribuoti galima tik tuos kūrinius, kurie grojami iš YouTube</string>
+  <string name="morphe_music_lyrics_transcribe_no_text">Nėra dainų žodžių sutapatinimui - transkribuojama vietoj to</string>
+  <string name="morphe_music_lyrics_transcribe_failed">QuickLRC negalėjo apdoroti šio kūrinio</string>
+  <string name="morphe_music_lyrics_transcribe_out_of_credits">Šiam kūriniui QuickLRC skaitmenys baigėsi</string>
+  <string name="morphe_music_lyrics_about_summary">"Tekstai sutampa pagal titulą ir artistą, neįprasta metadata gali rasti nieką ar neteisingą versiją. Naudokite atnaujinti pereiti prie kitų versijų. Teikėjai pažymėti * reikalauja rakto. Visi įjungti teikėjai nėra visada praunami jūsų tvarka, bet reaguoja pagal jų greitį.
+
+Dainų tekstai ateina iš trečiųjų paslaugų, kurios nėra susietos, remiamos ar patvirtintos Morphe. Kiekviena naudojama kaip ji yra: dainų tekstai, jų prieinamumas ir jų licencijavimas lieka tie paslaugos ir jų licencijuotojai, ir naudojant juos gali būti pavaldūs jų tarnybų terminams. Kas pasiekia įjungtą paslaugą yra tik paieška, kurią paprašėte - titulas, menininkas, ir, kur paslauga jį reikia, video ID. Pasirinktinis AI galūnės ir QuickLRC transkripcija vykdoma tik po konfigūracijos, ir gauna dainų tekstą arba takelio video URL."</string>
+  <string name="morphe_music_lyrics_source_advice_summary">Įjunkite tik tuos teikėjus, kuriuos naudojate, arba palikite numatytuosius - nuolatiniai prašymai gali apsunkinti mažoms bendruomenės tekstų svetaines</string>
   <string name="morphe_music_lyrics_hide_info_title">Slėpti autorių eilutę</string>
   <string name="morphe_music_lyrics_hide_info_summary">Slėpti žemiau dainų tekstų rodomą autorių eilutę</string>
   <string name="morphe_music_lyrics_swap_trans_roma_title">Sukeisti vertimą ir romanizaciją</string>
-  <string name="morphe_music_lyrics_swap_trans_roma_summary">ĮJUNGUS romanizacija rodoma žemiau dainų tekstų, o vertimas viršuje; IŠJUNGUS romanizacija lieka viršuje, o vertimas apačioje</string>
-  <string name="morphe_music_lyrics_use_ai_translation_title">Su „OpenAI“ suderinamas vertimas</string>
-  <string name="morphe_music_lyrics_use_ai_translation_summary">Vertimui ir romanizacijai naudoti pasirinktinę su „OpenAI“ suderinamą API vietoj „Google“ vertėjo</string>
-  <string name="morphe_music_lyrics_ai_config_dialog_title">AI vertimo nustatymai</string>
-  <string name="morphe_music_lyrics_ai_config_dialog_instruction">Konfigūruokite su „OpenAI“ suderinamą API pabaigos tašką, skirtą AI pagrįstam dainų tekstų vertimui ir romanizacijai.</string>
-  <string name="morphe_music_lyrics_ai_config_base_url_hint">API pabaigos taško URL (pvz., https://text.pollinations.ai/openai)</string>
-  <string name="morphe_music_lyrics_ai_config_api_token_hint">API raktas (palikite tuščią, kad prisijungtumėte anonimiškai)</string>
-  <string name="morphe_music_lyrics_ai_config_model_hint">Modelio pavadinimas (pvz., openai-fast, gpt-4o-mini)</string>
-  <string name="morphe_music_lyrics_ai_config_prompt_hint">Užklausos šablonas (kintamieji: {language}, {task}, {title}, {artist}, {count}, {lines})</string>
-  <string name="morphe_music_lyrics_ai_config_toast_saved">AI vertimo nustatymai išsaugoti</string>
-  <string name="morphe_music_lyrics_ai_config_toast_invalid">Nepavyko prisijungti prie AI pabaigos taško. Patikrinkite nustatymus.</string>
-  <string name="morphe_music_lyrics_ai_config_toast_reset">AI vertimo nustatymai atstatyti</string>
-  <string name="morphe_music_lyrics_ai_config_status_configured">Sukonfigūruota</string>
-  <string name="morphe_music_lyrics_ai_config_status_not_configured">Bakstelėkite, kad konfigūruotumėte</string>
-  <string name="morphe_music_lyrics_ai_config_status_empty_url">Pagrindinis URL negali būti tuščias</string>
+  <string name="morphe_music_lyrics_swap_trans_roma_summary">ĮJUNGTAS nustato transliteravimą arba transliteravimą po dainų tekstu ir viršuje vertimą; IŠJUNGTAS išlaiko transliteravimą arba transliteravimą viršuje ir vertimą apačioje. Tarimas, padėtas ant kiekvieno skiemenyje, juda kartu su juo, nuo viršaus iki apačios</string>
+  <string name="morphe_music_lyrics_force_center_title">Visada centruoti dainų tekstą</string>
+  <string name="morphe_music_lyrics_force_center_summary">ĮJUNGTAS leidžia kiekvienai eilučiai būti viduryje ir ignoruoja šaltinio išdėstymą, įskaitant duoletines puses; IŠJUNGTAS išlaiko tokią poziciją, kokios prašo dainų tekstas</string>
+  <string name="morphe_music_lyrics_providers_keep_one">Bent vienas tiekėjas privalo būti aktyvus</string>
+  <string name="morphe_music_lyrics_translation_provider_title">Vertimas</string>
+  <string name="morphe_music_lyrics_romanization_provider_title">Transliteracija arba transliteravimas</string>
+  <string name="morphe_music_lyrics_romanization_provider_local">Nešliožiamasis žodynas</string>
+  <string name="morphe_music_lyrics_romanization_provider_rime">Rime žodynas</string>
+  <string name="morphe_music_lyrics_use_ai_section_title">Aptikti sekcijas naudojant dirbtinį intelektą</string>
+  <string name="morphe_music_lyrics_use_ai_section_summary">Naudojama tik tada, kai tiekėjas neturi jokių sekcijų etikečių, pavyzdžiui, Chorus arba Verse, kurios tada aptinka jūsų OpenAI suderinamas modelis. Eilutės redagavimas taip pat atveria jos promptą</string>
+  <string name="morphe_music_lyrics_ai_config_base_url_hint">API pabaigos taško URL (pvz., https://api.openai.com/v1/chat/completions, https://api.anthropic.com/v1/chat/completions, https://generativelanguage.googleapis.com/v1beta/openai/chat/completions)</string>
+  <string name="morphe_music_lyrics_ai_prompt_dialog_title">Uždaužo šablonas</string>
+  <string name="morphe_music_lyrics_ai_prompt_dialog_hint">Vietiniai kintamieji: {language}, {task}, {title}, {artist}, {count}, {lines}</string>
+  <string name="morphe_music_lyrics_ai_prompt_toast_saved">Uždauža išsaugota</string>
+  <string name="morphe_music_lyrics_ai_prompt_toast_endpoint_invalid">Užklausa išsaugota, bet AI galinė taškolis dar naudojamasi. Pirmiausia ją nustatykite AI nustatymuose</string>
+  <string name="morphe_music_lyrics_ai_prompt_toast_reset">Uždauža nustatyta iš naujo</string>
+  <string name="morphe_music_lyrics_ai_config_toast_saved">Vertimo &amp; romanizacijos nustatymai išsaugoti</string>
+  <string name="morphe_music_lyrics_ai_config_toast_reset">Nustatymai grąžinti į standartinius</string>
   <string name="morphe_music_lyrics_ai_config_status_invalid_url">Pagrindinis URL turi prasidėti http:// arba https://</string>
-  <string name="morphe_music_lyrics_ai_config_status_empty_model">Modelio pavadinimas negali būti tuščias</string>
+  <string name="morphe_music_lyrics_ai_config_status_invalid">Nustatymai neišsamūs arba atmesti tiekėjo</string>
   <string name="morphe_music_lyrics_ai_config_status_validating">Tikrinamas ryšys…</string>
+  <string name="morphe_music_lyrics_ai_config_status_connected">%1$s: Prijungta! (%2$s)</string>
+  <string name="morphe_music_lyrics_ai_config_status_failed">%1$s: Nepavyko prisijungti. Patikrinkite nustatymus.</string>
+  <string name="morphe_music_lyrics_ai_config_status_empty_key">Pirmiausia įveskite API raktą</string>
+  <string name="morphe_music_lyrics_ai_config_fetching_models">Gaunama modeliai…</string>
+  <string name="morphe_music_lyrics_ai_config_fetch_models_success">Pasirinkite modelį</string>
+  <string name="morphe_music_lyrics_ai_config_fetch_models_failed">Nepavyko gauti modelių. Patikrinkite API raktą arba ryšį.</string>
+  <string name="morphe_music_lyrics_ai_config_prompt_label">Promptas</string>
+  <string name="morphe_music_lyrics_ai_config_model_label">Modelis</string>
+  <string name="morphe_music_lyrics_ai_config_base_url_label">Pagrindinis URL</string>
+  <string name="morphe_music_lyrics_ai_config_base_url_presets_title">Pasirinkite tarnybą</string>
+  <string name="morphe_music_lyrics_ai_config_api_token_label">API raktas (nebūtina)</string>
+  <string name="morphe_music_lyrics_ai_config_extra_body_label">Papildomas užklausos kūnas (nebūtinas JSON)</string>
+  <string name="morphe_music_lyrics_ai_config_extra_headers_label">Papildomi prašymo antraščių parametrai (pasirenkamas JSON)</string>
+  <string name="morphe_music_lyrics_ai_config_extra_headers_hint">Kvotojus pavadinimus ir reikšmes, pvz., {\"api-key\": \"abc\"}. Nekvotuojama reikšmė, turinti / : arba skaitmenis, yra atmesta. Tuščia reikšmė šalina antraštę.</string>
+  <string name="morphe_music_lyrics_ai_config_extra_body_hint">Kvotojus pavadinimus ir reikšmes, pvz., {\"temperature\": 0.3}. Nekvotuojama reikšmė, turinti / arba :, yra atmesta. Modelis ir žinutės čia negali būti nustatomi.</string>
+  <string name="morphe_music_lyrics_ai_config_deepl_key_label">Autentifikavimo raktas (nemokamas arba „Pro“)</string>
   <!-- misc.spoof.appversion.spoofAppVersionPatch -->
   <string name="morphe_music_spoof_app_version_target_entry_8_23_51">8.23.51 – išjungti paryškintas piktogramas</string>
   <string name="morphe_music_spoof_app_version_target_entry_9_13_51">9.13.51 – atkurti grotuvo skirtukus „Toliau“, „Dainų tekstai“ ir „Susiję“</string>
