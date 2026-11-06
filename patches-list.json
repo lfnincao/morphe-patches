@@ -10377,14 +10377,14 @@
           "formFactor": "MOBILE",
           "targets": [
             {
-              "version": "21.43.523",
+              "version": "21.44.528",
               "versionCodes": null,
               "isExperimental": true,
               "minSdk": 29,
               "description": null
             },
             {
-              "version": "21.42.241",
+              "version": "21.43.523",
               "versionCodes": null,
               "isExperimental": true,
               "minSdk": 29,
