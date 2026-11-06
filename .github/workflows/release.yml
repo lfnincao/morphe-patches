@@ -3,6 +3,10 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
+      recovery_tag:
+        description: 'Existing tag to rebuild and publish after an interrupted release'
+        type: string
+        required: false
       send_fcm:
         description: 'Send FCM push notification'
         type: boolean
@@ -13,6 +17,7 @@ on:
 
 jobs:
   release:
+    if: github.event_name != 'workflow_dispatch' || inputs.recovery_tag == ''
     name: Release
     permissions:
       contents: write
@@ -58,3 +63,39 @@ jobs:
         with:
           subject-name: 'Morphe Patches ${{ steps.release.outputs.new_release_git_tag }}'
           subject-path: patches/build/libs/patches-*.mpp
+
+  recover-release:
+    if: github.event_name == 'workflow_dispatch' && inputs.recovery_tag != ''
+    name: Recover release
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release tag
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to overwrite it."
+            exit 1
+          fi
+        env:
+          TAG: ${{ inputs.recovery_tag }}
+          GH_TOKEN: ${{ github.token }}
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.recovery_tag }}
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Build patch bundle
+        run: ./gradlew generatePatchesList
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.recovery_tag }}
+        run: |
+          python3 -c 'import json; open("release-notes.txt", "w", encoding="utf-8").write(json.load(open("patches-bundle.json", encoding="utf-8"))["description"])'
+          gh release create "$TAG" patches/build/libs/patches-*.mpp --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" --notes-file release-notes.txt
