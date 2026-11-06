@@ -69,6 +69,7 @@ jobs:
     name: Recover release
     permissions:
       contents: write
+      packages: read
     runs-on: ubuntu-latest
     steps:
       - name: Validate release tag
@@ -91,6 +92,8 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
       - name: Build patch bundle
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./gradlew generatePatchesList
       - name: Publish release
         env:
