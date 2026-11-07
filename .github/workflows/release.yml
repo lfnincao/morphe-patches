@@ -99,7 +99,8 @@ jobs:
       - name: Install fork public key
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh api "repos/$GITHUB_REPOSITORY/contents/morphe-signing.pub?ref=$GITHUB_SHA" -H 'Accept: application/vnd.github.raw+json' > morphe-signing.pub
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/contents/morphe-signing.pub?ref=$GITHUB_SHA" -H 'Accept: application/vnd.github.raw+json' > morphe-signing.pub
       - name: Setup Java
         uses: actions/setup-java@v6
         with:
