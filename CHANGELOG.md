@@ -1,3 +1,9 @@
+## [2.1.1](https://github.com/lfnincao/morphe-patches/compare/v2.1.0...v2.1.1) (2026-11-10)
+
+### 🐛 Bug Fixes
+
+* refresh signed bundle metadata after key rotation ([687e316](https://github.com/lfnincao/morphe-patches/commit/687e316ff4786a2299866b212c2162ef18bddbe3))
+
 ## [2.1.0](https://github.com/lfnincao/morphe-patches/compare/v2.0.0...v2.1.0) (2026-11-06)
 
 ### ✨ New Features
