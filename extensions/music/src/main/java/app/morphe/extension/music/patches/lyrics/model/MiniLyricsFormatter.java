@@ -81,7 +81,7 @@ public final class MiniLyricsFormatter {
     private static final Pattern REPEATED_SPACES = Pattern.compile("[ \\t\\u00A0]{2,}");
     /**
      * Unicode 17 EastAsianWidth.txt W/F properties, merged into inclusive ranges.
-     * https://www.unicode.org/Public/17.0.0/ucd/EastAsianWidth.txt
+     * <a href="https://www.unicode.org/Public/17.0.0/ucd/EastAsianWidth.txt">EastAsianWidth.txt</a>
      * Distributed under Unicode License V3 (see the file header).
      */
     private static final int[] FULL_WIDTH_RANGES = {
@@ -152,6 +152,7 @@ public final class MiniLyricsFormatter {
             // A hidden section leaves the spaces around it behind.
             final String tidy = REPEATED_SPACES.matcher(line).replaceAll(" ").trim();
             if (tidy.isEmpty()) continue;
+            //noinspection SizeReplaceableByIsEmpty
             if (out.length() > 0) out.append('\n');
             out.append(tidy);
         }
@@ -187,7 +188,8 @@ public final class MiniLyricsFormatter {
             frames.add(frame);
             return;
         }
-        final List<Chunk> halves = chunks(new LyricsLine(0, frame), -1, limit, false, false, fullWidthMultiplier);
+        final List<Chunk> halves = chunks(new LyricsLine(0, frame), -1, limit, false, false,
+                fullWidthMultiplier, LyricsTextFormatter.HAN_NONE);
         if (halves.size() < 2) {
             frames.add(frame);
             return;
@@ -370,7 +372,8 @@ public final class MiniLyricsFormatter {
      */
     public static List<Chunk> chunks(LyricsLine line, long intervalEndMs, int limit,
                                      boolean capitalize, boolean strip) {
-        return chunks(line, intervalEndMs, limit, capitalize, strip, 1);
+        return chunks(line, intervalEndMs, limit, capitalize, strip, 1,
+                LyricsTextFormatter.HAN_NONE);
     }
 
     /**
@@ -378,8 +381,10 @@ public final class MiniLyricsFormatter {
      * without spaces that is split gets an ellipsis at the split.
      */
     public static List<Chunk> chunks(LyricsLine line, long intervalEndMs, int limit,
-                                     boolean capitalize, boolean strip, double fullWidthMultiplier) {
-        final LyricsTextFormatter.Result cleaned = LyricsTextFormatter.format(line.text(), false, strip);
+                                     boolean capitalize, boolean strip, double fullWidthMultiplier,
+                                     int hanMode) {
+        final LyricsTextFormatter.Result cleaned =
+                LyricsTextFormatter.format(line.text(), false, strip, hanMode);
         final String text = cleaned.text();
         if (limit <= 0 || width(text, fullWidthMultiplier) <= limit) {
             return List.of(new Chunk(LyricsTextFormatter.format(text, capitalize, false).text(),
@@ -461,12 +466,13 @@ public final class MiniLyricsFormatter {
             final int start = line.text().indexOf(own, cursor);
             if (start < 0 || word.startMs() < 0) return List.of();
             // Unrepresented punctuation belongs to the previous unit; missing words require fallback.
-            if (hasLetterOrDigit(line.text().substring(cursor, start))) {
+            final String gap = line.text().substring(cursor, start);
+            if (hasLetterOrDigit(gap)) {
                 return List.of();
             }
             final int end = start + own.length();
             final Unit next = new Unit(cleaned.offset(start), cleaned.offset(end), word.startMs());
-            if (!units.isEmpty() && spaced && !hasWhitespace(line.text().substring(cursor, start))) {
+            if (!units.isEmpty() && spaced && !hasWhitespace(gap)) {
                 Unit previous = units.remove(units.size() - 1);
                 units.add(new Unit(previous.start(), next.end(), previous.timeMs()));
             } else if (next.end() > next.start()) {

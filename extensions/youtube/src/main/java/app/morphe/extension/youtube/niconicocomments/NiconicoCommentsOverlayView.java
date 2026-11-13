@@ -14,6 +14,7 @@ package app.morphe.extension.youtube.niconicocomments;
 import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -26,6 +27,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.InputStream;
@@ -34,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.requests.Requester;
@@ -66,7 +69,7 @@ final class NiconicoCommentsOverlayView extends View {
     private final float backgroundPadding;
     private final float backgroundRadius;
 
-    private volatile int emojiGeneration;
+    private final AtomicInteger emojiGeneration = new AtomicInteger();
     private String videoId = "";
     private boolean overlayActive;
     private boolean videoPlaying;
@@ -88,7 +91,8 @@ final class NiconicoCommentsOverlayView extends View {
         super(context);
 
         density = context.getResources().getDisplayMetrics().density;
-        scaledDensity = context.getResources().getDisplayMetrics().scaledDensity;
+        final float fontScale = context.getResources().getConfiguration().fontScale;
+        scaledDensity = density * (fontScale != 0 ? fontScale : 1.0f);
         backgroundPadding = 4 * density;
         backgroundRadius = 3 * density;
 
@@ -112,7 +116,7 @@ final class NiconicoCommentsOverlayView extends View {
             return;
         }
         videoId = nextVideoId;
-        emojiGeneration++;
+        emojiGeneration.incrementAndGet();
         emojiImageCache.clear();
         clearComments();
     }
@@ -144,7 +148,7 @@ final class NiconicoCommentsOverlayView extends View {
         fontSizeSp = nextFontSizeSp;
         applyFontSize();
         if (getHeight() > 0) {
-            schedule.redistributeLanes(getLaneCount());
+            redistributeLanes();
         }
         invalidate();
     }
@@ -163,7 +167,7 @@ final class NiconicoCommentsOverlayView extends View {
         }
         displayAreaPercent = nextDisplayAreaPercent;
         if (getHeight() > 0) {
-            schedule.redistributeLanes(getLaneCount());
+            redistributeLanes();
         }
         invalidate();
     }
@@ -174,7 +178,14 @@ final class NiconicoCommentsOverlayView extends View {
             return;
         }
         schedule.setCommentDurationMs(durationMs);
+        if (getHeight() > 0) {
+            redistributeLanes();
+        }
         invalidate();
+    }
+
+    void setHideCrowdedComments(boolean hide) {
+        schedule.setHideCrowdedComments(hide);
     }
 
     void setMaxRefreshRate(int nextMaxRefreshRate) {
@@ -211,16 +222,32 @@ final class NiconicoCommentsOverlayView extends View {
     }
 
     @Override
+    protected void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        NiconicoCommentsController.onConfigurationChanged(newConfig);
+    }
+
+    @Override
     protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         super.onSizeChanged(width, height, oldWidth, oldHeight);
-        if (height > 0 && height != oldHeight) {
-            schedule.redistributeLanes(getLaneCount());
+        if (height > 0 && (height != oldHeight || width != oldWidth)) {
+            redistributeLanes();
             requestNextFrame();
         }
     }
 
+    /**
+     * Places the comments again with the current sizes. A new size always comes through here.
+     */
+    private void redistributeLanes() {
+        // Half the font size between comments, and at least room for the backgrounds of paid messages.
+        float minGap = Math.max(fillPaint.getTextSize() / 2, 2 * backgroundPadding + strokePaint.getStrokeWidth());
+        schedule.setLayout(getWidth(), minGap, this::measureCommentWidth);
+        schedule.redistributeLanes(getLaneCount());
+    }
+
     @Override
-    protected void onDraw(Canvas canvas) {
+    protected void onDraw(@NonNull Canvas canvas) {
         super.onDraw(canvas);
         if (!overlayActive || videoId.isEmpty()) {
             setHighFrameRate(false);
@@ -242,7 +269,7 @@ final class NiconicoCommentsOverlayView extends View {
         boolean hasActiveOrUpcomingComment = false;
         boolean hasVisibleComment = false;
         for (CommentSchedule.ScheduledComment scheduled : schedule.comments()) {
-            long elapsedMs = videoTimeMs - scheduled.startTimeMs;
+            long elapsedMs = videoTimeMs - scheduled.startTimeMs();
             if (elapsedMs < 0) {
                 hasActiveOrUpcomingComment = true;
                 continue;
@@ -250,14 +277,14 @@ final class NiconicoCommentsOverlayView extends View {
 
             hasActiveOrUpcomingComment = true;
             hasVisibleComment = true;
-            NiconicoComment comment = scheduled.comment;
+            NiconicoComment comment = scheduled.comment();
             float commentWidth = measureCommentWidth(comment);
             float progress = (float) elapsedMs / schedule.getCommentDurationMs();
             float x = getWidth() - (progress * (getWidth() + commentWidth));
-            float y = firstBaseline + (Math.floorMod(scheduled.lane, laneCount) * laneHeight);
+            float y = firstBaseline + (Math.floorMod(scheduled.lane(), laneCount) * laneHeight);
 
-            if (comment.backgroundColor != Color.TRANSPARENT) {
-                backgroundPaint.setColor(applyOpacity(comment.backgroundColor));
+            if (comment.backgroundColor() != Color.TRANSPARENT) {
+                backgroundPaint.setColor(applyOpacity(comment.backgroundColor()));
                 canvas.drawRoundRect(
                         x - backgroundPadding,
                         y + fontMetrics.ascent - backgroundPadding,
@@ -270,7 +297,7 @@ final class NiconicoCommentsOverlayView extends View {
             }
 
             fillPaint.setColor(applyOpacity(
-                    comment.membership ? MEMBERSHIP_COLOR : Color.WHITE
+                    comment.membership() ? MEMBERSHIP_COLOR : Color.WHITE
             ));
             strokePaint.setColor(applyOpacity(Color.BLACK));
             drawCommentSegments(canvas, comment, x, y);
@@ -389,7 +416,7 @@ final class NiconicoCommentsOverlayView extends View {
 
     private float measureCommentWidth(NiconicoComment comment) {
         float width = 0;
-        for (NiconicoComment.Segment segment : comment.segments) {
+        for (NiconicoComment.Segment segment : comment.segments()) {
             width += segment.isEmoji() ? fillPaint.getTextSize() : fillPaint.measureText(segment.text);
         }
         return width;
@@ -402,7 +429,7 @@ final class NiconicoCommentsOverlayView extends View {
             float baseline
     ) {
         float x = startX;
-        for (NiconicoComment.Segment segment : comment.segments) {
+        for (NiconicoComment.Segment segment : comment.segments()) {
             if (!segment.isEmoji()) {
                 canvas.drawText(segment.text, x, baseline, strokePaint);
                 canvas.drawText(segment.text, x, baseline, fillPaint);
@@ -432,8 +459,8 @@ final class NiconicoCommentsOverlayView extends View {
     private void updateEmojiDemand(long videoTimeMs) {
         neededEmojiUrls.clear();
         for (CommentSchedule.ScheduledComment scheduled : schedule.comments()) {
-            if (scheduled.startTimeMs > videoTimeMs + EMOJI_PREFETCH_MS) continue;
-            for (NiconicoComment.Segment segment : scheduled.comment.segments) {
+            if (scheduled.startTimeMs() > videoTimeMs + EMOJI_PREFETCH_MS) continue;
+            for (NiconicoComment.Segment segment : scheduled.comment().segments()) {
                 if (segment.isEmoji()) neededEmojiUrls.add(segment.imageUrl);
             }
         }
@@ -449,13 +476,13 @@ final class NiconicoCommentsOverlayView extends View {
 
         EmojiImageCache.Entry<Bitmap> state = emojiImageCache.beginLoad(imageUrl, neededEmojiUrls);
         if (state == null) return null;
-        final int generation = emojiGeneration;
+        final int generation = emojiGeneration.get();
         EMOJI_EXECUTOR.execute(() -> loadEmojiImage(imageUrl, state, generation));
         return state;
     }
 
     private void loadEmojiImage(String imageUrl, EmojiImageCache.Entry<Bitmap> state, int generation) {
-        if (generation != emojiGeneration) return;
+        if (generation != emojiGeneration.get()) return;
         HttpURLConnection connection = null;
         Bitmap bitmap = null;
         try {
@@ -479,7 +506,7 @@ final class NiconicoCommentsOverlayView extends View {
 
         Bitmap loadedBitmap = bitmap;
         post(() -> {
-            if (generation == emojiGeneration && emojiImageCache.complete(imageUrl, state, loadedBitmap)) {
+            if (generation == emojiGeneration.get() && emojiImageCache.complete(imageUrl, state, loadedBitmap)) {
                 requestNextFrame();
             }
         });

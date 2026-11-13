@@ -43,7 +43,7 @@ private val musicColorNamesDark = {
     THEME_DEFAULT_COLOR_NAMES_DARK + setOf(
         "yt_black_pure",
         "yt_black_pure_opacity80",
-        "yt_ref_color_constants_default_baseline_black_black1",
+        "ytm_color_grey_11",
         "ytm_color_grey_12",
         "material_grey_800"
     )
@@ -71,7 +71,6 @@ private val headerFadeResourcePatch = patch(
     }
 }
 
-@Suppress("unused")
 val themePatch = baseThemePatch(
     extensionClassDescriptor = EXTENSION_CLASS,
     useModernLithoColorHook = {

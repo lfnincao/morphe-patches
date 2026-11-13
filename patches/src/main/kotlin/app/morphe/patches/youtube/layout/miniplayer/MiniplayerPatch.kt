@@ -78,7 +78,6 @@ internal const val MINIMAL_EXTENSION_CLASS = "Lapp/morphe/extension/youtube/patc
 internal const val MINIMAL_BOUNDS_INTERFACE =
     $$"Lapp/morphe/extension/youtube/patches/MinimalMiniplayerPatch$MiniplayerBoundsController;"
 
-@Suppress("unused")
 val miniplayerPatch = patch(
     name = "Miniplayer",
     description = "Adds options to change the in-app minimized player. " +
@@ -185,25 +184,6 @@ val miniplayerPatch = patch(
             literal,
             "$EXTENSION_CLASS->$extensionMethod(Z)Z"
         )
-
-        fun Fingerprint.insertMiniplayerFeatureFlagFloatOverride(
-            literal: Long,
-            extensionMethod: String,
-        ) {
-            method.apply {
-                val literalIndex = indexOfFirstLiteralInstructionOrThrow(literal)
-                val targetIndex = indexOfFirstInstructionOrThrow(literalIndex, Opcode.DOUBLE_TO_FLOAT)
-                val register = getInstruction<OneRegisterInstruction>(targetIndex).registerA
-
-                addInstructions(
-                    targetIndex + 1,
-                    """
-                        invoke-static { v$register }, $EXTENSION_CLASS->$extensionMethod(F)F
-                        move-result v$register
-                    """
-                )
-            }
-        }
 
         // region Disable resuming miniplayer (Continue watching)
 

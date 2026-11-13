@@ -83,20 +83,20 @@ public final class OpenAIClient {
             - Repeated sections are numbered in order: Verse 1, Verse 2, Chorus 1, Chorus 2
             - Pick the most specific name from the list above
             - Output ONLY the labels. No reasoning, no explanations.
-
+            
             {lines}""";
     /**
      * The prompt template for ruby. Each line comes back as it was, with the reading of every
-     * kanji word in brackets right after it, which {@code LyricsRubyGenerator} then reads.
+     * kanji word in brackets right after it, which {@code RubyGenerator} then reads.
      */
     public static final String RUBY_PROMPT = """
-            You are a Japanese reading engine. Add the hiragana reading of every word written with kanji to each lyric line below.
+            You are a professional reading engine. Add the {language} reading of every word written with kanji to each lyric line below.
             Song: {title} by {artist}
-
+            
             Write the reading in square brackets right after the word, including its okurigana, like:
             1. 深く[ふかく]沈む[しずむ]
             2. 君[きみ]の名前[なまえ]
-
+            
             CRITICAL RULES:
             - Output exactly {count} numbered lines (same as input count)
             - Number format: "N. text" (number, period, space, text)
@@ -104,7 +104,7 @@ public final class OpenAIClient {
             - Do not add readings to words written only in kana or Latin letters
             - If a line has no kanji, output one "SKIP" for it
             - Output ONLY the lines. No reasoning, no explanations.
-
+            
             {lines}""";
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int READ_TIMEOUT_MS = 45_000;
@@ -406,7 +406,6 @@ public final class OpenAIClient {
      */
     private static void applyExtraHeaders(HttpURLConnection conn) {
         final String extra = Settings.LYRICS_AI_EXTRA_HEADERS.get();
-        if (extra == null) return;
         final String trimmed = extra.trim();
         if (trimmed.isEmpty()) return;
 
@@ -434,7 +433,6 @@ public final class OpenAIClient {
      */
     private static void applyExtraBody(JSONObject body) {
         final String extra = Settings.LYRICS_AI_EXTRA_BODY.get();
-        if (extra == null) return;
         final String trimmed = extra.trim();
         if (trimmed.isEmpty()) return;
 
@@ -621,10 +619,10 @@ public final class OpenAIClient {
             if (line.isEmpty()) continue;
             Matcher m = NUMBERED_LINE_PATTERN.matcher(line);
             if (m.matches()) {
-                int idx = Integer.parseInt(m.group(1)) - 1;
+                int idx = Integer.parseInt(Objects.requireNonNull(m.group(1))) - 1;
                 if (idx >= 0 && idx < expectedCount) {
                     matchedNumberedCount++;
-                    String val = m.group(2).trim();
+                    String val = Objects.requireNonNull(m.group(2)).trim();
                     if (isSkipToken(val)) {
                         byIndex[idx] = "";
                     } else {

@@ -18,7 +18,6 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.ColorDrawable;
-import android.net.Uri;
 import android.os.Build;
 import android.view.MenuItem;
 import android.view.View;
@@ -33,7 +32,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.google.android.apps.youtube.app.application.Shell_SettingsActivity;
-import com.google.android.gms.common.api.GoogleApiActivity;
 import com.google.protobuf.ExtensionRegistryLite;
 import com.google.protobuf.MessageLite;
 
@@ -55,7 +53,6 @@ import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.shared.settings.BaseActivityHook;
 import app.morphe.extension.shared.settings.StringSetting;
 import app.morphe.extension.shared.ui.Dim;
 import app.morphe.extension.youtube.innertube.GuideResponseOuterClass.Accessibility;
@@ -84,6 +81,7 @@ import app.morphe.extension.youtube.innertube.IconOuterClass.Icon;
 import app.morphe.extension.youtube.innertube.IconOuterClass.YTIconType;
 import app.morphe.extension.youtube.patches.spoof.SpoofOSNamePatch;
 import app.morphe.extension.youtube.settings.Settings;
+import app.morphe.extension.youtube.settings.YouTubeActivityHook;
 import app.morphe.extension.youtube.shared.NavigationBar;
 
 @SuppressWarnings("unused")
@@ -138,7 +136,7 @@ public final class NavigationBarPatch {
     /**
      * The glass navigation bar floats over the pages, so the pages are laid out behind it also where it does not
      * cover the system navigation buttons, such as before Android 12, where the window is not drawn behind them,
-     * or without the edge to edge top bar before Android 15. Otherwise the room around the capsule is an empty band
+     * or without the edge to edge top bar before Android 15. Otherwise, the room around the capsule is an empty band
      * (<a href="https://github.com/MorpheApp/morphe-patches/issues/4413">...</a>).
      * Only the pages are laid out behind it: the navigation bar still covers the system navigation buttons only
      * where the window is drawn behind them, see {@link #isNavigationBarBehindSystemButtons(boolean)}.
@@ -176,6 +174,7 @@ public final class NavigationBarPatch {
             ? ResourceUtils.getIdentifier(ResourceType.ID, "new_content_dot")
             : 0;
 
+    @SuppressWarnings("SameReturnValue")
     public static boolean isPatchIncluded() {
         return false;
     }
@@ -191,7 +190,7 @@ public final class NavigationBarPatch {
      * Injection point.
      */
     public static void navigationTabCreated(NavigationBar.NavigationButton button, View tabView) {
-        GlassNavigationBar.navigationTabCreated(button, tabView);
+        YouTubeGlassNavigationBar.navigationTabCreated(button, tabView);
 
         if (button == NavigationBar.NavigationButton.NOTIFICATIONS) {
             notificationsTabCreated = true;
@@ -255,7 +254,7 @@ public final class NavigationBarPatch {
      * The glass navigation bar sets the width of the buttons itself, from their content and spacing.
      */
     public static boolean enableNarrowNavigationButton(boolean original) {
-        return (NARROW_NAVIGATION_BUTTONS && !GlassNavigationBar.isEnabled()) || original;
+        return (NARROW_NAVIGATION_BUTTONS && !YouTubeGlassNavigationBar.isEnabled()) || original;
     }
 
     /**
@@ -425,7 +424,11 @@ public final class NavigationBarPatch {
      * empty band is left between the two bars (<a href="https://github.com/MorpheApp/morphe-patches/issues/2300">...</a>).
      */
     public static boolean useFixedBottomBarRoom(boolean original) {
-        return original && !translucentNavigationBarForced;
+        if (original && translucentNavigationBarForced) {
+            Logger.printVerbose(() -> "useFixedBottomBarRoom turned off");
+            return false;
+        }
+        return original;
     }
 
     /**
@@ -451,6 +454,9 @@ public final class NavigationBarPatch {
         }
 
         translucentNavigationBarBackgroundForced = translucent;
+        if (translucent != original) {
+            Logger.printVerbose(() -> "useTranslucentNavigationBarBackground: " + translucent + " (app: " + original + ")");
+        }
         return translucent;
     }
 
@@ -463,7 +469,11 @@ public final class NavigationBarPatch {
      * and this flag would replace the blurred background with a translucent color, so it is left to the account.
      */
     public static boolean useTranslucentNavigationBarStyle(boolean original) {
-        return original || (PAGES_BEHIND_GLASS_NAVIGATION_BAR && Build.VERSION.SDK_INT < Build.VERSION_CODES.S);
+        if (!original && PAGES_BEHIND_GLASS_NAVIGATION_BAR && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            Logger.printVerbose(() -> "useTranslucentNavigationBarStyle turned on");
+            return true;
+        }
+        return original;
     }
 
     /**
@@ -489,11 +499,15 @@ public final class NavigationBarPatch {
      * the player moves, such as when it is slowly dragged down to the miniplayer
      * (<a href="https://github.com/MorpheApp/morphe-patches/pull/3684#issuecomment-6322984709">...</a>).
      * With {@link NavigationBarStyle#TRANSPARENT} and {@link NavigationBarStyle#OPAQUE} the copy
-     * is not drawn, so the bar keeps its translucent color, without the blur.
+     * is not drawn either, so the bar keeps its translucent color, without the blur.
      *
      * @param hardwareAccelerated If the canvas is hardware accelerated, which the blur is drawn for.
      */
     public static boolean useNavigationBarBlur(boolean hardwareAccelerated) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return false;
+        }
+
         return hardwareAccelerated && !(translucentNavigationBarBackgroundForced
                 && (NAVIGATION_BAR_STYLE == NavigationBarStyle.TRANSPARENT
                 || NAVIGATION_BAR_STYLE == NavigationBarStyle.OPAQUE));
@@ -528,9 +542,9 @@ public final class NavigationBarPatch {
             }
 
             padding = setSlimStatusBarRoom(navigationBar, padding);
-            padding = GlassNavigationBar.getFloatingRoom(navigationBar, padding);
+            padding = YouTubeGlassNavigationBar.getFloatingRoom(navigationBar, padding);
             // The value is also stored as the room the bar adds to its height.
-            GlassNavigationBar.setAppRoom(padding);
+            YouTubeGlassNavigationBar.setAppRoom(padding);
         } catch (Exception ex) {
             Logger.printException(() -> "getNavigationBarBottomPadding failure", ex);
         }
@@ -539,9 +553,9 @@ public final class NavigationBarPatch {
 
     /**
      * The bar shown below the navigation bar when the connection is lost or comes back
-     * ("No connection", "Back online").
+     * ("No connection", "Back online"), and in incognito mode.
      */
-    private static final int SLIM_STATUS_BAR = ResourceUtils.getIdentifier(
+    static final int SLIM_STATUS_BAR = ResourceUtils.getIdentifier(
             ResourceType.ID, "slim_status_bar");
 
     static final int PIVOT_BAR = ResourceUtils.getIdentifier(
@@ -620,18 +634,24 @@ public final class NavigationBarPatch {
                 try {
                     View slimStatusBar = view.findViewById(SLIM_STATUS_BAR);
                     final boolean shown = slimStatusBar != null && slimStatusBar.getVisibility() == View.VISIBLE;
+
+                    // The capsule of the glass navigation bar follows the slim status bar, see GlassDrawable.draw(),
+                    // which moves without changing the navigation bar.
+                    View navigationBar = view.findViewById(PIVOT_BAR);
+                    if (YouTubeGlassNavigationBar.isEnabled() && navigationBar != null) {
+                        navigationBar.invalidate();
+                    }
+
                     if (shown == slimStatusBarShown) return;
                     slimStatusBarShown = shown;
 
-                    if (translucentNavigationBarForced
-                            && view.findViewById(PIVOT_BAR) instanceof PivotBarAccess access) {
-                        View navigationBar = (View) access;
+                    if (translucentNavigationBarForced && navigationBar instanceof PivotBarAccess access) {
                         final int room = systemButtonsRoom;
                         view.post(() -> {
-                            final int navigationBarRoom = GlassNavigationBar.getFloatingRoom(
+                            final int navigationBarRoom = YouTubeGlassNavigationBar.getFloatingRoom(
                                     navigationBar, setSlimStatusBarRoom(navigationBar, room));
                             access.patch_setSystemButtonsRoom(navigationBarRoom);
-                            GlassNavigationBar.setAppRoom(navigationBarRoom);
+                            YouTubeGlassNavigationBar.setAppRoom(navigationBarRoom);
                             navigationBar.setPadding(navigationBar.getPaddingLeft(), navigationBar.getPaddingTop(),
                                     navigationBar.getPaddingRight(), navigationBarRoom);
                         });
@@ -738,7 +758,7 @@ public final class NavigationBarPatch {
      * Called whenever the navigation bar is measured.
      */
     public static int getNavigationBarHeightMeasureSpec(View navigationBar, int heightMeasureSpec) {
-        return GlassNavigationBar.getHeightMeasureSpec(navigationBar, heightMeasureSpec);
+        return YouTubeGlassNavigationBar.getHeightMeasureSpec(navigationBar, heightMeasureSpec);
     }
 
     /**
@@ -747,7 +767,7 @@ public final class NavigationBarPatch {
      * Called whenever the vertical translation of the navigation bar is set.
      */
     public static float getNavigationBarTranslationY(View navigationBar, float translationY) {
-        return GlassNavigationBar.getTranslationY(navigationBar, translationY);
+        return YouTubeGlassNavigationBar.getTranslationY(navigationBar, translationY);
     }
 
     /**
@@ -758,7 +778,7 @@ public final class NavigationBarPatch {
      * @param bottom The bottom padding, the room below the buttons.
      */
     public static int getNavigationBarPadding(View navigationBar, int bottom) {
-        return GlassNavigationBar.getFloatingRoom(navigationBar, bottom);
+        return YouTubeGlassNavigationBar.getFloatingRoom(navigationBar, bottom);
     }
 
     /**
@@ -767,7 +787,7 @@ public final class NavigationBarPatch {
      * Called when the app makes the tint paint drawn over the blurred background of the navigation bar.
      */
     public static void setNavigationBarBlurTint(Paint tint) {
-        GlassNavigationBar.lightenBlurTint(tint);
+        YouTubeGlassNavigationBar.lightenBlurTint(tint);
     }
 
     /**
@@ -776,10 +796,10 @@ public final class NavigationBarPatch {
      * @param bottomBarContainer The container of the navigation bar.
      */
     public static void setNavigationBarGlass(View bottomBarContainer) {
-        if (!GlassNavigationBar.isEnabled()) return;
+        if (!YouTubeGlassNavigationBar.isEnabled()) return;
 
         try {
-            GlassNavigationBar.apply(bottomBarContainer);
+            YouTubeGlassNavigationBar.apply(bottomBarContainer);
         } catch (Exception ex) {
             Logger.printException(() -> "setNavigationBarGlass failure", ex);
         }
@@ -913,24 +933,22 @@ public final class NavigationBarPatch {
     /**
      * Saves a button that is seen for the first time, or whose label changed,
      * so the order setting can show it.
+     * The caller holds the lock of {@code buttons}, which the settings also lock to read it.
      */
     private static void discoverButton(StringSetting setting, Map<String, String> buttons,
                                        String id, @Nullable String label) {
         if (label == null || label.isEmpty()) label = id;
+        if (label.equals(buttons.get(id))) return;
+        buttons.put(id, label);
 
-        synchronized (buttons) {
-            if (label.equals(buttons.get(id))) return;
-            buttons.put(id, label);
-
-            try {
-                JSONArray array = new JSONArray();
-                for (Map.Entry<String, String> button : buttons.entrySet()) {
-                    array.put(new JSONObject().put("id", button.getKey()).put("label", button.getValue()));
-                }
-                setting.save(array.toString());
-            } catch (Exception ex) {
-                Logger.printException(() -> "discoverButton failure", ex);
+        try {
+            JSONArray array = new JSONArray();
+            for (Map.Entry<String, String> button : buttons.entrySet()) {
+                array.put(new JSONObject().put("id", button.getKey()).put("label", button.getValue()));
             }
+            setting.save(array.toString());
+        } catch (Exception ex) {
+            Logger.printException(() -> "discoverButton failure", ex);
         }
     }
 
@@ -963,7 +981,9 @@ public final class NavigationBarPatch {
             if (info == null || info.id().isEmpty()) continue;
 
             ids[i] = info.id();
-            discoverButton(Settings.NAVIGATION_BUTTONS_DISCOVERED, discoveredNavigationButtons, info.id(), info.label());
+            synchronized (discoveredNavigationButtons) {
+                discoverButton(Settings.NAVIGATION_BUTTONS_DISCOVERED, discoveredNavigationButtons, info.id(), info.label());
+            }
         }
 
         // The buttons in the order setting are sorted in the positions they take in the list.
@@ -1072,6 +1092,7 @@ public final class NavigationBarPatch {
      * @param pivotBarItem Navigation bar item proto.
      */
     @Nullable
+    @SuppressWarnings("SameReturnValue")
     private static Object buildPivotBarItem(byte[] pivotBarItem) {
         return null;
     }
@@ -1081,8 +1102,7 @@ public final class NavigationBarPatch {
      * The app has no selected icon for the Watch later icon, so the outline icon is shown
      * when the Watch later button is selected.
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static void setWatchLaterSelectedIcon(EnumMap icons, Enum watchLaterIcon) {
+    public static <E extends Enum<E>> void setWatchLaterSelectedIcon(EnumMap<E, Integer> icons, E watchLaterIcon) {
         if (SHOW_WATCH_LATER_BUTTON) {
             icons.put(watchLaterIcon, ResourceUtils.getIdentifier(
                     ResourceType.DRAWABLE, "morphe_watch_later_selected"));
@@ -1108,7 +1128,7 @@ public final class NavigationBarPatch {
     public static final String SETTING_BUTTON_ENUM_NAME = "SETTINGS_CAIRO";
 
     /**
-     * The toolbar of some pages, such as the You tab, comes from their own response, which still has
+     * The toolbar of some pages, such as the 'You' tab, comes from their own response, which still has
      * the notifications button, so it is replaced with the create button of the toolbar of another page.
      */
     @Nullable
@@ -1116,7 +1136,7 @@ public final class NavigationBarPatch {
 
     /**
      * The swap has effect only if the server added the notifications tab to the navigation bar.
-     * Otherwise the toolbar button is the only way to open the notifications.
+     * Otherwise, the toolbar button is the only way to open the notifications.
      */
     private static volatile boolean notificationsTabCreated;
 
@@ -1231,6 +1251,7 @@ public final class NavigationBarPatch {
      *
      * @param message Message of the class to parse.
      */
+    @SuppressWarnings("SameReturnValue")
     private static MessageLite parseWithRegistry(MessageLite message, byte[] bytes, ExtensionRegistryLite registry) {
         return null; // Modified during patching.
     }
@@ -1238,6 +1259,7 @@ public final class NavigationBarPatch {
     /**
      * @return The extension registry of the app.
      */
+    @SuppressWarnings("SameReturnValue")
     private static ExtensionRegistryLite getGeneratedRegistry() {
         return null; // Modified during patching.
     }
@@ -1245,7 +1267,7 @@ public final class NavigationBarPatch {
     /**
      * Injection point.
      * Called when a toolbar button is created, on any page, also on the pages whose toolbar comes
-     * from their own response, such as the channel pages and the You tab.
+     * from their own response, such as the channel pages and the 'You' tab.
      * <p>
      * The toolbar create button of the Android Automotive layout, which swaps the create button with the
      * notifications button, opens a bottom sheet whose video button uses the upload endpoint, which the app
@@ -1402,7 +1424,9 @@ public final class NavigationBarPatch {
 
                         return originalButtons.toBuilder().setButtonRenderer(renderer.build()).build().toByteArray();
                     }
-                } catch (Exception ignored) {
+                } catch (Exception ex) {
+                    // Another button of the list can still be copied.
+                    Logger.printDebug(() -> "Could not copy a toolbar button for the settings button", ex);
                 }
             }
         } catch (Exception e) {
@@ -1412,7 +1436,7 @@ public final class NavigationBarPatch {
     }
 
     /**
-     * @return Id of the toolbar button: the page it opens, or its icon.
+     * @return ID of the toolbar button: the page it opens, or its icon.
      */
     private static String getToolbarButtonId(ButtonRenderer buttonRenderer) {
         String iconName = buttonRenderer.getIcon().getYtIconType().name();
@@ -1460,7 +1484,7 @@ public final class NavigationBarPatch {
     /**
      * Injection point.
      * The order of the menu items sets the order of the buttons of every toolbar,
-     * including the toolbars that are not created from the toolbar of the guide, such as of the You tab.
+     * including the toolbars that are not created from the toolbar of the guide, such as of the 'You' tab.
      *
      * @param original       Order of the button, from the order the buttons were created in.
      * @param buttonRenderer ButtonRenderer of the toolbar button.
@@ -1469,8 +1493,10 @@ public final class NavigationBarPatch {
         try {
             ButtonRenderer renderer = ButtonRenderer.parseFrom(buttonRenderer.toByteArray());
             String id = getToolbarButtonId(renderer);
-            discoverButton(Settings.TOOLBAR_BUTTONS_DISCOVERED, discoveredToolbarButtons,
-                    id, renderer.getButtonRendererAccessibilityData().getLabel());
+            synchronized (discoveredToolbarButtons) {
+                discoverButton(Settings.TOOLBAR_BUTTONS_DISCOVERED, discoveredToolbarButtons,
+                        id, renderer.getButtonRendererAccessibilityData().getLabel());
+            }
 
             final int rank = TOOLBAR_BUTTONS_ORDER.indexOf(id);
             if (rank >= 0) {
@@ -1537,22 +1563,6 @@ public final class NavigationBarPatch {
     }
 
     private static void openMorpheSettings(View view) {
-        Activity activity = Utils.getActivity();
-        Context context = activity != null ? activity : view.getContext();
-
-        try {
-            Intent intent = new Intent(Intent.ACTION_MAIN);
-            intent.setData(Uri.parse(BaseActivityHook.MORPHE_SETTINGS_INTENT));
-            intent.setPackage(context.getPackageName());
-            intent.setClass(context, GoogleApiActivity.class);
-
-            if (activity == null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            }
-
-            context.startActivity(intent);
-        } catch (Exception e) {
-            Logger.printException(() -> "Failed to open Morphe settings", e);
-        }
+        YouTubeActivityHook.openSettings(view.getContext(), null);
     }
 }

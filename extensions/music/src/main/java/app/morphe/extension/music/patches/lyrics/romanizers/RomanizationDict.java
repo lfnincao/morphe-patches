@@ -17,16 +17,15 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 
 import app.morphe.extension.music.patches.lyrics.LyricsDirectories;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.Utils;
 
 /**
  * What the two reading dictionaries have in common: how they are fetched and how the settings row
  * hears about it. Where they are kept is {@link LyricsDirectories}' business.
  */
+@SuppressWarnings("unused")
 public final class RomanizationDict {
 
     private static final String DOWNLOAD_SUFFIX = ".part";
@@ -120,27 +119,8 @@ public final class RomanizationDict {
         } finally {
             if (connection != null) connection.disconnect();
             if (partial.exists()) {
-                //noinspection ResultOfMethodCallIgnored
-                partial.delete();
+                Utils.deleteQuietly(partial);
             }
-        }
-    }
-
-    static void writeNotice(File directory, String fileName, String text) throws IOException {
-        try (OutputStream out = new FileOutputStream(new File(directory, fileName))) {
-            out.write(text.getBytes(StandardCharsets.UTF_8));
-        }
-    }
-
-    @Nullable
-    static String readNotice(File directory, String fileName) {
-        File file = new File(directory, fileName);
-        if (!file.isFile()) return null;
-        try {
-            return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-        } catch (IOException ex) {
-            Logger.printDebug(() -> "Could not read the notice " + fileName, ex);
-            return null;
         }
     }
 
@@ -182,7 +162,7 @@ public final class RomanizationDict {
             }
         }
 
-        /** Lets go, because holding the listener past the build would keep its page alive. */
+        /** Let's go, because holding the listener past the build would keep its page alive. */
         void detach() {
             to = null;
             fileName = null;

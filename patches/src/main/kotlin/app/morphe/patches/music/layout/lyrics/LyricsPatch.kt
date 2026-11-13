@@ -8,9 +8,17 @@
 
 package app.morphe.patches.music.layout.lyrics
 
+import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.fieldAccess
+import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
+import app.morphe.patcher.util.getReference
+import app.morphe.patcher.util.registersUsed
 import app.morphe.patches.all.misc.resources.addResourcesPatch
 import app.morphe.patches.music.misc.extension.sharedExtensionPatch
 import app.morphe.patches.music.misc.litho.filter.lithoFilterPatch
@@ -24,7 +32,6 @@ import app.morphe.patches.music.shared.Constants.COMPATIBILITY_YOUTUBE_MUSIC
 import app.morphe.patches.music.video.information.musicVideoInformationPatch
 import app.morphe.patches.shared.misc.litho.filter.addLithoFilter
 import app.morphe.patches.shared.misc.settings.preference.InputType
-import app.morphe.patches.shared.misc.settings.preference.ListPreference
 import app.morphe.patches.shared.misc.settings.preference.NonInteractivePreference
 import app.morphe.patches.shared.misc.settings.preference.PreferenceCategory
 import app.morphe.patches.shared.misc.settings.preference.PreferenceScreenPreference.Sorting
@@ -33,20 +40,24 @@ import app.morphe.patches.shared.misc.settings.preference.TextPreference
 import app.morphe.patches.shared.misc.settings.preference.screenInfoPreferenceCategory
 import app.morphe.util.ResourceGroup
 import app.morphe.util.copyResources
+import app.morphe.util.findInstructionIndicesReversedOrThrow
 import app.morphe.util.indexOfFirstInstructionOrThrow
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import java.util.logging.Logger
 
 private const val EXTENSION_CLASS = "Lapp/morphe/extension/music/patches/lyrics/LyricsPatch;"
-private const val PANEL_INSTALLER_CLASS = "Lapp/morphe/extension/music/patches/lyrics/ui/LyricsPanelInstaller;"
+internal const val PANEL_INSTALLER_CLASS = "Lapp/morphe/extension/music/patches/lyrics/ui/LyricsPanelInstaller;"
 private const val LOCKSCREEN_CLASS = "Lapp/morphe/extension/music/patches/lyrics/session/LockScreenLyrics;"
 private const val MINIPLAYER_LYRICS_CLASS = "Lapp/morphe/extension/music/patches/lyrics/session/MiniplayerLyrics;"
+private const val DEVICE_LYRICS_TAB_CLASS = "Lapp/morphe/extension/music/patches/lyrics/ui/DeviceLyricsTab;"
 
 private const val LYRICS_PANEL_FILTER =
     "Lapp/morphe/extension/music/patches/components/LyricsPanelFilter;"
 
-@Suppress("unused")
 val lyricsPatch = patch(
     name = "Third-party lyrics",
     description = "Adds an option to show synced lyrics with experience enhancement from 19+ providers in the lyrics panel."
@@ -58,8 +69,8 @@ val lyricsPatch = patch(
         lithoFilterPatch,
         mediaSessionHookPatch,
         musicVideoInformationPatch,
-        // The copy, romanize and furigana buttons need their icons whether the patches
-        // that own these resources are applied.
+        // The copy, romanize, and jump-to-current buttons need their icons whether
+        // the patches that own these resources are applied.
         patch {
             execute {
                 copyResources(
@@ -68,7 +79,11 @@ val lyricsPatch = patch(
                 )
                 copyResources(
                     "romanisationbutton",
-                    ResourceGroup("drawable", "morphe_yt_romanize.xml", "morphe_yt_ruby.xml")
+                    ResourceGroup("drawable", "morphe_yt_romanize.xml")
+                )
+                copyResources(
+                    "lyricscurrentbutton",
+                    ResourceGroup("drawable", "morphe_yt_crosshair.xml")
                 )
             }
         }
@@ -129,14 +144,6 @@ val lyricsPatch = patch(
                     ),
                     SwitchPreference("morphe_music_lyrics_allow_transliteration", summary = true),
                     NonInteractivePreference(
-                        key = "morphe_music_lyrics_ruby_provider",
-                        summaryKey = null,
-                        tag = "app.morphe.extension.music.settings.preference.LyricsOrderedListPreference",
-                        selectable = false,
-                        dependency = "morphe_music_lyrics_enabled"
-                    ),
-                    ListPreference("morphe_music_lyrics_ruby_style"),
-                    NonInteractivePreference(
                         key = "morphe_music_lyrics_clear_cache",
                         tag = "app.morphe.extension.music.settings.preference.LyricsClearCachePreference",
                         dependency = "morphe_music_lyrics_enabled"
@@ -155,6 +162,9 @@ val lyricsPatch = patch(
                         dependency = "morphe_music_lyrics_enabled"
                     ),
                     SwitchPreference("morphe_music_lyrics_word_sync", summary = true),
+                    SwitchPreference("morphe_music_lyrics_spring_scroll", summary = true),
+                    SwitchPreference("morphe_music_lyrics_gap_dots", summary = true),
+                    SwitchPreference("morphe_music_lyrics_focus_spotlight", summary = true),
                     SwitchPreference("morphe_music_lyrics_line_scale", summary = true),
                     SwitchPreference("morphe_music_lyrics_split_background", summary = true),
                     SwitchPreference("morphe_music_lyrics_show_section", summary = true),
@@ -168,6 +178,7 @@ val lyricsPatch = patch(
                     SwitchPreference("morphe_music_lyrics_hide_info", summary = true),
                     SwitchPreference("morphe_music_lyrics_force_capitalize", summary = true),
                     SwitchPreference("morphe_music_lyrics_strip_trailing_punctuation", summary = true),
+                    SwitchPreference("morphe_music_lyrics_han_form", summary = true),
                     SwitchPreference("morphe_music_lyrics_swap_trans_roma", summary = true),
                     SwitchPreference("morphe_music_lyrics_force_center", summary = true)
                 )
@@ -184,7 +195,7 @@ val lyricsPatch = patch(
                     SwitchPreference("morphe_music_lyrics_show_refresh_button", summary = true),
                     SwitchPreference("morphe_music_lyrics_show_translate_button", summary = true),
                     SwitchPreference("morphe_music_lyrics_show_romanize_button", summary = true),
-                    SwitchPreference("morphe_music_lyrics_show_ruby_button", summary = true)
+                    SwitchPreference("morphe_music_lyrics_show_current_button", summary = true)
                 )
             ),
             PreferenceCategory(
@@ -213,11 +224,12 @@ val lyricsPatch = patch(
                         tag = "app.morphe.extension.music.settings.preference.LyricsEncapsulationPreference"
                     ),
                     NonInteractivePreference(
-                        key = "morphe_music_lyrics_mini_line_limits",
+                        // Keyed by one of the limits it edits, so it is available when they are.
+                        key = "morphe_music_lyrics_mini_char_limit",
+                        titleKey = "morphe_music_lyrics_mini_line_limits_title",
                         summaryKey = "morphe_music_lyrics_mini_line_limits_summary",
                         tag = "app.morphe.extension.music.settings.preference.LyricsLineLimitsPreference",
-                        selectable = true,
-                        dependency = "morphe_music_lyrics_enabled"
+                        selectable = true
                     ),
                     TextPreference(
                         key = "morphe_music_lyrics_mini_instrumental",
@@ -256,10 +268,6 @@ val lyricsPatch = patch(
                     NonInteractivePreference(
                         key = "morphe_music_lyrics_about",
                         titleKey = null,
-                        // The summary is written by the preference itself, since what the fetched
-                        // reading dictionaries add to it is not known when the layout is built.
-                        summaryKey = null,
-                        tag = "app.morphe.extension.music.settings.preference.LyricsAboutPreference",
                         dependency = "morphe_music_lyrics_enabled"
                     )
                 )
@@ -269,6 +277,113 @@ val lyricsPatch = patch(
         // The panel content is built by Elements, so there is no view to hook. The timed
         // lyrics component is the earliest signal that the opened panel is the lyrics one.
         addLithoFilter(LYRICS_PANEL_FILTER)
+
+        // The app builds the watch next response of device files itself, with only a Songs tab,
+        // so there is no lyrics tab to show the panel in. A lyrics tab is added to that response,
+        // and the page of the tab is replaced with one that only holds the panel. The extension
+        // methods filled in here have only their parameter registers.
+        fun deviceLyricsTabMethod(name: String) =
+            Fingerprint(definingClass = DEVICE_LYRICS_TAB_CLASS, name = name).method
+
+        val tabRendererType = SideloadedWatchNextResponseFingerprint.instructionMatches[1]
+            .instruction.getReference<TypeReference>()!!.type
+
+        SideloadedWatchNextResponseFingerprint.let {
+            val tabType = it.instructionMatches.last().fieldReference.definingClass
+            val messageType = classDefBy(tabType).superclass!!
+
+            it.method.apply {
+                val tabDefaultInstance = getInstruction(
+                    indexOfFirstInstructionOrThrow(
+                        fieldAccess(opcode = Opcode.SGET_OBJECT, definingClass = tabType, type = tabType)
+                    )
+                ).getReference<FieldReference>()!!
+
+                // Only the Songs tab is added, in either of the paths that build the response.
+                val addTabIndices = findInstructionIndicesReversedOrThrow(
+                    methodCall(parameters = listOf(tabType), returnType = "V")
+                )
+                val addTabMethod = getInstruction(addTabIndices.first()).getReference<MethodReference>()!!
+                addTabIndices.forEach { index ->
+                    val builderRegister = getInstruction(index).registersUsed.first()
+                    addInstruction(
+                        index + 1,
+                        "invoke-static/range { v$builderRegister .. v$builderRegister }, " +
+                            "$DEVICE_LYRICS_TAB_CLASS->addTab(Ljava/lang/Object;)V"
+                    )
+                }
+
+                deviceLyricsTabMethod("defaultTab").addInstructions(
+                    0,
+                    """
+                        sget-object v0, $tabDefaultInstance
+                        return-object v0
+                    """
+                )
+                deviceLyricsTabMethod("parseTab").addInstructions(
+                    0,
+                    """
+                        check-cast p0, $messageType
+                        invoke-static { p0, p1 }, $messageType->parseFrom($messageType[B)$messageType
+                        move-result-object p0
+                        return-object p0
+                    """
+                )
+                deviceLyricsTabMethod("appendTab").addInstructions(
+                    0,
+                    """
+                        check-cast p0, ${addTabMethod.definingClass}
+                        check-cast p1, $tabType
+                        invoke-virtual { p0, p1 }, $addTabMethod
+                        return-void
+                    """
+                )
+            }
+        }
+
+        TabControllerAddTabFingerprint.let {
+            val tabbedViewField = it.instructionMatches[1].fieldReference
+            val tabModelType = it.method.parameterTypes.first().toString()
+            val tabRendererField = tabModelConstructorFingerprint(tabModelType, tabRendererType)
+                .instructionMatches.first().fieldReference
+
+            it.method.addInstructions(
+                0,
+                """
+                    iget-object v0, p0, $tabbedViewField
+                    invoke-static { v0, p0, p1, p3 }, $DEVICE_LYRICS_TAB_CLASS->onAddTab(Landroid/view/ViewGroup;Ljava/lang/Object;Ljava/lang/Object;Landroid/view/View;)Landroid/view/View;
+                    move-result-object p3
+                """
+            )
+
+            // Like the app, only check the tab renderer for null before casting it.
+            deviceLyricsTabMethod("serializeTabRenderer").addInstructionsWithLabels(
+                0,
+                """
+                    check-cast p0, $tabModelType
+                    iget-object p0, p0, $tabRendererField
+                    if-nez p0, :renderer
+                    const/4 p0, 0x0
+                    return-object p0
+                    :renderer
+                    check-cast p0, $tabRendererType
+                    invoke-virtual { p0 }, $tabRendererType->toByteArray()[B
+                    move-result-object p0
+                    return-object p0
+                """
+            )
+
+            val removeTabMethod = TabControllerRemoveTabFingerprint.originalMethod
+            deviceLyricsTabMethod("removeTab").addInstructions(
+                0,
+                """
+                    check-cast p0, ${removeTabMethod.definingClass}
+                    check-cast p1, $tabModelType
+                    invoke-virtual { p0, p1 }, $removeTabMethod
+                    return-void
+                """
+            )
+        }
 
         // Some accounts get lyrics as a player tab instead of an engagement panel. A tab page can
         // be built long before it is selected, so the litho filter alone can't install the panel.
@@ -282,8 +397,8 @@ val lyricsPatch = patch(
         // the app itself put in the container is what tells them apart. Panels with a
         // heading do not need this, so a miss here leaves the rest of the patch working.
         val log = Logger.getLogger(this::class.java.name)
-        runCatching {
-            EngagementPanelControllerFingerprint.classDef.apply {
+        val engagementPanelType = runCatching {
+            EngagementPanelControllerFingerprint.classDef.run {
                 val controllerType = type
 
                 // Only instance fields the controller reassigns can hold the panel it shows,
@@ -320,11 +435,47 @@ val lyricsPatch = patch(
                             "$PANEL_INSTALLER_CLASS->onEngagementPanelChanged(Ljava/lang/Object;)V"
                     )
                 }
+
+                panelType
             }
         }.onFailure {
             log.warning(
                 "Engagement panel controller not found, a lyrics panel shown without a " +
                     "heading will not be used: ${it.message}"
+            )
+        }.getOrNull()
+
+        // The panel identifier says which panel this is in any language, and with or without
+        // a heading. The app reads it with a static helper taking the panel renderer, and the
+        // panel hands out its renderer through the only method of the panel type that takes
+        // nothing and returns that type.
+        if (engagementPanelType != null) {
+            val identifierHelper = PanelIdentifierFingerprint.instructionMatches.first().methodReference
+            val rendererType = identifierHelper.parameterTypes.single().toString()
+            val panelClass = classDefBy(engagementPanelType)
+            val rendererGetter = panelClass.methods.single { method ->
+                method.parameterTypes.isEmpty() && method.returnType == rendererType
+            }
+            val invokeGetter = if (AccessFlags.INTERFACE.isSet(panelClass.accessFlags)) {
+                "invoke-interface"
+            } else {
+                "invoke-virtual"
+            }
+
+            GetPanelIdentifierFingerprint.method.addInstructionsWithLabels(
+                0,
+                """
+                    check-cast p0, $engagementPanelType
+                    $invokeGetter { p0 }, $rendererGetter
+                    move-result-object p0
+                    if-eqz p0, :no_renderer
+                    invoke-static { p0 }, $identifierHelper
+                    move-result-object p0
+                    return-object p0
+                    :no_renderer
+                    const/4 p0, 0x0
+                    return-object p0
+                """
             )
         }
 

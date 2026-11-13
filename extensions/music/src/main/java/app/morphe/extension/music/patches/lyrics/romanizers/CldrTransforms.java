@@ -24,7 +24,7 @@ import app.morphe.extension.shared.Logger;
 /**
  * The CLDR transliteration rules, one {@link AlphabetRomanizer} per script: a script written as
  * it sounds is read letter by letter, everything else whole. Adding a table touches
- * {@link CldrTransformsStore#TRANSLITERATIONS}, {@link #STRIP_ACCENTS} and {@link #scriptPredicate};
+ * {@code CldrTransformsStore.TRANSLITERATIONS}, {@link #STRIP_ACCENTS} and {@link #scriptPredicate};
  * the Slavic BGN tables share the Cyrillic blocks and predicate.
  */
 final class CldrTransforms {
@@ -108,32 +108,18 @@ final class CldrTransforms {
     }
 
     private static AlphabetRomanizer.Script scriptPredicate(String script) {
-        switch (script) {
-            case "greek":
-                return ScriptDetector::isGreek;
-            case "cyrillic":
-            case "russian":
-            case "ukrainian":
-            case "belarusian":
-            case "bulgarian":
-            case "macedonian":
-            case "serbian":
-                return ScriptDetector::isCyrillic;
-            case "georgian":
-                return ScriptDetector::isGeorgian;
-            case "armenian":
-                return ScriptDetector::isArmenian;
-            case "hebrew":
-                return ScriptDetector::isHebrew;
-            case "arabic":
-                return ScriptDetector::isArabic;
-            case "amharic":
-                return ScriptDetector::isEthiopic;
-            case "syriac":
-                return ScriptDetector::isSyriac;
-            default:
-                return c -> false;
-        }
+        return switch (script) {
+            case "greek" -> ScriptDetector::isGreek;
+            case "cyrillic", "russian", "ukrainian", "belarusian", "bulgarian", "macedonian",
+                 "serbian" -> ScriptDetector::isCyrillic;
+            case "georgian" -> ScriptDetector::isGeorgian;
+            case "armenian" -> ScriptDetector::isArmenian;
+            case "hebrew" -> ScriptDetector::isHebrew;
+            case "arabic" -> ScriptDetector::isArabic;
+            case "amharic" -> ScriptDetector::isEthiopic;
+            case "syriac" -> ScriptDetector::isSyriac;
+            default -> c -> false;
+        };
     }
 
     private static boolean stripAccents(String script) {

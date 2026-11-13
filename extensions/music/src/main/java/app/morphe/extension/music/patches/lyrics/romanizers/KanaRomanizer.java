@@ -15,8 +15,8 @@ import java.util.Map;
 
 /**
  * Hepburn romaji for a run of kana. Work is done a mora at a time: a character alone says
- * neither whether a small kana belongs to it nor whether it palatalises. Tables come from the
- * Unicode names (hand-written tables are silently corruptible); two Google conventions are kept,
+ * neither whether a small kana belongs to it nor whether it palatalizes. Tables come from the
+ * Unicode names (handwritten tables are silently corruptible); two Google conventions are kept,
  * so both paths spell a song the same: no apostrophe before a vowel, n before a labial as m.
  */
 public final class KanaRomanizer {
@@ -32,7 +32,7 @@ public final class KanaRomanizer {
             {"zi", "ji"}, {"di", "ji"}, {"du", "zu"},
     };
 
-    /** The consonants whose small ya, yu and yo replace the vowel instead of gliding. */
+    /** The consonants whose small ya, yo and yu replace the vowel instead of gliding. */
     private static final String[] SIBILANTS = {"ch", "sh", "ts", "j"};
 
     private static final Map<Character, String> FULL_SIZE = new HashMap<>();
@@ -124,6 +124,7 @@ public final class KanaRomanizer {
 
             if (spaced) separate(out);
             if (geminate) {
+                assert syllable != null;
                 applyGeminate(out, syllable);
                 geminate = false;
             }
@@ -133,6 +134,7 @@ public final class KanaRomanizer {
         return out.toString();
     }
 
+    @SuppressWarnings("SizeReplaceableByIsEmpty")
     private static void separate(StringBuilder out) {
         if (out.length() > 0 && out.charAt(out.length() - 1) != ' ') {
             out.append(' ');
@@ -180,13 +182,12 @@ public final class KanaRomanizer {
     }
 
     private static void repeatVowel(StringBuilder out) {
-        for (int i = out.length() - 1; i >= 0; i--) {
-            char c = out.charAt(i);
-            if (!isConsonant(c)) {
-                out.append(c);
-                return;
-            }
+        if (out.length() == 0) {
             return;
+        }
+        char c = out.charAt(out.length() - 1);
+        if (!isConsonant(c)) {
+            out.append(c);
         }
     }
 
@@ -196,16 +197,11 @@ public final class KanaRomanizer {
     }
 
     private static String smallYVowel(char c) {
-        switch (c) {
-            case 0x3083:
-            case 0x30E3:
-                return "a";
-            case 0x3085:
-            case 0x30E5:
-                return "u";
-            default:
-                return "o";
-        }
+        return switch (c) {
+            case 0x3083, 0x30E3 -> "a";
+            case 0x3085, 0x30E5 -> "u";
+            default -> "o";
+        };
     }
 
     private static boolean isN(char c) {
@@ -226,6 +222,7 @@ public final class KanaRomanizer {
         return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u';
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private static boolean isConsonant(char c) {
         return c >= 'a' && c <= 'z' && !isVowel(c);
     }

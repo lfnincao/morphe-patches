@@ -7,6 +7,7 @@
 
 package app.morphe.extension.music.patches.lyrics.requests;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.json.JSONArray;
@@ -261,12 +262,23 @@ public final class DeezerProvider extends ScoredSongProvider {
     }
 
     @Nullable
-    private static List<String> creditLines(JSONObject lyrics) {
-        List<String> credits = new ArrayList<>(2);
+    private static List<String> extractSongwriters(JSONObject lyrics) {
         final String writers = flatten(lyrics.opt("writers"));
-        if (writers != null) {
-            credits.add("Writer(s): " + writers);
+        if (writers == null) {
+            return null;
         }
+        List<String> names = new ArrayList<>();
+        for (String name : writers.split("\\s*,\\s*")) {
+            if (!name.isEmpty()) {
+                names.add(name);
+            }
+        }
+        return names.isEmpty() ? null : names;
+    }
+
+    @Nullable
+    private static List<String> extractCredits(JSONObject lyrics) {
+        List<String> credits = new ArrayList<>(1);
         final String copyright = LyricsRequests.optString(lyrics, "copyright");
         if (copyright != null) {
             credits.add("Copyright: " + copyright);
@@ -276,7 +288,7 @@ public final class DeezerProvider extends ScoredSongProvider {
 
     /** The writers field is a string on some tracks and a list on others. */
     @Nullable
-    private static String flatten(@Nullable Object value) {
+    static String flatten(@Nullable Object value) {
         if (value instanceof String string) {
             return string.trim().isEmpty() ? null : string.trim();
         }
@@ -339,6 +351,7 @@ public final class DeezerProvider extends ScoredSongProvider {
     }
 
     @Override
+    @NonNull
     protected List<ScoredSong> fetchScoredSongs(TrackInfo track) throws Exception {
         String arl = getArl();
         if (arl == null) {
@@ -431,7 +444,8 @@ public final class DeezerProvider extends ScoredSongProvider {
         JSONArray syncedLines = lyrics.optJSONArray("synchronizedLines");
         if (syncedLines != null && syncedLines.length() > 0) {
             String rawFormat = syncedLines.toString();
-            Lyrics synced = parseSyncedLyrics(syncedLines, trackId, rawFormat, creditLines(lyrics));
+            Lyrics synced = parseSyncedLyrics(syncedLines, trackId, rawFormat,
+                    extractSongwriters(lyrics), extractCredits(lyrics));
             if (synced != null) {
                 return synced;
             }
@@ -439,14 +453,16 @@ public final class DeezerProvider extends ScoredSongProvider {
 
         String text = LyricsRequests.optString(lyrics, "text");
         if (text != null) {
-            return parsePlainText(text, trackId, text, creditLines(lyrics));
+            return parsePlainText(text, trackId, text,
+                    extractSongwriters(lyrics), extractCredits(lyrics));
         }
         return null;
     }
 
     @Nullable
     private Lyrics parseSyncedLyrics(JSONArray syncedLines, long trackId, String rawFormat,
-                                     @Nullable List<String> creditLines) {
+                                     @Nullable List<String> songwriters,
+                                     @Nullable List<String> credits) {
         List<LyricsLine> lines = new ArrayList<>();
 
         for (int i = 0; i < syncedLines.length(); i++) {
@@ -465,18 +481,19 @@ public final class DeezerProvider extends ScoredSongProvider {
         LRCParser.fillEstimatedEnds(lines);
 
         String sourceUrl = "https://www.deezer.com/track/" + trackId;
-        return new Lyrics(lines, name(), true, null, null, null, creditLines,
-                rawFormat, "dzr.json", sourceUrl);
+        return new Lyrics(lines, name(), true, null, null, null, songwriters, credits,
+                rawFormat, "dzr.json", sourceUrl, null, null);
     }
 
     @Nullable
     private Lyrics parsePlainText(String text, long trackId, String rawFormat,
-                                  @Nullable List<String> creditLines) {
+                                  @Nullable List<String> songwriters,
+                                  @Nullable List<String> credits) {
         List<LyricsLine> lines = LyricsRequests.parsePlainTextLines(text);
         if (lines.isEmpty()) return null;
 
         String sourceUrl = "https://www.deezer.com/track/" + trackId;
-        return new Lyrics(lines, name(), false, null, null, null, creditLines,
-                rawFormat, "txt", sourceUrl);
+        return new Lyrics(lines, name(), false, null, null, null, songwriters, credits,
+                rawFormat, "txt", sourceUrl, null, null);
     }
 }

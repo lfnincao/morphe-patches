@@ -12,6 +12,9 @@ import androidx.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 
+import app.morphe.extension.shared.Utils;
+
+
 /** A {@link WordReadingTable} in the dictionary directory, opened on first use and kept open. */
 final class WordTableFile {
 
@@ -48,7 +51,9 @@ final class WordTableFile {
         if (open != null) return open;
 
         File file = file();
-        if (file == null) return null;
+        // Not built yet, such as when the dictionary was never downloaded.
+        if (file == null || !file.isFile()) return null;
+
         open = WordReadingTable.open(file.toPath(), magic);
         if (open != null) {
             table = open;
@@ -93,12 +98,10 @@ final class WordTableFile {
         } catch (IOException | RuntimeException ex) {
             // A source that cannot be read must not leave a partial table behind that the next
             // open would take for a finished one.
-            //noinspection ResultOfMethodCallIgnored
-            built.delete();
+            Utils.deleteQuietly(built);
             throw ex;
         }
-        //noinspection ResultOfMethodCallIgnored
-        archive.delete();
+        Utils.deleteQuietly(archive);
 
         RomanizationDict.commit(built, target);
         table = null;

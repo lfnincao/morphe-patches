@@ -28,6 +28,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.Utils;
 
 /**
  * One reading per Han character, from the Unicode Han Database, for each language that reads a
@@ -48,12 +49,10 @@ public final class UniDictStore {
     private static final ReadingTable[] TABLES = {
             new ReadingTable("zh",
                     new String[]{"kMandarin", "kHanyuPinlu", "kHanyuPinyin", "kXHC1983"},
-                    "kMandarin", "pinyin_readings_toned_" + VERSION + ".txt",
-                    "pinyin_readings.NOTICE.txt"),
+                    "pinyin_readings_toned_" + VERSION + ".txt"),
             new ReadingTable("yue",
                     new String[]{"kCantonese"},
-                    "kCantonese", "cantonese_readings_" + VERSION + ".txt",
-                    "cantonese_readings.NOTICE.txt"),
+                    "cantonese_readings_" + VERSION + ".txt"),
     };
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "lyrics-unidict");
@@ -67,6 +66,7 @@ public final class UniDictStore {
     }
 
     /** Whether the tables are being downloaded or built right now. */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isRunning() {
         return RUNNING.get();
     }
@@ -79,7 +79,7 @@ public final class UniDictStore {
         return true;
     }
 
-    /** Removes every character table and its notice; the user turned the readings off. */
+    /** Removes every character table; the user turned the readings off. */
     public static void delete() {
         for (ReadingTable table : TABLES) {
             table.table = null;
@@ -87,15 +87,10 @@ public final class UniDictStore {
         File directory = RomanizationDict.directory();
         if (directory == null) return;
         for (ReadingTable table : TABLES) {
-            //noinspection ResultOfMethodCallIgnored
-            new File(directory, table.tableName).delete();
-            //noinspection ResultOfMethodCallIgnored
-            new File(directory, table.noticeName).delete();
+            Utils.deleteQuietly(new File(directory, table.tableName));
         }
-        //noinspection ResultOfMethodCallIgnored
-        new File(directory, ARCHIVE).delete();
-        //noinspection ResultOfMethodCallIgnored
-        new File(directory, ARCHIVE + ".part").delete();
+        Utils.deleteQuietly(new File(directory, ARCHIVE));
+        Utils.deleteQuietly(new File(directory, ARCHIVE + ".part"));
     }
 
     /** Starts a build if any table is missing. Safe to call whenever the setting is on. */
@@ -109,7 +104,7 @@ public final class UniDictStore {
 
         WORKER.execute(() -> {
             try {
-                build(CHANNEL);
+                build();
             } catch (Exception ex) {
                 Logger.printDebug(() -> "UniDict build failed", ex);
                 CHANNEL.onFailed();
@@ -181,7 +176,7 @@ public final class UniDictStore {
         return directory == null ? null : new File(directory, name);
     }
 
-    private static void build(RomanizationDict.Listener listener) throws IOException {
+    private static void build() throws IOException {
         File directory = RomanizationDict.directory();
         if (directory == null) throw new IOException("no cache directory");
 
@@ -195,24 +190,19 @@ public final class UniDictStore {
             }
         }
         if (!missing) {
-            listener.onReady(entries());
+            UniDictStore.CHANNEL.onReady(entries());
             return;
         }
 
         File archive = tableFile(ARCHIVE);
         if (archive == null) throw new IOException("no cache directory");
         if (!archive.isFile()) {
-            RomanizationDict.download(URL, archive, ARCHIVE, listener);
+            RomanizationDict.download(URL, archive, ARCHIVE, UniDictStore.CHANNEL);
         }
-        extract(archive, listener);
-        //noinspection ResultOfMethodCallIgnored
-        archive.delete();
+        extract(archive, UniDictStore.CHANNEL);
+        Utils.deleteQuietly(archive);
 
-        for (ReadingTable table : TABLES) {
-            RomanizationDict.writeNotice(directory, table.noticeName,
-                    noticeTextFor(table.noticeField));
-        }
-        listener.onReady(entries());
+        UniDictStore.CHANNEL.onReady(entries());
     }
 
     /**
@@ -232,6 +222,7 @@ public final class UniDictStore {
         try {
             for (int i = 0; i < TABLES.length; i++) {
                 File target = tableFile(TABLES[i].tableName);
+                assert target != null;
                 built[i] = new File(target.getPath() + ".building");
                 targets[i] = target;
                 writers[i] = new BufferedWriter(new OutputStreamWriter(
@@ -333,7 +324,7 @@ public final class UniDictStore {
         return -1;
     }
 
-    /** How much a reading field is trusted within its table, best first. */
+    /** How much a reading field is trusted within its table, the best first. */
     private static int rank(ReadingTable table, String field) {
         for (int i = 0; i < table.sources.length; i++) {
             if (table.sources[i].equals(field)) return i;
@@ -368,52 +359,22 @@ public final class UniDictStore {
         return null;
     }
 
-    static String noticeTextFor(String field) {
-        return "Unicode Han Database readings\n"
-                + "https://www.unicode.org/Public/" + VERSION + "/ucd/Unihan.zip\n\n"
-                + "Licence: Unicode License, Version 3\n"
-                + "https://www.unicode.org/license.txt\n\n"
-                + "Copyright (c) 1991-2026 Unicode, Inc. All rights reserved.\n"
-                + "Distributed under the Terms of Use in https://www.unicode.org/copyright.txt\n\n"
-                + "What is stored here is the " + field + " reading of each character, taken from\n"
-                + "Unihan_Readings.txt in the file above.\n";
-    }
-
-    @Nullable
-    public static String notice() {
-        File directory = RomanizationDict.directory();
-        if (directory == null) return null;
-        StringBuilder text = new StringBuilder();
-        for (ReadingTable table : TABLES) {
-            String part = RomanizationDict.readNotice(directory, table.noticeName);
-            if (part == null) continue;
-            if (text.length() > 0) text.append("\n\n");
-            text.append(part);
-        }
-        return text.length() > 0 ? text.toString() : null;
-    }
-
     /**
-     * One language's character readings: the Unihan fields that say them, best first, and
-     * what the table is stored and shown as.
+     * One language's character readings: the Unihan fields that say them, the best first, and
+     * what the table is stored as.
      */
     private static final class ReadingTable {
         final String code;
         final String[] sources;
-        final String noticeField;
         final String tableName;
-        final String noticeName;
 
         @Nullable
         volatile CharReadingTable table;
 
-        ReadingTable(String code, String[] sources, String noticeField, String tableName,
-                     String noticeName) {
+        ReadingTable(String code, String[] sources, String tableName) {
             this.code = code;
             this.sources = sources;
-            this.noticeField = noticeField;
             this.tableName = tableName;
-            this.noticeName = noticeName;
         }
     }
 }

@@ -278,7 +278,7 @@ internal fun nativeQueueAutoplayFingerprint(navigator: FieldReference, switchNav
 internal fun nativeQueueAutoplayConstructorFingerprint(autoplayType: String) = Fingerprint(
     definingClass = autoplayType,
     name = "<init>",
-    parameters = List(3) { "Lj\$/util/Optional;" }
+    parameters = List(3) { "Lj$/util/Optional;" }
 )
 
 /** The wrapper disposes its active navigator. */
@@ -563,7 +563,7 @@ internal fun playlistContentsFingerprint(panelType: String, factory: MethodRefer
  * then logging decorates the bound endpoint before dispatching it.
  */
 internal object PlaylistRowClickFingerprint : Fingerprint(
-    interfaces = listOf("Landroid/view/View\$OnClickListener;"),
+    interfaces = listOf($$"Landroid/view/View$OnClickListener;"),
     name = "onClick",
     returnType = "V",
     parameters = listOf("Landroid/view/View;"),
@@ -624,7 +624,7 @@ internal fun playlistEndpointUnbindFingerprint(endpoint: FieldReference) = Finge
 
 /** The standard button click context retains the native enclosing row identity. */
 internal object NativeButtonContextFingerprint : Fingerprint(
-    interfaces = listOf("Landroid/view/View\$OnClickListener;"),
+    interfaces = listOf($$"Landroid/view/View$OnClickListener;"),
     returnType = "Ljava/util/Map;",
     parameters = listOf("L", "Z"),
     filters = listOf(string("anchor_view"))
@@ -660,7 +660,7 @@ internal fun playlistRowMenuOpenFingerprint(videoType: String) = Fingerprint(
 
 /** The native menu sheet dispatches its endpoint callback immediately before dismissing itself. */
 internal fun playlistMenuDispatchFingerprint(callbackType: String) = Fingerprint(
-    interfaces = listOf("Landroid/widget/AdapterView\$OnItemClickListener;"),
+    interfaces = listOf($$"Landroid/widget/AdapterView$OnItemClickListener;"),
     returnType = "V",
     parameters = listOf("L"),
     filters = listOf(
@@ -765,8 +765,8 @@ internal object PlaylistDragUnbindFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf("L"),
     filters = listOf(
-        methodCall("Landroid/view/View;->setOnTouchListener(Landroid/view/View\$OnTouchListener;)V"),
-        methodCall("Landroid/view/View;->setOnLongClickListener(Landroid/view/View\$OnLongClickListener;)V")
+        methodCall($$"Landroid/view/View;->setOnTouchListener(Landroid/view/View$OnTouchListener;)V"),
+        methodCall($$"Landroid/view/View;->setOnLongClickListener(Landroid/view/View$OnLongClickListener;)V")
     )
 )
 
@@ -818,7 +818,7 @@ internal object PlaylistControlsCreationFingerprint : Fingerprint(
         // The collapsed panel view.
         fieldAccess(definingClass = "this", type = "Landroid/view/View;", opcode = Opcode.IGET_OBJECT),
         methodCall(
-            "Landroid/view/View;->setOnClickListener(Landroid/view/View\$OnClickListener;)V",
+            $$"Landroid/view/View;->setOnClickListener(Landroid/view/View$OnClickListener;)V",
             location = MatchAfterWithin(3)
         ),
         // The navigator provider.
@@ -1026,12 +1026,12 @@ internal fun playlistShuffleListenerFingerprint(binder: Method, shuffleView: Fie
         methodCall("Landroid/widget/ImageView;->setVisibility(I)V", location = MatchAfterWithin(3)),
         fieldAccess(
             definingClass = "this",
-            type = "Landroid/view/View\$OnClickListener;",
+            type = $$"Landroid/view/View$OnClickListener;",
             opcode = Opcode.IGET_OBJECT,
             location = MatchAfterImmediately()
         ),
         methodCall(
-            "Landroid/widget/ImageView;->setOnClickListener(Landroid/view/View\$OnClickListener;)V",
+            $$"Landroid/widget/ImageView;->setOnClickListener(Landroid/view/View$OnClickListener;)V",
             location = MatchAfterImmediately()
         )
     )
@@ -1039,7 +1039,7 @@ internal fun playlistShuffleListenerFingerprint(binder: Method, shuffleView: Fie
 
 /** Observe the native notification before it compares old state or notifies either control. */
 internal fun notificationSkipCallbackFingerprint(callbackName: String) = Fingerprint(
-    superclass = "Landroid/media/session/MediaSession\$Callback;",
+    superclass = $$"Landroid/media/session/MediaSession$Callback;",
     name = callbackName,
     returnType = "V",
     parameters = emptyList(),
@@ -1302,7 +1302,7 @@ private fun queuePlayerDismissMethod() =
 
 /** The mini player's close click, rather than programmatic reloads using the same dismiss API. */
 internal object QueuePlayerCloseClickFingerprint : Fingerprint(
-    interfaces = listOf("Landroid/view/View\$OnClickListener;"),
+    interfaces = listOf($$"Landroid/view/View$OnClickListener;"),
     name = "onClick",
     parameters = listOf("Landroid/view/View;"),
     returnType = "V",
@@ -1372,7 +1372,7 @@ internal object QueueSnackbarModernFactoryFingerprint : Fingerprint(
             parameters = List(4) { "Ljava/lang/Object;" } + listOf("I", "[S")
         ),
         methodCall(
-            parameters = listOf("Ljava/lang/CharSequence;", "Landroid/view/View\$OnClickListener;"),
+            parameters = listOf("Ljava/lang/CharSequence;", $$"Landroid/view/View$OnClickListener;"),
             returnType = "V"
         ),
         opcode(Opcode.RETURN_OBJECT, location = MatchAfterImmediately())
@@ -1457,4 +1457,286 @@ internal fun queueFlyoutButtonConstructorFingerprint(factory: MethodReference, i
         parameters = listOf("Ljava/lang/String;", itemType),
         returnType = "V"
     ))
+)
+
+/** Named arguments in the native watch request serializer. */
+internal fun playlistPageRequestFieldFingerprint(requestType: String, serializer: String, label: String) = Fingerprint(
+    definingClass = requestType,
+    name = serializer,
+    filters = listOf(
+        string(label),
+        fieldAccess(
+            definingClass = requestType,
+            type = "Ljava/lang/String;",
+            opcode = Opcode.IGET_OBJECT,
+            location = MatchAfterWithin(3)
+        )
+    )
+)
+
+internal fun playlistPageIndexFingerprint(requestType: String, serializer: String) = Fingerprint(
+    definingClass = requestType,
+    name = serializer,
+    filters = listOf(
+        fieldAccess(definingClass = requestType, type = "I", opcode = Opcode.IGET),
+        string("playlistIndex", location = MatchAfterWithin(3))
+    )
+)
+
+internal fun playlistPageFactoryFingerprint(requestType: String) = Fingerprint(
+    parameters = listOf("Ljava/lang/String;"),
+    returnType = requestType,
+    filters = listOf(methodCall(definingClass = requestType, name = "<init>"))
+)
+
+/** Native preparation supplies the per-occurrence entry ID as well as index and params. */
+internal fun playlistPagePreparationFingerprint(
+    requestType: String,
+    factory: MethodReference,
+    paramsSetter: MethodReference
+) = Fingerprint(
+    returnType = requestType,
+    filters = listOf(
+        methodCall(factory),
+        fieldAccess(definingClass = requestType, type = "Ljava/lang/String;", opcode = Opcode.IPUT_OBJECT),
+        fieldAccess(definingClass = requestType, type = "I", opcode = Opcode.IPUT),
+        fieldAccess(definingClass = requestType, type = "Ljava/lang/String;", opcode = Opcode.IPUT_OBJECT),
+        methodCall(paramsSetter)
+    )
+)
+
+internal fun playlistPageServiceFingerprint(requestType: String, responseType: String) = Fingerprint(
+    parameters = listOf(requestType),
+    returnType = responseType
+)
+
+/** 21.44 resolves the watch request factory through a provider instead of a direct field. */
+internal fun playlistPageFactoryProviderFingerprint(serviceType: String, factory: MethodReference) = Fingerprint(
+    definingClass = serviceType,
+    returnType = factory.returnType,
+    filters = listOf(
+        fieldAccess(definingClass = serviceType, opcode = Opcode.IGET_OBJECT),
+        methodCall(
+            parameters = emptyList(),
+            returnType = "Ljava/lang/Object;",
+            opcode = Opcode.INVOKE_INTERFACE,
+            location = MatchAfterWithin(3)
+        ),
+        checkCast(factory.definingClass, location = MatchAfterWithin(2)),
+        methodCall(factory, location = MatchAfterWithin(3))
+    )
+)
+
+/** The raw asynchronous dispatcher returns the request's cancellable Future, without publishing UI actions. */
+internal fun playlistPageAsyncRequestFingerprint(dispatch: MethodReference) = Fingerprint(
+    definingClass = dispatch.definingClass,
+    parameters = listOf(
+        dispatch.parameterTypes[0].toString(),
+        "Ljava/util/concurrent/Executor;",
+        dispatch.parameterTypes[2].toString()
+    ),
+    returnType = "Lcom/google/common/util/concurrent/ListenableFuture;",
+    filters = listOf(
+        methodCall(
+            returnType = "Lcom/google/common/util/concurrent/ListenableFuture;",
+            opcode = Opcode.INVOKE_INTERFACE
+        )
+    )
+)
+
+/** Reuse the executor supplied by the native one-argument forwarding method. */
+internal fun playlistPageExecutorFingerprint(dispatch: MethodReference) = Fingerprint(
+    definingClass = dispatch.definingClass,
+    parameters = listOf(dispatch.parameterTypes[0].toString()),
+    returnType = dispatch.returnType,
+    filters = listOf(
+        methodCall(
+            parameters = emptyList(),
+            returnType = "Ljava/util/concurrent/Executor;",
+            opcode = Opcode.INVOKE_STATIC
+        ),
+        methodCall(dispatch)
+    )
+)
+
+/** The same selector remains when the default wrapper has been inlined. */
+internal fun playlistPageNavigationSelectorFingerprint(navigationType: String) = Fingerprint(
+    definingClass = navigationType,
+    parameters = listOf("Z", "Z", "Z", "Z"),
+    returnType = "L",
+    filters = listOf(fieldAccess(definingClass = navigationType, opcode = Opcode.IGET_OBJECT))
+)
+
+internal const val ELEMENTS_TAP_COMMAND =
+    $$"Lcom/google/protos/youtube/elements/CommandOuterClass$Command;"
+
+/** Litho preserves NodeInfo on each mounted host under this named view tag. */
+internal object PlaylistNodeInfoFingerprint : Fingerprint(
+    definingClass = "Lcom/facebook/litho/ComponentHost;",
+    name = "setTag",
+    parameters = listOf("I", "Ljava/lang/Object;"),
+    returnType = "V",
+    filters = listOf(resourceLiteral(ResourceType.ID, "component_node_info"))
+)
+
+/** The native OnClickListener identifies both its event and the handler's owner field. */
+internal object PlaylistClickListenerFingerprint : Fingerprint(
+    interfaces = listOf($$"Landroid/view/View$OnClickListener;"),
+    name = "onClick",
+    parameters = listOf("Landroid/view/View;"),
+    returnType = "V",
+    filters = listOf(string("onClick_<cls>"))
+)
+
+/** Mounting binds this NodeInfo field to the listener, rather than a long-press handler. */
+internal fun playlistClickMountFingerprint(nodeType: String, listenerType: String, handlerType: String) = Fingerprint(
+    returnType = "V",
+    filters = listOf(
+        // Some builds pass one layout wrapper instead of separate content/layout arguments.
+        // The native field -> click-listener construction identifies the same mount operation.
+        fieldAccess(definingClass = nodeType, type = handlerType, opcode = Opcode.IGET_OBJECT),
+        methodCall(
+            definingClass = listenerType,
+            name = "<init>",
+            parameters = listOf(handlerType),
+            location = MatchAfterWithin(3)
+        ),
+        methodCall(
+            smali = $$"Landroid/view/View;->setOnClickListener(Landroid/view/View$OnClickListener;)V",
+            location = MatchAfterImmediately()
+        )
+    )
+)
+
+internal object PlaylistTapOwnerFingerprint : Fingerprint(
+    name = "<init>",
+    filters = listOf(string("ElementEventWithGesture"))
+)
+
+/** Follow the click event's original view field, which newer Litho builds erase to Object. */
+internal fun playlistTapActionsFingerprint(ownerType: String, event: FieldReference, handlerType: String) = Fingerprint(
+    definingClass = ownerType,
+    parameters = listOf(handlerType, "Ljava/lang/Object;"),
+    returnType = "Ljava/lang/Object;",
+    filters = listOf(
+        fieldAccess(reference = event, opcode = Opcode.IGET_OBJECT),
+        // The click branch reads its gesture state between the event view and its actions.
+        fieldAccess(
+            definingClass = ownerType,
+            type = "Ljava/util/List;",
+            opcode = Opcode.IGET_OBJECT,
+            location = MatchAfterWithin(6)
+        ),
+        methodCall(parameters = listOf("Landroid/view/View;", "L", "Landroid/view/MotionEvent;"), returnType = "V")
+    )
+)
+
+/** A native tap callback decodes its CommandFuture before handing it to the executor. */
+internal fun playlistTapCommandFingerprint(callbackType: String, parameters: List<String>) = Fingerprint(
+    interfaces = listOf(callbackType),
+    parameters = parameters,
+    returnType = "V",
+    filters = listOf(methodCall(returnType = ELEMENTS_TAP_COMMAND, parameters = emptyList()))
+)
+
+internal fun playlistNodeStoreFingerprint() = Fingerprint(
+    classFingerprint = PlaylistNodeInfoFingerprint,
+    name = "setTag",
+    parameters = listOf("I", "Ljava/lang/Object;"),
+    filters = listOf(fieldAccess(opcode = Opcode.IPUT_OBJECT))
+)
+
+internal fun playlistClickFieldFingerprint(ownerType: String?, opcode: Opcode) = Fingerprint(
+    classFingerprint = PlaylistClickListenerFingerprint,
+    name = "onClick",
+    parameters = listOf("Landroid/view/View;"),
+    filters = listOf(fieldAccess(definingClass = ownerType, opcode = opcode))
+)
+
+internal fun playlistTapFutureFingerprint(owner: Method, futureType: String, decode: MethodReference) = Fingerprint(
+    definingClass = owner.definingClass,
+    name = owner.name,
+    parameters = owner.parameterTypes.map { it.toString() },
+    returnType = owner.returnType,
+    filters = listOf(
+        fieldAccess(definingClass = owner.definingClass, type = futureType, opcode = Opcode.IGET_OBJECT),
+        methodCall(decode, location = MatchAfterWithin(3))
+    )
+)
+
+/** Scope the playlist list through its own native reorder education resource. */
+internal object PlaylistListConstructorFingerprint : Fingerprint(
+    name = "<init>",
+    filters = listOf(resourceLiteral(ResourceType.STRING, "playlist_reorder_delete_edu"))
+)
+
+/** Observe the actual native near-end branch, before the pager's loaded-size deduplication. */
+internal fun playlistNativeScrollFingerprint(listType: String) = Fingerprint(
+    parameters = listOf("Landroid/support/v7/widget/RecyclerView;", "I", "I"),
+    returnType = "V",
+    filters = listOf(
+        instanceOf("Landroid/support/v7/widget/LinearLayoutManager;"),
+        methodCall(parameters = listOf("Landroid/support/v7/widget/RecyclerView;"), returnType = "Z"),
+        fieldAccess(type = listType, opcode = Opcode.IGET_OBJECT, location = MatchAfterWithin(5))
+    )
+)
+
+internal const val PLAYLIST_LOADING_FRAME =
+    "Lcom/google/android/libraries/youtube/rendering/ui/widget/loadingframe/LoadingFrameLayout;"
+
+/** The existing frame state setter updates child visibility and then records its state. */
+internal object PlaylistLoadingStateFingerprint : Fingerprint(
+    definingClass = PLAYLIST_LOADING_FRAME,
+    parameters = listOf("I"),
+    returnType = "V",
+    filters = listOf(
+        methodCall(name = "getChildCount", parameters = emptyList(), returnType = "I"),
+        methodCall(
+            definingClass = "Landroid/view/View;", name = "setVisibility",
+            parameters = listOf("I"), returnType = "V"
+        ),
+        fieldAccess(definingClass = PLAYLIST_LOADING_FRAME, type = "I", opcode = Opcode.IPUT)
+    )
+)
+
+internal fun playlistPageDispatchFingerprint(owner: Method) = Fingerprint(
+    definingClass = owner.definingClass,
+    name = owner.name,
+    parameters = owner.parameterTypes.map { it.toString() },
+    returnType = owner.returnType,
+    filters = listOf(methodCall(parameters = listOf("L", "L", "L"), returnType = "V"))
+)
+
+internal fun playlistPageContextFingerprint(owner: Method) = Fingerprint(
+    definingClass = owner.definingClass,
+    name = owner.name,
+    parameters = owner.parameterTypes.map { it.toString() },
+    returnType = owner.returnType,
+    filters = listOf(methodCall(definingClass = owner.definingClass, parameters = emptyList(), returnType = "L"))
+)
+
+internal fun playlistPageDispatchOwnerFingerprint(owner: Method, dispatch: MethodReference) = Fingerprint(
+    definingClass = owner.definingClass,
+    name = owner.name,
+    parameters = owner.parameterTypes.map { it.toString() },
+    returnType = owner.returnType,
+    filters = listOf(
+        fieldAccess(definingClass = owner.definingClass, opcode = Opcode.IGET_OBJECT),
+        // The field is a concrete subtype of the dispatcher's declaring class.
+        methodCall(dispatch, location = MatchAfterWithin(3))
+    )
+)
+
+internal fun playlistQueueCommitFingerprint(queueType: String, requestType: String, descriptorType: String) = Fingerprint(
+    definingClass = queueType,
+    parameters = listOf(requestType),
+    returnType = descriptorType,
+    filters = listOf(string("commitIntentToNavigate for ", StringComparisonType.STARTS_WITH))
+)
+
+internal fun playlistQueueAvailabilityFingerprint(queueType: String, requestType: String) = Fingerprint(
+    definingClass = queueType,
+    parameters = listOf(requestType),
+    returnType = "I",
+    filters = listOf(methodCall(opcode = Opcode.INVOKE_INTERFACE, parameters = listOf(requestType), returnType = "I"))
 )

@@ -142,7 +142,6 @@ public final class FeedVideoActionsPatch {
     private static final Pattern BADGE_PATTERN = Pattern.compile("^\\p{Lu}{2,12}$");
     private static final Pattern NOT_LETTERS_PATTERN = Pattern.compile("[^\\p{L}]+");
     private static final Pattern LETTERS_PATTERN = Pattern.compile("\\p{L}{2,}");
-    private static final Pattern VIDEO_ID_PATTERN = Pattern.compile("^[\\w-]{11}$");
 
     /**
      * The videos saved from this device are known right away, so
@@ -161,15 +160,6 @@ public final class FeedVideoActionsPatch {
 
     /** Root hosts that currently show a video. Used only on the main thread. */
     private static final Map<ComponentHost, VideoCard> cards = new WeakHashMap<>();
-
-    /**
-     * Root hosts with a layout change, which are checked once the layout pass is done.
-     * The root host is a LithoView, which may not call the layout method of its super class,
-     * so the layout of any host schedules its root host.
-     */
-    private static final Map<ComponentHost, Boolean> rootsToUpdate = new WeakHashMap<>();
-    private static boolean rootsUpdateScheduled;
-    private static final Runnable updateRootsRunnable = FeedVideoActionsPatch::updateRoots;
 
     private static WeakReference<ComponentHost> gestureHostRef = new WeakReference<>(null);
     private static int gestureMode = GESTURE_NONE;
@@ -214,6 +204,7 @@ public final class FeedVideoActionsPatch {
      */
     private static final AtomicInteger savedVideosChanges = new AtomicInteger();
 
+    @SuppressWarnings("SameReturnValue")
     public static boolean isPatchIncluded() {
         return false; // Modified during patching.
     }
@@ -315,6 +306,7 @@ public final class FeedVideoActionsPatch {
         public void setColorFilter(@Nullable ColorFilter colorFilter) {
         }
 
+        @Deprecated
         @Override
         public int getOpacity() {
             return PixelFormat.TRANSLUCENT;
@@ -344,10 +336,6 @@ public final class FeedVideoActionsPatch {
 
     private static int dp(View view, int dp) {
         return Math.round(dp * view.getResources().getDisplayMetrics().density);
-    }
-
-    private static boolean isRootHost(ComponentHost host) {
-        return !(host.getParent() instanceof ComponentHost);
     }
 
     @Nullable
@@ -735,34 +723,36 @@ public final class FeedVideoActionsPatch {
         return card;
     }
 
-    private static void updateRoots() {
-        rootsUpdateScheduled = false;
-        try {
-            ComponentHost[] roots = rootsToUpdate.keySet().toArray(new ComponentHost[0]);
-            rootsToUpdate.clear();
-            for (ComponentHost root : roots) {
-                if (root != null && root.isAttachedToWindow() && isRootHost(root)) {
-                    updateCard(root);
-                }
-            }
-        } catch (Exception ex) {
-            Logger.printException(() -> "updateRoots failure", ex);
-        }
-    }
-
     /**
-     * Called when {@link FeedVideoCardsPatch} checks a card, which it also does again while
-     * the list scrolls and the card is partly shown. Litho mounts only the part of a card that
-     * is shown, so the menu button of a card that enters from the top of the list may not be
-     * found when it is laid out, and the card may not be laid out again once it is shown.
+     * Called when {@link FeedVideoCardsPatch} checks a card, which happens after a host is
+     * laid out, and again while the list scrolls and the card is partly shown. Litho mounts
+     * only the part of a card that is shown, so the menu button of a card that enters from
+     * the top of the list may not be found when it is laid out, and the card may not be laid
+     * out again once it is shown.
      *
-     * @param videoId The video of the card, or null if the card is not a known video.
+     * @param videoId    The video of the card, or null if the card is not a known video.
+     * @param textsDrawn If the texts of the card are drawn. Litho mounts only the part of a card that is shown,
+     *                   so a card that enters from the bottom of the list shows its thumbnail before its texts.
      */
-    public static void onCardLaidOut(ComponentHost host, @Nullable String videoId) {
+    public static void onCardLaidOut(ComponentHost host, @Nullable String videoId, boolean textsDrawn) {
         if (!ENABLED) {
             return;
         }
         try {
+            // Litho reuses the host for other content, such as another video or a row of Shorts,
+            // which is known by its description before its texts are drawn.
+            VideoCard card = cards.get(host);
+            if (card != null && card.badgeAdded) {
+                String shownVideoId = FeedVideoCardsPatch.findVideoIdByDescription(host, false);
+                if (shownVideoId != null && !shownVideoId.equals(card.badge.videoId)) {
+                    card.removeBadge(host);
+                    cards.remove(host);
+                }
+            }
+            if (!textsDrawn) {
+                // The button is found once the texts are drawn.
+                return;
+            }
             if (updateCard(host) == null && videoId != null) {
                 FeedVideoCardsPatch.scheduleScrollCheck(host);
             }
@@ -773,34 +763,11 @@ public final class FeedVideoActionsPatch {
 
     /**
      * Injection point.
-     * Called after a host has laid out its children.
-     */
-    public static void onComponentHostLayout(ComponentHost host) {
-        if (!ENABLED) {
-            return;
-        }
-        try {
-            ComponentHost root = findRootHost(host);
-            if (root == null) {
-                return;
-            }
-            rootsToUpdate.put(root, Boolean.TRUE);
-            if (!rootsUpdateScheduled) {
-                rootsUpdateScheduled = true;
-                handler.post(updateRootsRunnable);
-            }
-        } catch (Exception ex) {
-            Logger.printException(() -> "onComponentHostLayout failure", ex);
-        }
-    }
-
-    /**
-     * Injection point.
      *
      * @return If the touch was handled and must not be given to the children.
      */
     public static boolean onComponentHostTouch(ComponentHost host, MotionEvent event) {
-        if (!ENABLED || dispatchingCancel || !isRootHost(host)) {
+        if (!ENABLED || dispatchingCancel || host.getParent() instanceof ComponentHost) {
             return false;
         }
         try {
@@ -1021,9 +988,9 @@ public final class FeedVideoActionsPatch {
     private static String findCardVideoId(ComponentHost host) {
         String cardVideoId = FeedVideoCardsPatch.findVideoId(host);
         // The texts of a card that is not fully shown may not be drawn.
-        return cardVideoId != null && VIDEO_ID_PATTERN.matcher(cardVideoId).matches()
+        return VideoInformation.isVideoId(cardVideoId)
                 ? cardVideoId
-                : FeedVideoCardsPatch.findVideoIdByDescription(host);
+                : FeedVideoCardsPatch.findVideoIdByDescription(host, false);
     }
 
     /**
@@ -1132,7 +1099,7 @@ public final class FeedVideoActionsPatch {
      * Runs the command of the app that its own menu items run, with the video of the card.
      *
      * @param saveToPlaylist If the Save to playlist panel is opened.
-     *                       Otherwise the video is saved to Watch later, or removed if it's saved.
+     *                       Otherwise, the video is saved to Watch later, or removed if it's saved.
      */
     private static void runVideoCommand(ComponentHost host, boolean saveToPlaylist) {
         final String videoId = findCardVideoId(host);

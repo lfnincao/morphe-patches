@@ -10,6 +10,7 @@ package app.morphe.extension.music.patches.lyrics.session;
 import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
+import android.net.Uri;
 import android.os.SystemClock;
 
 import androidx.annotation.Nullable;
@@ -80,6 +81,7 @@ public final class LockScreenLyrics {
             ticker.schedule();
         }
     };
+
     private LockScreenLyrics() {
     }
 
@@ -122,7 +124,7 @@ public final class LockScreenLyrics {
                 return;
             }
 
-            android.net.Uri mediaUri = LyricsManager.parseMediaUri(original);
+            Uri mediaUri = LyricsManager.parseMediaUri(original);
             LyricsManager.getInstance().onDisplayedTrackChanged(rt, ra, mediaUri);
             LyricsManager.getInstance().addListener(lyricsListener);
             lastPushedTitle = null;
@@ -202,7 +204,7 @@ public final class LockScreenLyrics {
         }
 
         session.setMetadata(metadata);
-        LyricNotificationRefresh.refresh(session, newTitle,
+        LyricsNotificationRefresh.refresh(session, newTitle,
                 metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE));
         lastPushedTitle = newTitle;
         lastPushedArtist = artist;
@@ -254,7 +256,7 @@ public final class LockScreenLyrics {
             session.setMetadata(original);
             String title = original.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE);
             String text = original.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE);
-            LyricNotificationRefresh.refresh(session,
+            LyricsNotificationRefresh.refresh(session,
                     title != null ? title : original.getString(MediaMetadata.METADATA_KEY_TITLE),
                     text != null ? text : original.getString(MediaMetadata.METADATA_KEY_ARTIST));
             nudgePlaybackState(session);

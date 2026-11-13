@@ -13,6 +13,7 @@ import app.morphe.patcher.InstructionLocation.MatchAfterWithin
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.opcode
 import com.android.tools.smali.dexlib2.Opcode
 
 /**
@@ -27,11 +28,50 @@ internal object IncognitoSearchPaddingFeatureFlagFingerprint : Fingerprint(
 )
 
 /**
+ * Read together with [IncognitoSearchPaddingFeatureFlagFingerprint] wherever the app reads that flag,
+ * and does the same: the navigation bar is hidden while the keyboard is open, and the pages leave out
+ * the height of the navigation bar meanwhile, which leaves wrong padding in some pages, such as the search.
+ */
+internal object KeyboardHidesNavigationBarFeatureFlagFingerprint : Fingerprint(
+    filters = listOf(
+        literal(45794752L)
+    )
+)
+
+/**
  * Sets the bottom margin of the layout that holds the page and the navigation bar.
  * With the keyboard open and a text field focused, the margin is the keyboard height,
  * otherwise the bottom of the window insets.
  */
 internal object PageBottomMarginFingerprint : Fingerprint(
+    returnType = "V",
+    parameters = listOf("Landroid/graphics/Rect;", "Z"),
+    filters = listOf(
+        methodCall(smali = "Landroid/view/View;->findFocus()Landroid/view/View;"),
+        methodCall(
+            smali = "Landroid/view/View;->onCheckIsTextEditor()Z",
+            location = MatchAfterWithin(5)
+        ),
+        fieldAccess(
+            opcode = Opcode.IGET,
+            definingClass = "Landroid/graphics/Rect;",
+            name = "bottom"
+        ),
+        // Keyboard height.
+        methodCall(
+            opcode = Opcode.INVOKE_STATIC,
+            parameters = listOf("Landroid/view/View;"),
+            returnType = "I",
+            location = MatchAfterWithin(10)
+        ),
+        opcode(Opcode.MOVE_RESULT, location = MatchAfterImmediately())
+    )
+)
+
+/**
+ * 21.45 and older.
+ */
+internal object PageBottomMarginLegacyFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf("Landroid/graphics/Rect;"),
     filters = listOf(

@@ -14,9 +14,8 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.patch.resourceXml
 import app.morphe.patcher.patch.patch
-import app.morphe.patcher.util.getFreeRegisterProvider
+import app.morphe.patcher.patch.resourceXml
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patches.all.misc.clone.setOrGetFallbackPackageName
 import app.morphe.patches.all.misc.crashlog.crashLogPatch
@@ -28,6 +27,7 @@ import app.morphe.patches.all.misc.resources.setAddResourceLocale
 import app.morphe.patches.shared.BoldIconsFeatureFlagFingerprint
 import app.morphe.patches.shared.GoogleApiActivityOnCreateFingerprint
 import app.morphe.patches.shared.layout.branding.addLicensePatch
+import app.morphe.patches.shared.misc.announcements.patchesUpdateNoticePatch
 import app.morphe.patches.shared.misc.checks.experimentalAppNoticePatch
 import app.morphe.patches.shared.misc.initialization.initializationPatch
 import app.morphe.patches.shared.misc.settings.MORPHE_SETTINGS_INTENT
@@ -46,6 +46,7 @@ import app.morphe.patches.shared.misc.settings.preference.PreferenceScreenPrefer
 import app.morphe.patches.shared.misc.settings.preference.PreferenceScreenPreference.Sorting
 import app.morphe.patches.shared.misc.settings.preference.SwitchPreference
 import app.morphe.patches.shared.misc.settings.preference.TextPreference
+import app.morphe.patches.shared.misc.settings.preference.noTitleUnsortedPreferenceCategory
 import app.morphe.patches.shared.misc.settings.settingsPatch
 import app.morphe.patches.youtube.misc.commandrouter.commandRouterHookPatch
 import app.morphe.patches.youtube.misc.extension.sharedExtensionPatch
@@ -58,7 +59,9 @@ import app.morphe.patches.youtube.misc.fix.likebutton.fixLikeButtonPatch
 import app.morphe.patches.youtube.misc.fix.padding.fixPagePaddingPatch
 import app.morphe.patches.youtube.misc.fix.pipchatbar.fixPipChatBarPatch
 import app.morphe.patches.youtube.misc.fix.playbackspeed.fixPlaybackSpeedWhilePlayingPatch
+import app.morphe.patches.youtube.misc.fix.preference.addPreferenceScreenHook
 import app.morphe.patches.youtube.misc.fix.preference.fixPreferenceIconPatch
+import app.morphe.patches.youtube.misc.fix.preference.preferenceScreenHookPatch
 import app.morphe.patches.youtube.misc.playservice.is_20_31_or_greater
 import app.morphe.patches.youtube.misc.playservice.is_21_30_or_greater
 import app.morphe.patches.youtube.misc.playservice.versionCheckPatch
@@ -72,9 +75,7 @@ import app.morphe.util.insertLiteralOverride
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
-import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import com.android.tools.smali.dexlib2.util.MethodUtil
@@ -215,6 +216,7 @@ val settingsPatch = patch(
         fixTouchExplorationPatch,
         fixPlaybackSpeedWhilePlayingPatch,
         fixPreferenceIconPatch,
+        preferenceScreenHookPatch,
         fixLikeButtonPatch,
         fixContentProviderPatch,
         fixGuideCachePatch,
@@ -228,6 +230,10 @@ val settingsPatch = patch(
         experimentalAppNoticePatch(
             mainActivityFingerprint = YouTubeActivityOnCreateFingerprint,
             recommendedAppVersion = COMPATIBILITY_YOUTUBE.targets.first { !it.isExperimental }.version!!
+        ),
+        patchesUpdateNoticePatch(
+            mainActivityFingerprint = YouTubeActivityOnCreateFingerprint,
+            changelogScope = "YouTube"
         ),
         initializationPatch(
             extensionPatch = sharedExtensionPatch
@@ -264,10 +270,17 @@ val settingsPatch = patch(
         )
 
         PreferenceScreen.MISC.addPreferences(
-            NonInteractivePreference(
-                key = "morphe_settings_new_indicator_days",
-                tag = "app.morphe.extension.shared.settings.preference.SeekBarPreference",
-                selectable = true
+            noTitleUnsortedPreferenceCategory(
+                NonInteractivePreference(
+                    key = "morphe_settings_new_indicator_days",
+                    tag = "app.morphe.extension.shared.settings.preference.SeekBarPreference",
+                    selectable = true
+                ),
+                NonInteractivePreference(
+                    key = "morphe_settings_new_indicator_clear",
+                    tag = "app.morphe.extension.shared.settings.preference.ClearNewSettingsIndicatorPreference",
+                    selectable = true
+                )
             ),
             TextPreference(
                 key = null,
@@ -279,7 +292,8 @@ val settingsPatch = patch(
             ListPreference(
                 key = "morphe_language",
                 tag = "app.morphe.extension.shared.settings.preference.SortedListPreference"
-            )
+            ),
+            ListPreference("morphe_patches_update_notice")
         )
 
         // Update shared dark mode status based on YT theme.
@@ -315,36 +329,13 @@ val settingsPatch = patch(
             }
         }
 
-        SettingsPreferenceScreenSyntheticFingerprint.let {
-            it.method.apply {
-                // Reuse the method's own getPreferenceScreen call.
-                val getPreferenceScreenIndex = it.instructionMatches[1].index
-                val fragmentRegister =
-                    getInstruction<FiveRegisterInstruction>(getPreferenceScreenIndex).registerC
-                val getPreferenceScreenReference =
-                    getInstruction<ReferenceInstruction>(getPreferenceScreenIndex).reference
-
-                // fragmentRegister must survive, because the settings menu filter patch
-                // adds its own call on it after these instructions.
-                val insertIndex = it.instructionMatches.last().index
-                val registerProvider = getFreeRegisterProvider(insertIndex, 3, fragmentRegister)
-                val screenRegister = registerProvider.getFreeRegister()
-                val preferenceRegister = registerProvider.getFreeRegister()
-                val nameRegister = registerProvider.getFreeRegister()
-
-                addInstructionsAtControlFlowLabel(
-                    insertIndex,
-                    customSettingsNameInstructions(
-                        getPreferenceScreen = """
-                            invoke-virtual { v$fragmentRegister }, $getPreferenceScreenReference
-                            move-result-object v$screenRegister
-                        """,
-                        screenRegister = screenRegister,
-                        preferenceRegister = preferenceRegister,
-                        nameRegister = nameRegister
-                    )
-                )
-            }
+        addPreferenceScreenHook(2) { screenRegister, (preferenceRegister, nameRegister) ->
+            customSettingsNameInstructions(
+                getPreferenceScreen = "",
+                screenRegister = screenRegister,
+                preferenceRegister = preferenceRegister,
+                nameRegister = nameRegister
+            )
         }
 
         // Show the extension messages in the YouTube snackbar instead of a toast,
@@ -515,42 +506,46 @@ object PreferenceScreen : BasePreferenceScreen() {
         iconBold = "@drawable/morphe_settings_screen_04_general_bold",
         layout = "@layout/preference_with_icon"
     )
+    val MISC = Screen(
+        key = "morphe_settings_screen_05_misc",
+        titleKey = "morphe_settings_screen_11_misc_title",
+        summaryKey = null,
+        icon = "@drawable/morphe_settings_screen_11_misc",
+        iconBold = "@drawable/morphe_settings_screen_11_misc_bold",
+        layout = "@layout/preference_with_icon"
+    )
     val PLAYER = Screen(
-        key = "morphe_settings_screen_05_player",
+        key = "morphe_settings_screen_06_player",
+        titleKey = "morphe_settings_screen_05_player_title",
         summaryKey = null,
         icon = "@drawable/morphe_settings_screen_05_player",
         iconBold = "@drawable/morphe_settings_screen_05_player_bold",
         layout = "@layout/preference_with_icon"
     )
-    val SHORTS = Screen(
-        key = "morphe_settings_screen_06_shorts",
-        summaryKey = null,
-        icon = "@drawable/morphe_settings_screen_06_shorts",
-        iconBold = "@drawable/morphe_settings_screen_06_shorts_bold",
-        layout = "@layout/preference_with_icon"
-    )
-    val SEEKBAR = Screen(
-        key = "morphe_settings_screen_07_seekbar",
-        summaryKey = null,
-        icon = "@drawable/morphe_settings_screen_07_seekbar",
-        iconBold = "@drawable/morphe_settings_screen_07_seekbar_bold",
-        layout = "@layout/preference_with_icon"
-    )
-    val SWIPE_CONTROLS = Screen(
-        key = "morphe_settings_screen_08_swipe_controls",
-        summaryKey = null,
-        icon = "@drawable/morphe_settings_screen_08_swipe_controls",
-        iconBold = "@drawable/morphe_settings_screen_08_swipe_controls_bold",
-        layout = "@layout/preference_with_icon",
-        sorting = Sorting.UNSORTED
-    )
     val RETURN_YOUTUBE_DISLIKE = Screen(
-        key = "morphe_settings_screen_09_return_youtube_dislike",
+        key = "morphe_settings_screen_07_return_youtube_dislike",
+        titleKey = "morphe_settings_screen_09_return_youtube_dislike_title",
         summaryKey = null,
         icon = "@drawable/morphe_settings_screen_09_return_youtube_dislike",
         iconBold = "@drawable/morphe_settings_screen_09_return_youtube_dislike_bold",
         layout = "@layout/preference_with_icon",
         sorting = Sorting.UNSORTED
+    )
+    val SEEKBAR = Screen(
+        key = "morphe_settings_screen_08_seekbar",
+        titleKey = "morphe_settings_screen_07_seekbar_title",
+        summaryKey = null,
+        icon = "@drawable/morphe_settings_screen_07_seekbar",
+        iconBold = "@drawable/morphe_settings_screen_07_seekbar_bold",
+        layout = "@layout/preference_with_icon"
+    )
+    val SHORTS = Screen(
+        key = "morphe_settings_screen_09_shorts",
+        titleKey = "morphe_settings_screen_06_shorts_title",
+        summaryKey = null,
+        icon = "@drawable/morphe_settings_screen_06_shorts",
+        iconBold = "@drawable/morphe_settings_screen_06_shorts_bold",
+        layout = "@layout/preference_with_icon"
     )
     val SPONSORBLOCK = Screen(
         key = "morphe_settings_screen_10_sponsorblock",
@@ -560,12 +555,14 @@ object PreferenceScreen : BasePreferenceScreen() {
         layout = "@layout/preference_with_icon",
         sorting = Sorting.UNSORTED
     )
-    val MISC = Screen(
-        key = "morphe_settings_screen_11_misc",
+    val SWIPE_CONTROLS = Screen(
+        key = "morphe_settings_screen_11_swipe_controls",
+        titleKey = "morphe_settings_screen_08_swipe_controls_title",
         summaryKey = null,
-        icon = "@drawable/morphe_settings_screen_11_misc",
-        iconBold = "@drawable/morphe_settings_screen_11_misc_bold",
-        layout = "@layout/preference_with_icon"
+        icon = "@drawable/morphe_settings_screen_08_swipe_controls",
+        iconBold = "@drawable/morphe_settings_screen_08_swipe_controls_bold",
+        layout = "@layout/preference_with_icon",
+        sorting = Sorting.UNSORTED
     )
     val VIDEO = Screen(
         key = "morphe_settings_screen_12_video",

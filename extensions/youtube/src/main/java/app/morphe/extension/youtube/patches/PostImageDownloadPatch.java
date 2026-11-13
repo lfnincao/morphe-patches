@@ -202,6 +202,7 @@ public final class PostImageDownloadPatch {
         }
     }
 
+    @SuppressWarnings("SameReturnValue")
     public static boolean isPatchIncluded() {
         return false; // Modified during patching.
     }
@@ -253,11 +254,6 @@ public final class PostImageDownloadPatch {
         return index >= LONG_TEXT_LENGTH ? normalize(text.substring(0, index)) : null;
     }
 
-    private static String getOptions(String url) {
-        final int optionsIndex = url.indexOf('=');
-        return optionsIndex < 0 ? "" : url.substring(optionsIndex + 1);
-    }
-
     /**
      * @return The size the url asks for, or {@link Integer#MAX_VALUE} if it does not ask for one.
      */
@@ -283,7 +279,9 @@ public final class PostImageDownloadPatch {
         UrlKind kind = UrlKind.NONE;
         Matcher matcher = IMAGE_URL_PATTERN.matcher(text);
         while (matcher.find()) {
-            String options = getOptions(matcher.group());
+            String url = matcher.group();
+            final int optionsIndex = url.indexOf('=');
+            String options = optionsIndex < 0 ? "" : url.substring(optionsIndex + 1);
             if (isAvatarOptions(options)) {
                 kind = UrlKind.AVATAR;
             } else if (getImageSize(options) >= MIN_IMAGE_SIZE) {
@@ -299,7 +297,7 @@ public final class PostImageDownloadPatch {
      * Called when an element is parsed. The element is not changed.
      */
     public static byte[] onElementLoaded(byte[] bytes) {
-        if (!ENABLED || bytes == null || !FeedVideoCardsPatch.emlTextMayContain(bytes, POST)
+        if (!ENABLED || bytes == null || FeedVideoCardsPatch.emlTextLacks(bytes, POST)
                 || !(FeedVideoCardsPatch.contains(bytes, GGPHT_BYTES)
                 || FeedVideoCardsPatch.contains(bytes, GOOGLE_USER_CONTENT_BYTES))) {
             return bytes;
@@ -787,6 +785,7 @@ public final class PostImageDownloadPatch {
         public void setColorFilter(@Nullable ColorFilter colorFilter) {
         }
 
+        @Deprecated
         @Override
         public int getOpacity() {
             return PixelFormat.TRANSLUCENT;

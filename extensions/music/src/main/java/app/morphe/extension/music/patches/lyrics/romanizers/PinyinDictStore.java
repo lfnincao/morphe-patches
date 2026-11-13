@@ -21,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.Utils;
 
 /**
  * Mandarin word readings from pinyin-pro, which knows words the {@link UniDictStore} character
@@ -28,6 +29,7 @@ import app.morphe.extension.shared.Logger;
  * store only adds how a word is read. Downloaded, since the patch merges only XML resources and
  * a word list goes stale as the source moves on.
  */
+@SuppressWarnings("unused")
 public final class PinyinDictStore {
 
     public static final String VERSION = "18.0.0";
@@ -41,7 +43,6 @@ public final class PinyinDictStore {
             "https://raw.githubusercontent.com/chinese-data/pinyin-pro-data/" + WORDS_REVISION
                     + "/data/complete.json";
     private static final String WORDS_ARCHIVE = "pinyin_words.json";
-    private static final String WORDS_NOTICE_NAME = "pinyin_words.NOTICE.txt";
     private static final WordTableFile WORDS = new WordTableFile(
             "pinyin_words_" + WORDS_REVISION + ".bin",
             new byte[]{'M', 'P', 'Y', 'W', '0', '0', '0', '1'}, 1 << 20);
@@ -68,20 +69,14 @@ public final class PinyinDictStore {
     }
 
     /**
-     * Removes the word table and its licence notice. The character table is
+     * Removes the word table. The character table is
      * {@link UniDictStore}'s to remove, and is left alone.
      */
     public static void delete() {
         WORDS.clear();
         File file = WORDS.file();
         if (file != null && file.exists()) {
-            //noinspection ResultOfMethodCallIgnored
-            file.delete();
-        }
-        File directory = RomanizationDict.directory();
-        if (directory != null) {
-            //noinspection ResultOfMethodCallIgnored
-            new File(directory, WORDS_NOTICE_NAME).delete();
+            Utils.deleteQuietly(file);
         }
     }
 
@@ -116,7 +111,7 @@ public final class PinyinDictStore {
 
         WORKER.execute(() -> {
             try {
-                build(CHANNEL);
+                build();
             } catch (Exception ex) {
                 Logger.printDebug(() -> "Pinyin dictionary build failed", ex);
                 CHANNEL.onFailed();
@@ -127,30 +122,24 @@ public final class PinyinDictStore {
         });
     }
 
-    @Nullable
-    public static String notice() {
-        File directory = RomanizationDict.directory();
-        return directory == null ? null : RomanizationDict.readNotice(directory, WORDS_NOTICE_NAME);
-    }
-
     private static int entries() {
         WordReadingTable words = word();
         return words == null ? 0 : words.size();
     }
 
-    private static void build(RomanizationDict.Listener listener) throws IOException {
+    private static void build() throws IOException {
         File directory = RomanizationDict.directory();
         if (directory == null) throw new IOException("no cache directory");
 
-        WORDS.build(directory, WORDS_URL, WORDS_ARCHIVE, PinyinDictStore::addWords, listener);
-        RomanizationDict.writeNotice(directory, WORDS_NOTICE_NAME, wordsNoticeText());
-        listener.onReady(entries());
+        WORDS.build(directory, WORDS_URL, WORDS_ARCHIVE, PinyinDictStore::addWords, PinyinDictStore.CHANNEL);
+        PinyinDictStore.CHANNEL.onReady(entries());
     }
 
     /**
      * Read rather than parsed: a quote followed by a colon appears in a word and nowhere else,
      * which is enough to tell a key from a reading however the file happens to be laid out.
      */
+    @SuppressWarnings("ConstantValue")
     private static void addWords(File archive, WordReadingTable.Builder builder,
                                  RomanizationDict.Listener listener) throws IOException {
         String word = null;
@@ -202,28 +191,4 @@ public final class PinyinDictStore {
         return reading.substring(0, cut) + "r";
     }
 
-    private static String wordsNoticeText() {
-        return "pinyin-pro word readings\n"
-                + WORDS_URL + "\n\n"
-                + "From https://github.com/chinese-data/pinyin-pro-data\n\n"
-                + "MIT License\n\n"
-                + "Copyright (c) 2024 Chinese-Data\n\n"
-                + "Permission is hereby granted, free of charge, to any person obtaining a copy\n"
-                + "of this software and associated documentation files (the \"Software\"), to deal\n"
-                + "in the Software without restriction, including without limitation the rights\n"
-                + "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n"
-                + "copies of the Software, and to permit persons to whom the Software is\n"
-                + "furnished to do so, subject to the following conditions:\n\n"
-                + "The above copyright notice and this permission notice shall be included in all\n"
-                + "copies or substantial portions of the Software.\n\n"
-                + "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
-                + "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
-                + "FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
-                + "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
-                + "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
-                + "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
-                + "SOFTWARE.\n\n"
-                + "What is stored here is the reading of each word, taken from data/complete.json\n"
-                + "in the file above, with the erhua suffix folded into the syllable before it.\n";
-    }
 }

@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -51,7 +52,7 @@ public final class LrcRedProvider implements LyricsProvider {
     private static final String ALBUM_PREFIX = "Album: ";
     private static final String ARTIST_PREFIX = "Artist: ";
     private static final int SYNC_CONNECT_TIMEOUT_MS = 10_000;
-    /** The model answers in 0.5s to 15s, past the shared five second read timeout. */
+    /** The model answers in 0.5s to 15s, past the shared five-second read timeout. */
     private static final int SYNC_READ_TIMEOUT_MS = 60_000;
     /** The service rate limits clients that fire requests back to back. */
     private static final long SYNC_MIN_INTERVAL_MS = 1_000;
@@ -74,11 +75,11 @@ public final class LrcRedProvider implements LyricsProvider {
     private static final Pattern TRAILING_FEAT = Pattern.compile(
             "\\b(?:feat\\.?|ft\\.?|with)\\s+.*$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern SONGWRITER_TAG = Pattern.compile(
+            "<songwriter>([^<]*)</songwriter>");
     private static final Pattern VIDEO_TAGS = Pattern.compile(
             "[(x\\[](?:official(?:\\s+(?:music\\s+)?video|\\s+audio)?|music video|video|audio|lyrics?|visualizer|album version|explicit)[^)\\]]*[)\\]]",
             Pattern.CASE_INSENSITIVE);
-    private static final Pattern SONGWRITER_TAG = Pattern.compile(
-            "<songwriter>([^<]*)</songwriter>");
 
     /** One thread, so a re-time never occupies the lookup pool or races another re-time. */
     private static final ExecutorService SYNC_EXECUTOR = Executors.newSingleThreadExecutor(runnable -> {
@@ -161,21 +162,23 @@ public final class LrcRedProvider implements LyricsProvider {
 
         return new Lyrics(full.lines(), NAME, full.synced(),
                 full.romanization(), full.translations(), full.romanizations(),
-                full.songwriters(), ttml, "ttml", full.sourceUrl(),
-                readByModel(json) ? MODEL_CREDIT : null);
+                full.songwriters(), full.credits(), ttml, "ttml", full.sourceUrl(),
+                readByModel(json) ? MODEL_CREDIT : null, full.agentNames());
     }
 
     /** The album and the artist are in the document alone. */
     private static Lyrics withInfoLines(Lyrics lyrics, JSONObject json) {
-        final List<String> lines = new ArrayList<>();
-        if (lyrics.songwriters() == null) {
-            // Only a document whose TTML failed to parse reaches here without credits.
-            lines.addAll(readDocumentCredits(json.optString("source", "")));
-        } else {
-            for (String line : lyrics.songwriters()) {
+        // Only a document whose TTML failed to parse reaches here without songwriters.
+        final List<String> songwriters = lyrics.songwriters() != null
+                ? lyrics.songwriters()
+                : readDocumentSongwriters(json.optString("source", ""));
+
+        final List<String> credits = new ArrayList<>();
+        if (lyrics.credits() != null) {
+            for (String line : lyrics.credits()) {
                 // A previous pass may have added these already.
                 if (!line.startsWith(ALBUM_PREFIX) && !line.startsWith(ARTIST_PREFIX)) {
-                    lines.add(line);
+                    credits.add(line);
                 }
             }
         }
@@ -183,37 +186,35 @@ public final class LrcRedProvider implements LyricsProvider {
         final String album = json.optString("album", "").trim();
         final String artist = json.optString("artist", "").trim();
         if (!album.isEmpty()) {
-            lines.add(ALBUM_PREFIX + album);
+            credits.add(ALBUM_PREFIX + album);
         }
         if (!artist.isEmpty()) {
-            lines.add(ARTIST_PREFIX + artist);
+            credits.add(ARTIST_PREFIX + artist);
         }
 
-        if (lines.isEmpty() || lines.equals(lyrics.songwriters())) {
+        if (songwriters.isEmpty() && credits.isEmpty()) {
             return lyrics;
         }
 
         return new Lyrics(lyrics.lines(), lyrics.providerName(), lyrics.synced(),
                 lyrics.romanization(), lyrics.translations(), lyrics.romanizations(),
-                lines, lyrics.rawFormat(), lyrics.formatType(),
-                lyrics.sourceUrl(), lyrics.about());
+                songwriters.isEmpty() ? null : songwriters,
+                credits.isEmpty() ? null : credits,
+                lyrics.rawFormat(), lyrics.formatType(),
+                lyrics.sourceUrl(), lyrics.about(), lyrics.agentNames());
     }
 
-    /** The songwriter names in the TTML head, in the form the TTML parser produces. */
-    private static List<String> readDocumentCredits(String ttml) {
-        if (ttml.isEmpty()) {
-            return List.of();
-        }
-
+    /** The songwriter names in the TTML head. */
+    private static List<String> readDocumentSongwriters(String ttml) {
         final List<String> names = new ArrayList<>();
         final Matcher matcher = SONGWRITER_TAG.matcher(ttml);
         while (matcher.find()) {
-            final String name = matcher.group(1).trim();
+            final String name = Objects.requireNonNull(matcher.group(1)).trim();
             if (!name.isEmpty()) {
                 names.add(name);
             }
         }
-        return names.isEmpty() ? List.of() : List.of("Written by: " + String.join(", ", names));
+        return names;
     }
 
     private static boolean readByModel(JSONObject root) {
@@ -373,7 +374,6 @@ public final class LrcRedProvider implements LyricsProvider {
         // is how a native title pairs with a romanized artist, or the other way round.
         boolean titleExact = false;
 
-        // Title.
         if (!targetFullTitle.isEmpty() && targetFullTitle.equals(itemFullTitle)) {
             score += 50;
             titleExact = true;
@@ -388,7 +388,6 @@ public final class LrcRedProvider implements LyricsProvider {
             }
         }
 
-        // Artist.
         if (!targetArtist.isEmpty() && !itemArtist.isEmpty()) {
             if (targetArtist.equals(itemArtist)) {
                 score += 30;
@@ -417,7 +416,6 @@ public final class LrcRedProvider implements LyricsProvider {
             }
         }
 
-        // Album.
         if (!targetAlbum.isEmpty() && !itemAlbum.isEmpty()) {
             if (targetAlbum.equals(itemAlbum)) {
                 score += 35;
@@ -434,14 +432,13 @@ public final class LrcRedProvider implements LyricsProvider {
             }
         }
 
-        // Duration.
         if (targetDuration > 0 && itemDuration > 0) {
             int diff = Math.abs(itemDuration - targetDuration);
             if (diff == 0) {
                 score += 25;
-            } else if (diff <= 1) {
+            } else if (diff == 1) {
                 score += 20;
-            } else if (diff <= 2) {
+            } else if (diff == 2) {
                 score += 15;
             } else if (diff <= 5) {
                 score += 5;
@@ -462,7 +459,7 @@ public final class LrcRedProvider implements LyricsProvider {
         return score;
     }
 
-    private static String normalize(String str) {
+    static String normalize(String str) {
         if (str == null) {
             return "";
         }
@@ -472,7 +469,7 @@ public final class LrcRedProvider implements LyricsProvider {
                 .trim();
     }
 
-    private static String cleanBaseTitle(String str) {
+    static String cleanBaseTitle(String str) {
         if (str == null) {
             return "";
         }
@@ -482,7 +479,7 @@ public final class LrcRedProvider implements LyricsProvider {
         return normalize(s);
     }
 
-    private static List<String> extractArtists(String str) {
+    static List<String> extractArtists(String str) {
         if (str == null || str.isEmpty()) {
             return Collections.emptyList();
         }
@@ -611,9 +608,12 @@ public final class LrcRedProvider implements LyricsProvider {
         }
 
         final String cleanTitle = cleanBaseTitle(track.title());
-        if (!cleanTitle.isEmpty() && !cleanTitle.equalsIgnoreCase(normalize(track.title()))) {
-            hits = matchApi(new TrackInfo(cleanTitle, track.artist(),
-                    track.album(), track.durationSeconds()));
+        final boolean hasCleanTitle = !cleanTitle.isEmpty()
+                && !cleanTitle.equalsIgnoreCase(normalize(track.title()));
+        final TrackInfo cleanTrack = new TrackInfo(cleanTitle, track.artist(),
+                track.album(), track.durationSeconds());
+        if (hasCleanTitle) {
+            hits = matchApi(cleanTrack);
             if (!hits.isEmpty()) {
                 return hits;
             }
@@ -633,10 +633,7 @@ public final class LrcRedProvider implements LyricsProvider {
             return hits;
         }
 
-        return cleanTitle.isEmpty() || cleanTitle.equalsIgnoreCase(normalize(track.title()))
-                ? Collections.emptyList()
-                : searchApi(new TrackInfo(cleanTitle, track.artist(),
-                track.album(), track.durationSeconds()));
+        return hasCleanTitle ? searchApi(cleanTrack) : Collections.emptyList();
     }
 
     private List<SearchHit> matchApi(TrackInfo track) throws UnsupportedEncodingException {
@@ -690,7 +687,7 @@ public final class LrcRedProvider implements LyricsProvider {
         return sorted;
     }
 
-    /** One the search turned up, normalised from either wording before scoring. */
+    /** One the search turned up, normalized from either wording before scoring. */
     private record SearchHit(String isrc, String title, String artist, String album,
                              double durationSeconds) {
     }
