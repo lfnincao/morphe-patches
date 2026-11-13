@@ -65,6 +65,17 @@ public final class RememberPlaybackPositionPatch {
     private static final int RESTORE_MAX_ATTEMPTS = 20;
 
     /**
+     * Delay between seek attempts when restoring.
+     */
+    private static final long RESTORE_SEEK_RETRY_DELAY_MS = 1000L;
+
+    /**
+     * Maximum number of seek attempts. Early seeks are sometimes accepted while the
+     * player is still loading, which leaves playback stuck on the spinner.
+     */
+    private static final int RESTORE_SEEK_MAX_ATTEMPTS = 10;
+
+    /**
      * How close the current time must already be to the saved position to skip seeking.
      * YouTube restores this itself when a video is opened directly.
      */
@@ -89,6 +100,11 @@ public final class RememberPlaybackPositionPatch {
      */
     private static boolean restorePending;
 
+    /**
+     * True while {@link #attemptRestoreSeek} is retrying seeks for the current video.
+     */
+    private static boolean restoreSeekInProgress;
+
     private static long lastSavedTime = -1L;
 
     private static long lastSaveAtMs;
@@ -110,6 +126,7 @@ public final class RememberPlaybackPositionPatch {
             lastSaveAtMs = 0L;
             restoreAttempts = 0;
             restorePending = false;
+            restoreSeekInProgress = false;
             newVideoGeneration++;
 
             if (!Settings.REMEMBER_PLAYBACK_POSITION.get()) {
@@ -135,6 +152,9 @@ public final class RememberPlaybackPositionPatch {
                 return;
             }
             if (VideoInformation.lastVideoIdIsShort()) {
+                return;
+            }
+            if (VideoInformation.isLiveStream()) {
                 return;
             }
             if (restorePending) {
@@ -187,6 +207,10 @@ public final class RememberPlaybackPositionPatch {
                 restorePending = false;
                 return;
             }
+            if (VideoInformation.isLiveStream()) {
+                restorePending = false;
+                return;
+            }
 
             final String videoId = VideoInformation.getVideoId();
             final long videoLength = VideoInformation.getVideoLength();
@@ -201,14 +225,26 @@ public final class RememberPlaybackPositionPatch {
                 return;
             }
 
-            if (seekToSavedPosition(videoId, saved.position())) {
+            final long currentTime = VideoInformation.getVideoTime();
+            final long delta = Math.abs(currentTime - saved.position());
+            if (delta < ALREADY_RESTORED_TOLERANCE_MS) {
+                restorePending = false;
+                return;
+            }
+            if (currentTime >= RESTORE_WINDOW_MS) {
+                Logger.printDebug(() -> "Restore window passed for " + videoId
+                        + " current: " + currentTime + " saved: " + saved.position());
+                finishWithoutRestore(videoId, false);
+                return;
+            }
+            if (restoreSeekInProgress) {
                 return;
             }
 
-            // Player controller is not ready yet, or it is too early to decide.
-            rescheduleOrGiveUp(generation);
+            attemptRestoreSeek(generation, videoId, saved.position(), 1);
         } catch (Exception ex) {
             restorePending = false;
+            restoreSeekInProgress = false;
             Logger.printException(() -> "checkRestore failure", ex);
         }
     }
@@ -224,30 +260,53 @@ public final class RememberPlaybackPositionPatch {
         }
     }
 
-    /**
-     * @return true if this restore attempt is finished (seeked, already restored, or too late).
-     */
-    private static boolean seekToSavedPosition(String videoId, long savedPosition) {
-        final long currentTime = VideoInformation.getVideoTime();
-        final long delta = Math.abs(currentTime - savedPosition);
-        if (delta < ALREADY_RESTORED_TOLERANCE_MS) {
-            // YouTube already restored a close position (typical for a direct open).
-            restorePending = false;
-            return true;
+    private static void attemptRestoreSeek(long generation, String videoId,
+                                           long targetPositionMs, int attempt) {
+        if (generation != newVideoGeneration) {
+            return;
         }
-        if (currentTime >= RESTORE_WINDOW_MS) {
-            Logger.printDebug(() -> "Restore window passed for " + videoId
-                    + " current: " + currentTime + " saved: " + savedPosition);
-            restorePending = false;
-            return true;
-        }
-        if (!VideoInformation.seekTo(savedPosition)) {
-            return false;
+        if (attempt == 1) {
+            restoreSeekInProgress = true;
         }
 
-        Logger.printDebug(() -> "Restored playback position for " + videoId + " to " + savedPosition + "ms");
-        restorePending = false;
-        return true;
+        final long currentTime = VideoInformation.getVideoTime();
+        if (currentTime >= RESTORE_WINDOW_MS) {
+            Logger.printDebug(() -> "Restore window passed during seek for " + videoId);
+            restoreSeekInProgress = false;
+            finishWithoutRestore(videoId, false);
+            return;
+        }
+
+        final boolean seekAccepted = VideoInformation.seekTo(targetPositionMs);
+        Logger.printDebug(() -> "Restore attempt: " + attempt + "/" + RESTORE_SEEK_MAX_ATTEMPTS
+                + " target: " + targetPositionMs + " current: " + currentTime
+                + " accepted: " + seekAccepted);
+
+        Utils.runOnMainThreadDelayed(() -> {
+            if (generation != newVideoGeneration) {
+                return;
+            }
+
+            final long timeAfterSeek = VideoInformation.getVideoTime();
+            if (Math.abs(timeAfterSeek - targetPositionMs) <= ALREADY_RESTORED_TOLERANCE_MS) {
+                Logger.printDebug(() -> "Restored playback position for " + videoId
+                        + " to " + timeAfterSeek + "ms");
+                restorePending = false;
+                restoreSeekInProgress = false;
+                return;
+            }
+
+            if (attempt < RESTORE_SEEK_MAX_ATTEMPTS) {
+                attemptRestoreSeek(generation, videoId, targetPositionMs, attempt + 1);
+                return;
+            }
+
+            Logger.printDebug(() -> "Restore seek gave up for " + videoId
+                    + ". current: " + timeAfterSeek + " target: " + targetPositionMs);
+            // Drop the saved position so the next open does not repeat a bad seek.
+            restoreSeekInProgress = false;
+            finishWithoutRestore(videoId, true);
+        }, RESTORE_SEEK_RETRY_DELAY_MS);
     }
 
     private static void rescheduleOrGiveUp(long generation) {
@@ -260,6 +319,7 @@ public final class RememberPlaybackPositionPatch {
         Logger.printDebug(() -> "Restore polling gave up. videoId: "
                 + VideoInformation.getVideoId() + " videoLength: " + VideoInformation.getVideoLength());
         restorePending = false;
+        restoreSeekInProgress = false;
     }
 
     private static Map<String, SavedPosition> getSavedPositions() {
