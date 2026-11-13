@@ -1,3 +1,9 @@
+## [2.2.1](https://github.com/lfnincao/morphe-patches/compare/v2.2.0...v2.2.1) (2026-11-13)
+
+### 🐛 Bug Fixes
+
+* **youtube:** verify resume seeks before trusting player state ([f939454](https://github.com/lfnincao/morphe-patches/commit/f9394548a76a14fa587bcbfe0fa878574267df1a))
+
 ## [2.2.0](https://github.com/lfnincao/morphe-patches/compare/v2.1.1...v2.2.0) (2026-11-13)
 
 ### ✨ New Features
