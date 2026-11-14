@@ -101,9 +101,19 @@ public final class ServerResumePositionParser {
                         return new SearchResult(fromChild, childPath);
                     }
                 }
-                Long fromSelf = parsePlaybackStartConfigFields(node.children);
-                if (fromSelf != null) {
-                    return new SearchResult(fromSelf, path);
+                boolean hasNestedChild = false;
+                for (ProtoNode child : node.children) {
+                    if (child.children != null) {
+                        hasNestedChild = true;
+                        break;
+                    }
+                }
+                // Only treat this message itself as playbackStartConfig when it has no nested children.
+                if (!hasNestedChild) {
+                    Long fromSelf = parsePlaybackStartConfigFields(node.children);
+                    if (fromSelf != null) {
+                        return new SearchResult(fromSelf, path);
+                    }
                 }
                 SearchResult nested = findResumeDepthFirst(node.children, path);
                 if (nested != null) {
