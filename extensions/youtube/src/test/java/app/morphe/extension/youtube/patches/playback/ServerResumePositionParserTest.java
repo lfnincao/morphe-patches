@@ -41,14 +41,16 @@ public class ServerResumePositionParserTest {
 
     @Test
     public void parseResumePositionMs_nestedInPlayerResponse() throws IOException {
-        byte[] playerConfig = buildPlaybackStartConfig(120, "120000");
+        byte[] playbackStartConfig = buildPlaybackStartConfig(120, "120000");
+        byte[] playerConfig = wrapField(2, playbackStartConfig);
         byte[] playerResponse = wrapField(15, playerConfig);
         assertEquals(Long.valueOf(120_000L), ServerResumePositionParser.parseResumePositionMs(playerResponse));
     }
 
     @Test
     public void parse_returnsCandidateFieldPath() throws IOException {
-        byte[] playerConfig = buildPlaybackStartConfig(120, "120000");
+        byte[] playbackStartConfig = buildPlaybackStartConfig(120, "120000");
+        byte[] playerConfig = wrapField(2, playbackStartConfig);
         byte[] playerResponse = wrapField(15, playerConfig);
         ServerResumePositionParser.ParseResult result = ServerResumePositionParser.parse(playerResponse);
         assertEquals(Long.valueOf(120_000L), result.resumePositionMs);

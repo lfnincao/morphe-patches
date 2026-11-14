@@ -101,6 +101,10 @@ public final class ServerResumePositionParser {
                         return new SearchResult(fromChild, childPath);
                     }
                 }
+                Long fromSelf = parsePlaybackStartConfigFields(node.children);
+                if (fromSelf != null) {
+                    return new SearchResult(fromSelf, path);
+                }
                 SearchResult nested = findResumeDepthFirst(node.children, path);
                 if (nested != null) {
                     return nested;
@@ -129,6 +133,17 @@ public final class ServerResumePositionParser {
         Long streamTimeMillis = null;
 
         for (ProtoNode field : fields) {
+            String directText = field.decodeText();
+            if (directText != null && isDigits(directText)) {
+                try {
+                    long millis = Long.parseLong(directText);
+                    if (millis > 0) {
+                        streamTimeMillis = millis;
+                    }
+                } catch (NumberFormatException ignored) {
+                    // Not streamTimeMillis.
+                }
+            }
             if (field.children != null) {
                 for (ProtoNode child : field.children) {
                     String text = child.decodeText();
