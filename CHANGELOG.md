@@ -1,3 +1,9 @@
+## [2.3.1](https://github.com/lfnincao/morphe-patches/compare/v2.3.0...v2.3.1) (2026-11-14)
+
+### 🐛 Bug Fixes
+
+* **youtube:** server resume player response hook smali on 21.30+ ([d91babc](https://github.com/lfnincao/morphe-patches/commit/d91babc1f941650be7aefbe93efa87417a53ffaf))
+
 ## [2.3.0](https://github.com/lfnincao/morphe-patches/compare/v2.2.2...v2.3.0) (2026-11-14)
 
 ### ✨ New Features
