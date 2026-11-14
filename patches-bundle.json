@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-11-14T22:15:19",
-  "description": "## [2.3.1](https://github.com/lfnincao/morphe-patches/compare/v2.3.0...v2.3.1) (2026-11-14)\n\n### 🐛 Bug Fixes\n\n* **youtube:** server resume player response hook smali on 21.30+ ([d91babc](https://github.com/lfnincao/morphe-patches/commit/d91babc1f941650be7aefbe93efa87417a53ffaf))",
-  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.3.1/patches-2.3.1.mpp",
+  "created_at": "2026-11-14T22:41:39",
+  "description": "## [2.3.2](https://github.com/lfnincao/morphe-patches/compare/v2.3.1...v2.3.2) (2026-11-14)\n\n### 🐛 Bug Fixes\n\n* **youtube:** avoid clobbering p0 in server resume player response hook ([#7](https://github.com/lfnincao/morphe-patches/issues/7)) ([96976b6](https://github.com/lfnincao/morphe-patches/commit/96976b61c0ce76af36608ceb7e5cf017b4b41cb3))",
+  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.3.2/patches-2.3.2.mpp",
   "signature_download_url": "",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "public_key": "PPMsWvMqp78cL8h+2UgBGQwsJkuAL/sLWsNr2b5kqmE="
 }

@@ -1,3 +1,9 @@
+## [2.3.2](https://github.com/lfnincao/morphe-patches/compare/v2.3.1...v2.3.2) (2026-11-14)
+
+### 🐛 Bug Fixes
+
+* **youtube:** avoid clobbering p0 in server resume player response hook ([#7](https://github.com/lfnincao/morphe-patches/issues/7)) ([96976b6](https://github.com/lfnincao/morphe-patches/commit/96976b61c0ce76af36608ceb7e5cf017b4b41cb3))
+
 ## [2.3.1](https://github.com/lfnincao/morphe-patches/compare/v2.3.0...v2.3.1) (2026-11-14)
 
 ### 🐛 Bug Fixes
