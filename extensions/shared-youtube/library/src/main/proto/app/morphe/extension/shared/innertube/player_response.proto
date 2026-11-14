@@ -114,6 +114,8 @@ message DynamicReadaheadConfig {
 }
 
 message ServerPlaybackStartConfig {
+  // Feature flag only in many responses; resume offset is usually in playbackStartConfig.
+  optional bool enable = 1;
 }
 
 message MediaCacheConfig {

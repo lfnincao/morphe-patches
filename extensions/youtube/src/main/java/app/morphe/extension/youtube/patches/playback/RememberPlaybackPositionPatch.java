@@ -427,6 +427,33 @@ public final class RememberPlaybackPositionPatch {
         }
     }
 
+    /**
+     * Used by {@link ServerResumePositionPatch} so server resume never races local remember restore.
+     */
+    public static boolean shouldDeferToLocalRestore(String videoId) {
+        if (!Settings.REMEMBER_PLAYBACK_POSITION.get()) {
+            return false;
+        }
+        if (restorePending) {
+            final String activeId = VideoInformation.getStartingOrPlayingVideoId();
+            if (videoId.isEmpty() || videoId.equals(activeId)) {
+                return true;
+            }
+        }
+        if (videoId.isEmpty()) {
+            return false;
+        }
+        final SavedPosition saved = loadPlaybackPosition(videoId);
+        if (saved == null) {
+            return false;
+        }
+        final long videoLength = VideoInformation.getVideoLength();
+        if (videoLength <= 0) {
+            return saved.position() > MIN_PROGRESS_MS;
+        }
+        return isRestorable(saved.position(), videoLength);
+    }
+
     private static void trimSavedPositions() {
         Map<String, SavedPosition> map = getSavedPositions();
 

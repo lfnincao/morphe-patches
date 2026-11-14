@@ -132,6 +132,8 @@ public class Settings extends SharedYouTubeSettings {
     public static final StringSetting REMEMBER_LIVE_STREAM_POSITION_TIMES = new StringSetting("morphe_remember_live_stream_position_times", "", false, false);
     public static final BooleanSetting REMEMBER_PLAYBACK_POSITION = new BooleanSetting("morphe_remember_playback_position", FALSE);
     public static final StringSetting REMEMBER_PLAYBACK_POSITION_TIMES = new StringSetting("morphe_remember_playback_position_times", "", false, false);
+    public static final BooleanSetting SERVER_RESUME_PLAYBACK_POSITION_EXPERIMENTAL =
+            new BooleanSetting("morphe_server_resume_playback_position_experimental", FALSE);
     public static final BooleanSetting REMEMBER_VIDEO_QUALITY_LAST_SELECTED_TOAST = new BooleanSetting("morphe_remember_video_quality_last_selected_toast", TRUE, false, parentsAny(REMEMBER_VIDEO_QUALITY_LAST_SELECTED, REMEMBER_SHORTS_QUALITY_LAST_SELECTED));
 
     // Speed
