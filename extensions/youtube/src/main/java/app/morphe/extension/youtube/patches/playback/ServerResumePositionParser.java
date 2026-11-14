@@ -91,9 +91,15 @@ public final class ServerResumePositionParser {
                     ? String.valueOf(node.getFieldNumber())
                     : pathPrefix + "." + node.getFieldNumber();
             if (node.children != null) {
-                Long fromSelf = parsePlaybackStartConfigFields(node.children);
-                if (fromSelf != null) {
-                    return new SearchResult(fromSelf, path);
+                for (ProtoNode child : node.children) {
+                    if (child.children == null) {
+                        continue;
+                    }
+                    Long fromChild = parsePlaybackStartConfigFields(child.children);
+                    if (fromChild != null) {
+                        final String childPath = path + "." + child.getFieldNumber();
+                        return new SearchResult(fromChild, childPath);
+                    }
                 }
                 SearchResult nested = findResumeDepthFirst(node.children, path);
                 if (nested != null) {
