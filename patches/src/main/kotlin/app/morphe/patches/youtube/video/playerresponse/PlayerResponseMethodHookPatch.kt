@@ -37,7 +37,6 @@ private var parameterIsShortAndOpeningOrPlaying = -1
 // Registers used to pass the parameters to the extension.
 private var playerResponseMethodCopyRegisters = false
 private lateinit var registerVideoId: String
-private lateinit var registerRawPlayerResponse: String
 private lateinit var registerProtoBuffer: String
 private lateinit var registerPlaylistId: String
 private lateinit var registerIsShortAndOpeningOrPlaying: String
@@ -71,13 +70,11 @@ val playerResponseMethodHookPatch = patch {
 
         if (playerResponseMethodCopyRegisters) {
             registerVideoId = "v0"
-            registerRawPlayerResponse = "v4"
             registerProtoBuffer = "v1"
             registerPlaylistId = "v2"
             registerIsShortAndOpeningOrPlaying = "v3"
         } else {
             registerVideoId = "p$PARAMETER_VIDEO_ID"
-            registerRawPlayerResponse = "p$PARAMETER_RAW_PLAYER_RESPONSE"
             registerProtoBuffer = "p$PARAMETER_PROTO_BUFFER"
             registerPlaylistId = "p$PARAMETER_PLAYLIST_ID"
             registerIsShortAndOpeningOrPlaying = "p$parameterIsShortAndOpeningOrPlaying"
@@ -113,12 +110,28 @@ val playerResponseMethodHookPatch = patch {
         }
 
         fun hookRawPlayerResponse(hook: Hook) {
-            playerResponseMethodRef.get()!!.addInstruction(
-                0,
-                "invoke-static { $registerRawPlayerResponse, $registerVideoId, " +
-                    "$registerIsShortAndOpeningOrPlaying }, $hook",
-            )
-            numberOfInstructionsAdded++
+            val method = playerResponseMethodRef.get()!!
+            if (playerResponseMethodCopyRegisters) {
+                // Scratch registers must stay below p0Register (v0-v3). Never use v4+ here:
+                // on PlayerParameterBuilder, p0 is often v4 and equals the old buggy v4 copy slot.
+                // Briefly borrow the playlist scratch (v2), then restore it from p4 for later hooks.
+                method.addInstructions(
+                    0,
+                    """
+                        move-object/from16 v2, p$PARAMETER_RAW_PLAYER_RESPONSE
+                        invoke-static { v2, $registerVideoId, $registerIsShortAndOpeningOrPlaying }, $hook
+                        move-object/from16 v2, p$PARAMETER_PLAYLIST_ID
+                    """,
+                )
+                numberOfInstructionsAdded += 3
+            } else {
+                method.addInstruction(
+                    0,
+                    "invoke-static { p$PARAMETER_RAW_PLAYER_RESPONSE, p$PARAMETER_VIDEO_ID, " +
+                        "p$parameterIsShortAndOpeningOrPlaying }, $hook",
+                )
+                numberOfInstructionsAdded++
+            }
         }
 
         // Reverse the order in order to preserve insertion order of the hooks.
@@ -136,13 +149,6 @@ val playerResponseMethodHookPatch = patch {
         beforeVideoIdHooks.forEach(::hookProtoBufferParameter)
 
         if (playerResponseMethodCopyRegisters) {
-            val rawPlayerResponseMove = if (rawPlayerResponseHooks.isNotEmpty()) {
-                """
-                    move-object/from16 $registerRawPlayerResponse, p$PARAMETER_RAW_PLAYER_RESPONSE
-                """.trimIndent()
-            } else {
-                ""
-            }
             playerResponseMethodRef.get()!!.addInstructions(
                 0,
                 """
@@ -150,10 +156,9 @@ val playerResponseMethodHookPatch = patch {
                     move-object/from16 $registerProtoBuffer, p$PARAMETER_PROTO_BUFFER
                     move-object/from16 $registerPlaylistId, p$PARAMETER_PLAYLIST_ID
                     move/from16        $registerIsShortAndOpeningOrPlaying, p$parameterIsShortAndOpeningOrPlaying
-                    $rawPlayerResponseMove
                 """
             )
-            numberOfInstructionsAdded += 4 + if (rawPlayerResponseHooks.isNotEmpty()) 1 else 0
+            numberOfInstructionsAdded += 4
 
             // Move the modified register back.
             playerResponseMethodRef.get()!!.addInstruction(

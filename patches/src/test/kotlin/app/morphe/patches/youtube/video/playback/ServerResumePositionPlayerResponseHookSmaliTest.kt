@@ -20,8 +20,30 @@ import kotlin.test.assertEquals
 
 class ServerResumePositionPlayerResponseHookSmaliTest {
     @Test
-    fun `copy register hook compiles on player parameter builder ABI`() {
+    fun `raw response hook compiles without touching p0 scratch alias`() {
         val method = playerParameterBuilderMethod()
+        val hook = """
+            move-object/from16 v2, p2
+            invoke-static { v2, v0, v3 }, Lapp/morphe/extension/youtube/patches/playback/ServerResumePositionPatch;->onPlayerResponseReceived([BLjava/lang/String;Z)V
+            move-object/from16 v2, p4
+        """.trimIndent()
+        method.addInstructions(0, hook)
+        assertEquals(3, method.implementation!!.instructions.size)
+    }
+
+    @Test
+    fun `copy register moves stay within v0 through v3 below p0`() {
+        val moves = """
+            move-object/from16 v0, p1
+            move-object/from16 v1, p3
+            move-object/from16 v2, p4
+            move/from16        v3, p13
+        """.trimIndent()
+        assertEquals(4, moves.toInstructions(playerParameterBuilderMethod()).size)
+    }
+
+    @Test
+    fun `helper smali for dedicated scratch slot compiles when p0 is above v4`() {
         val hook = playerResponseRawBytesHookSmali(
             registerRawResponse = "v4",
             registerVideoId = "v0",
@@ -29,20 +51,9 @@ class ServerResumePositionPlayerResponseHookSmaliTest {
             methodDescriptor = "Lapp/morphe/extension/youtube/patches/playback/ServerResumePositionPatch;->" +
                 "onPlayerResponseReceived([BLjava/lang/String;Z)V",
         )
+        val method = playerParameterBuilderMethod()
         method.addInstruction(0, hook)
         assertEquals(1, method.implementation!!.instructions.size)
-    }
-
-    @Test
-    fun `copy register moves compile when raw response hook is present`() {
-        val moves = """
-            move-object/from16 v0, p1
-            move-object/from16 v1, p3
-            move-object/from16 v2, p4
-            move/from16        v3, p13
-            move-object/from16 v4, p2
-        """.trimIndent()
-        assertEquals(5, moves.toInstructions(playerParameterBuilderMethod()).size)
     }
 
     private fun playerParameterBuilderMethod() = ImmutableMethod(
