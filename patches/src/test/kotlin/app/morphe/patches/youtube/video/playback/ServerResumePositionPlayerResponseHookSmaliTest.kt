@@ -8,6 +8,7 @@
 package app.morphe.patches.youtube.video.playback
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patcher.util.smali.toInstructions
 import app.morphe.patches.youtube.video.playerresponse.playerResponseRawBytesHookSmali
