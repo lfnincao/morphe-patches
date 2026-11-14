@@ -212,7 +212,7 @@ public final class RememberPlaybackPositionPatch {
                 return;
             }
 
-            final String videoId = VideoInformation.getVideoId();
+            final String videoId = getRestoringVideoId();
             final long videoLength = VideoInformation.getVideoLength();
             if (videoId.isEmpty() || videoLength <= 0) {
                 rescheduleOrGiveUp(generation);
@@ -249,6 +249,15 @@ public final class RememberPlaybackPositionPatch {
         }
     }
 
+    /**
+     * {@link VideoInformation#getVideoId()} can still hold the previous video until
+     * {@link VideoInformation#setVideoId(String)} runs. Use the id of the video that is
+     * starting or playing so a saved position is never applied to the wrong video.
+     */
+    private static String getRestoringVideoId() {
+        return VideoInformation.getStartingOrPlayingVideoId();
+    }
+
     private static boolean isRestorable(long savedPosition, long videoLength) {
         return savedPosition > MIN_PROGRESS_MS && savedPosition < videoLength - END_PADDING_MS;
     }
@@ -263,6 +272,14 @@ public final class RememberPlaybackPositionPatch {
     private static void attemptRestoreSeek(long generation, String videoId,
                                            long targetPositionMs, int attempt) {
         if (generation != newVideoGeneration) {
+            restoreSeekInProgress = false;
+            return;
+        }
+        if (!videoId.equals(getRestoringVideoId())) {
+            Logger.printDebug(() -> "Restore cancelled; video id changed from " + videoId
+                    + " to " + getRestoringVideoId());
+            restoreSeekInProgress = false;
+            restorePending = false;
             return;
         }
         if (attempt == 1) {
@@ -284,6 +301,13 @@ public final class RememberPlaybackPositionPatch {
 
         Utils.runOnMainThreadDelayed(() -> {
             if (generation != newVideoGeneration) {
+                restoreSeekInProgress = false;
+                return;
+            }
+            if (!videoId.equals(getRestoringVideoId())) {
+                Logger.printDebug(() -> "Restore seek aborted after id change for " + videoId);
+                restoreSeekInProgress = false;
+                restorePending = false;
                 return;
             }
 
