@@ -8,8 +8,8 @@
 package app.morphe.patches.youtube.video.playback
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
-import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
+import app.morphe.patcher.util.smali.toInstructions
 import app.morphe.patches.youtube.video.playerresponse.playerResponseRawBytesHookSmali
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
@@ -17,7 +17,6 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class ServerResumePositionPlayerResponseHookSmaliTest {
     @Test
@@ -35,14 +34,15 @@ class ServerResumePositionPlayerResponseHookSmaliTest {
     }
 
     @Test
-    fun `legacy p13 invoke does not compile on player parameter builder ABI`() {
-        val method = playerParameterBuilderMethod()
-        val legacyHook =
-            "invoke-static { p2, p1, p13 }, Lapp/morphe/extension/youtube/patches/playback/" +
-                "ServerResumePositionPatch;->onPlayerResponseReceived([BLjava/lang/String;Z)V"
-        assertFailsWith<PatchException> {
-            method.addInstruction(0, legacyHook)
-        }
+    fun `copy register moves compile when raw response hook is present`() {
+        val moves = """
+            move-object/from16 v0, p1
+            move-object/from16 v1, p3
+            move-object/from16 v2, p4
+            move/from16        v3, p13
+            move-object/from16 v4, p2
+        """.trimIndent()
+        assertEquals(5, moves.toInstructions(playerParameterBuilderMethod()).size)
     }
 
     private fun playerParameterBuilderMethod() = ImmutableMethod(
