@@ -1,3 +1,19 @@
+## [2.3.0](https://github.com/lfnincao/morphe-patches/compare/v2.2.2...v2.3.0) (2026-11-14)
+
+### ✨ New Features
+
+* **youtube:** add experimental server resume position patch ([43dce0c](https://github.com/lfnincao/morphe-patches/commit/43dce0cc0be45ff2f8dbd62e4b25c2f05a3faa4a))
+* **youtube:** add server resume playerConfig debug dump ([3f6e323](https://github.com/lfnincao/morphe-patches/commit/3f6e32325a0dc96634e414cb4de4edc4be0b5d38))
+
+### 🐛 Bug Fixes
+
+* **youtube:** prefer nested playbackStartConfig path in resume parser ([496528d](https://github.com/lfnincao/morphe-patches/commit/496528d7a3fe856640dc6b4d0284e83cd5cd6237))
+* **youtube:** report nested playbackStartConfig field path ([e74cac0](https://github.com/lfnincao/morphe-patches/commit/e74cac0e8207a9f2e013598a22d5d546e0627ff8))
+* **youtube:** require startSeconds for playbackStartConfig path ([0ec2eed](https://github.com/lfnincao/morphe-patches/commit/0ec2eedb49febbd825ec48ca555db4d46075112d))
+* **youtube:** restore resume search and nest parser test wire data ([072ad0e](https://github.com/lfnincao/morphe-patches/commit/072ad0ecde51df4b8066ef762622bb7cebca4116))
+* **youtube:** use ProtoNode.children field in server resume parser ([403011b](https://github.com/lfnincao/morphe-patches/commit/403011ba933357a88d7418e99236e6eca12e3ac9))
+* **youtube:** use writeBytes in server resume parser test wire encoding ([1e67fc0](https://github.com/lfnincao/morphe-patches/commit/1e67fc0799eb0950b4425c9944374a52fa20933c))
+
 ## [2.2.2](https://github.com/lfnincao/morphe-patches/compare/v2.2.1...v2.2.2) (2026-11-14)
 
 ### 🐛 Bug Fixes

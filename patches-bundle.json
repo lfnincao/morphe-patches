@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-11-14T03:32:40",
-  "description": "## [2.2.2](https://github.com/lfnincao/morphe-patches/compare/v2.2.1...v2.2.2) (2026-11-14)\n\n### 🐛 Bug Fixes\n\n* **youtube:** resolve resume video id before restoring position ([89ac005](https://github.com/lfnincao/morphe-patches/commit/89ac005aab241a7d0af80fb6ccd0702161c695a1))",
-  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.2.2/patches-2.2.2.mpp",
+  "created_at": "2026-11-14T21:43:48",
+  "description": "## [2.3.0](https://github.com/lfnincao/morphe-patches/compare/v2.2.2...v2.3.0) (2026-11-14)\n\n### ✨ New Features\n\n* **youtube:** add experimental server resume position patch ([43dce0c](https://github.com/lfnincao/morphe-patches/commit/43dce0cc0be45ff2f8dbd62e4b25c2f05a3faa4a))\n* **youtube:** add server resume playerConfig debug dump ([3f6e323](https://github.com/lfnincao/morphe-patches/commit/3f6e32325a0dc96634e414cb4de4edc4be0b5d38))\n\n### 🐛 Bug Fixes\n\n* **youtube:** prefer nested playbackStartConfig path in resume parser ([496528d](https://github.com/lfnincao/morphe-patches/commit/496528d7a3fe856640dc6b4d0284e83cd5cd6237))\n* **youtube:** report nested playbackStartConfig field path ([e74cac0](https://github.com/lfnincao/morphe-patches/commit/e74cac0e8207a9f2e013598a22d5d546e0627ff8))\n* **youtube:** require startSeconds for playbackStartConfig path ([0ec2eed](https://github.com/lfnincao/morphe-patches/commit/0ec2eedb49febbd825ec48ca555db4d46075112d))\n* **youtube:** restore resume search and nest parser test wire data ([072ad0e](https://github.com/lfnincao/morphe-patches/commit/072ad0ecde51df4b8066ef762622bb7cebca4116))\n* **youtube:** use ProtoNode.children field in server resume parser ([403011b](https://github.com/lfnincao/morphe-patches/commit/403011ba933357a88d7418e99236e6eca12e3ac9))\n* **youtube:** use writeBytes in server resume parser test wire encoding ([1e67fc0](https://github.com/lfnincao/morphe-patches/commit/1e67fc0799eb0950b4425c9944374a52fa20933c))",
+  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.3.0/patches-2.3.0.mpp",
   "signature_download_url": "",
-  "version": "2.2.2",
+  "version": "2.3.0",
   "public_key": "PPMsWvMqp78cL8h+2UgBGQwsJkuAL/sLWsNr2b5kqmE="
 }
