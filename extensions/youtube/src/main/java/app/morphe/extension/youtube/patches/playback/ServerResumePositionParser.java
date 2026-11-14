@@ -65,12 +65,12 @@ public final class ServerResumePositionParser {
     @Nullable
     private static Long findResumeDepthFirst(List<ProtoNode> nodes) {
         for (ProtoNode node : nodes) {
-            if (node.getChildren() != null) {
-                Long fromSelf = parsePlaybackStartConfigFields(node.getChildren());
+            if (node.children != null) {
+                Long fromSelf = parsePlaybackStartConfigFields(node.children);
                 if (fromSelf != null) {
                     return fromSelf;
                 }
-                Long nested = findResumeDepthFirst(node.getChildren());
+                Long nested = findResumeDepthFirst(node.children);
                 if (nested != null) {
                     return nested;
                 }
@@ -98,8 +98,8 @@ public final class ServerResumePositionParser {
         Long streamTimeMillis = null;
 
         for (ProtoNode field : fields) {
-            if (field.getChildren() != null) {
-                for (ProtoNode child : field.getChildren()) {
+            if (field.children != null) {
+                for (ProtoNode child : field.children) {
                     String text = child.decodeText();
                     if (text != null && isDigits(text)) {
                         try {
