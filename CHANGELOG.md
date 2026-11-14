@@ -1,3 +1,9 @@
+## [2.2.2](https://github.com/lfnincao/morphe-patches/compare/v2.2.1...v2.2.2) (2026-11-14)
+
+### 🐛 Bug Fixes
+
+* **youtube:** resolve resume video id before restoring position ([89ac005](https://github.com/lfnincao/morphe-patches/commit/89ac005aab241a7d0af80fb6ccd0702161c695a1))
+
 ## [2.2.1](https://github.com/lfnincao/morphe-patches/compare/v2.2.0...v2.2.1) (2026-11-13)
 
 ### 🐛 Bug Fixes
