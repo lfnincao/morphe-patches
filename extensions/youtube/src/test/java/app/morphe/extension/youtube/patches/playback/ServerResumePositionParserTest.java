@@ -8,6 +8,7 @@ package app.morphe.extension.youtube.patches.playback;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.CodedOutputStream;
 
 import org.junit.Test;
@@ -45,13 +46,13 @@ public class ServerResumePositionParserTest {
         assertEquals(Long.valueOf(120_000L), ServerResumePositionParser.parseResumePositionMs(playerResponse));
     }
 
-  private static byte[] buildPlaybackStartConfig(long startSeconds, String streamTimeMillis) {
+    private static byte[] buildPlaybackStartConfig(long startSeconds, String streamTimeMillis) {
         try {
             ByteArrayOutputStream inner = new ByteArrayOutputStream();
             CodedOutputStream out = CodedOutputStream.newInstance(inner);
             if (streamTimeMillis != null) {
                 byte[] startPosition = wrapStringField(1, streamTimeMillis);
-                out.writeMessage(2, com.google.protobuf.ByteString.copyFrom(startPosition));
+                out.writeBytes(2, ByteString.copyFrom(startPosition));
             }
             out.writeUInt64(1, startSeconds);
             out.flush();
@@ -72,7 +73,7 @@ public class ServerResumePositionParserTest {
     private static byte[] wrapField(int fieldNumber, byte[] payload) throws IOException {
         ByteArrayOutputStream message = new ByteArrayOutputStream();
         CodedOutputStream out = CodedOutputStream.newInstance(message);
-        out.writeMessage(fieldNumber, com.google.protobuf.ByteString.copyFrom(payload));
+        out.writeBytes(fieldNumber, ByteString.copyFrom(payload));
         out.flush();
         return message.toByteArray();
     }
