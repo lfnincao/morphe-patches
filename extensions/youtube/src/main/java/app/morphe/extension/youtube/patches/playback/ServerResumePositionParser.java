@@ -95,25 +95,18 @@ public final class ServerResumePositionParser {
                     if (child.children == null) {
                         continue;
                     }
+                    if (!hasStartSecondsVarint(child.children)) {
+                        continue;
+                    }
                     Long fromChild = parsePlaybackStartConfigFields(child.children);
                     if (fromChild != null) {
                         final String childPath = path + "." + child.getFieldNumber();
                         return new SearchResult(fromChild, childPath);
                     }
                 }
-                boolean hasNestedChild = false;
-                for (ProtoNode child : node.children) {
-                    if (child.children != null) {
-                        hasNestedChild = true;
-                        break;
-                    }
-                }
-                // Only treat this message itself as playbackStartConfig when it has no nested children.
-                if (!hasNestedChild) {
-                    Long fromSelf = parsePlaybackStartConfigFields(node.children);
-                    if (fromSelf != null) {
-                        return new SearchResult(fromSelf, path);
-                    }
+                Long fromSelf = parsePlaybackStartConfigFields(node.children);
+                if (fromSelf != null && hasStartSecondsVarint(node.children)) {
+                    return new SearchResult(fromSelf, path);
                 }
                 SearchResult nested = findResumeDepthFirst(node.children, path);
                 if (nested != null) {
@@ -194,6 +187,17 @@ public final class ServerResumePositionParser {
             return millis >= MIN_RESUME_MS ? millis : null;
         }
         return null;
+    }
+
+    /** {@code playbackStartConfig} carries {@code startSeconds}; nested {@code startPosition} alone does not. */
+    private static boolean hasStartSecondsVarint(List<ProtoNode> fields) {
+        for (ProtoNode field : fields) {
+            Long varint = field.getVarint();
+            if (varint != null && varint > 0 && varint < LIVE_UTC_SECONDS_THRESHOLD) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isDigits(String text) {
