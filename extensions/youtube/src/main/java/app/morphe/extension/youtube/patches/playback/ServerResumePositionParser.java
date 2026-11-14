@@ -30,7 +30,21 @@ public final class ServerResumePositionParser {
     /** Unix timestamps in {@code liveUtcStartSeconds} are larger than any VOD resume offset. */
     private static final long LIVE_UTC_SECONDS_THRESHOLD = 1_000_000_000L;
 
+    private static final int PLAYER_RESPONSE_PLAYER_CONFIG_FIELD = 15;
+
     private ServerResumePositionParser() {
+    }
+
+    public static final class ParseResult {
+        @Nullable
+        public final Long resumePositionMs;
+        @Nullable
+        public final String candidateFieldPath;
+
+        ParseResult(@Nullable Long resumePositionMs, @Nullable String candidateFieldPath) {
+            this.resumePositionMs = resumePositionMs;
+            this.candidateFieldPath = candidateFieldPath;
+        }
     }
 
     /**
@@ -38,17 +52,22 @@ public final class ServerResumePositionParser {
      */
     @Nullable
     public static Long parseResumePositionMs(byte[] playerResponseBytes) {
+        return parse(playerResponseBytes).resumePositionMs;
+    }
+
+    public static ParseResult parse(byte[] playerResponseBytes) {
         if (playerResponseBytes == null || playerResponseBytes.length == 0) {
-            return null;
+            return new ParseResult(null, null);
         }
 
         try {
             PlayerResponse playerResponse = PlayerResponse.parseFrom(playerResponseBytes);
             if (playerResponse.hasPlayerConfig()) {
                 byte[] playerConfigBytes = playerResponse.getPlayerConfig().toByteString().toByteArray();
-                Long fromConfig = findResumeInMessage(playerConfigBytes);
+                SearchResult fromConfig = findResumeInMessage(playerConfigBytes,
+                        String.valueOf(PLAYER_RESPONSE_PLAYER_CONFIG_FIELD));
                 if (fromConfig != null) {
-                    return fromConfig;
+                    return new ParseResult(fromConfig.positionMs, fromConfig.fieldPath);
                 }
             }
         } catch (Exception ignored) {
@@ -57,20 +76,26 @@ public final class ServerResumePositionParser {
 
         List<ProtoNode> root = ProtoNode.parse(playerResponseBytes);
         if (root == null) {
-            return null;
+            return new ParseResult(null, null);
         }
-        return findResumeDepthFirst(root);
+        SearchResult fromRoot = findResumeDepthFirst(root, "");
+        return new ParseResult(
+                fromRoot != null ? fromRoot.positionMs : null,
+                fromRoot != null ? fromRoot.fieldPath : null);
     }
 
     @Nullable
-    private static Long findResumeDepthFirst(List<ProtoNode> nodes) {
+    private static SearchResult findResumeDepthFirst(List<ProtoNode> nodes, String pathPrefix) {
         for (ProtoNode node : nodes) {
+            final String path = pathPrefix.isEmpty()
+                    ? String.valueOf(node.getFieldNumber())
+                    : pathPrefix + "." + node.getFieldNumber();
             if (node.children != null) {
                 Long fromSelf = parsePlaybackStartConfigFields(node.children);
                 if (fromSelf != null) {
-                    return fromSelf;
+                    return new SearchResult(fromSelf, path);
                 }
-                Long nested = findResumeDepthFirst(node.children);
+                SearchResult nested = findResumeDepthFirst(node.children, path);
                 if (nested != null) {
                     return nested;
                 }
@@ -80,12 +105,12 @@ public final class ServerResumePositionParser {
     }
 
     @Nullable
-    private static Long findResumeInMessage(byte[] messageBytes) {
+    private static SearchResult findResumeInMessage(byte[] messageBytes, String pathPrefix) {
         List<ProtoNode> nodes = ProtoNode.parse(messageBytes);
         if (nodes == null) {
             return null;
         }
-        return findResumeDepthFirst(nodes);
+        return findResumeDepthFirst(nodes, pathPrefix);
     }
 
     /**
@@ -150,5 +175,15 @@ public final class ServerResumePositionParser {
             }
         }
         return true;
+    }
+
+    private static final class SearchResult {
+        final long positionMs;
+        final String fieldPath;
+
+        SearchResult(long positionMs, String fieldPath) {
+            this.positionMs = positionMs;
+            this.fieldPath = fieldPath;
+        }
     }
 }

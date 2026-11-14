@@ -55,7 +55,12 @@ public final class ServerResumePositionPatch {
                 return;
             }
 
-            final Long resumeMs = ServerResumePositionParser.parseResumePositionMs(playerResponse);
+            final ServerResumePositionParser.ParseResult parsed =
+                    ServerResumePositionParser.parse(playerResponse);
+            ServerResumePositionProtoDump.logPlayerConfigOnce(
+                    videoId, playerResponse, parsed.candidateFieldPath);
+
+            final Long resumeMs = parsed.resumePositionMs;
             if (resumeMs == null) {
                 return;
             }

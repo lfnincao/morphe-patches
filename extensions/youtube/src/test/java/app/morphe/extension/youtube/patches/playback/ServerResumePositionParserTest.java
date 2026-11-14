@@ -46,6 +46,15 @@ public class ServerResumePositionParserTest {
         assertEquals(Long.valueOf(120_000L), ServerResumePositionParser.parseResumePositionMs(playerResponse));
     }
 
+    @Test
+    public void parse_returnsCandidateFieldPath() throws IOException {
+        byte[] playerConfig = buildPlaybackStartConfig(120, "120000");
+        byte[] playerResponse = wrapField(15, playerConfig);
+        ServerResumePositionParser.ParseResult result = ServerResumePositionParser.parse(playerResponse);
+        assertEquals(Long.valueOf(120_000L), result.resumePositionMs);
+        assertEquals("15.2", result.candidateFieldPath);
+    }
+
     private static byte[] buildPlaybackStartConfig(long startSeconds, String streamTimeMillis) {
         try {
             ByteArrayOutputStream inner = new ByteArrayOutputStream();
