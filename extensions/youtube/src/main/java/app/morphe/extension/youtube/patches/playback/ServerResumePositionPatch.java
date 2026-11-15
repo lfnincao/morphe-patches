@@ -9,6 +9,9 @@ package app.morphe.extension.youtube.patches.playback;
 
 import androidx.annotation.Nullable;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.youtube.patches.VideoInformation;
@@ -29,6 +32,16 @@ public final class ServerResumePositionPatch {
 
     private static long newVideoGeneration;
 
+    /** Server positions by video id. Responses of queued or prefetched videos arrive early. */
+    private static final int MAX_SERVER_POSITIONS = 30;
+    private static final Map<String, Long> serverPositions =
+            new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Long> eldest) {
+                    return size() > MAX_SERVER_POSITIONS;
+                }
+            };
+
     @Nullable
     private static volatile String pendingVideoId;
     private static volatile long pendingPositionMs = -1L;
@@ -40,36 +53,54 @@ public final class ServerResumePositionPatch {
     }
 
     /**
-     * Injection point. Called when the innertube player response bytes are built (off the main thread).
+     * Injection point.
      */
-    public static void onPlayerResponseReceived(byte[] playerResponse, String videoId,
-                                                boolean isShortAndOpeningOrPlaying) {
+    public static boolean isEnabled() {
+        return Settings.SERVER_RESUME_PLAYBACK_POSITION_EXPERIMENTAL.get();
+    }
+
+    /**
+     * Injection point. Called when the app builds its player response model from a /player response,
+     * before "Spoof video streams" can replace the player config.
+     *
+     * @param playerConfig Serialized {@code playerResponse.playerConfig} of the app, or null if none.
+     * @param videoId      {@code playerResponse.videoDetails.videoId}, or null if none.
+     */
+    public static void onAppPlayerConfig(@Nullable byte[] playerConfig, @Nullable String videoId) {
         try {
-            if (!Settings.SERVER_RESUME_PLAYBACK_POSITION_EXPERIMENTAL.get()) {
-                return;
-            }
             if (videoId == null || videoId.isEmpty()) {
-                return;
-            }
-            if (VideoInformation.lastVideoIdIsShort()) {
                 return;
             }
 
             final ServerResumePositionParser.ParseResult parsed =
-                    ServerResumePositionParser.parse(playerResponse);
-            ServerResumePositionProtoDump.logPlayerConfigOnce(
-                    videoId, playerResponse, parsed.candidateFieldPath);
+                    ServerResumePositionParser.parsePlayerConfig(playerConfig);
+            ServerResumePositionProtoDump.logOnce(videoId, playerConfig, parsed);
 
             final Long resumeMs = parsed.resumePositionMs;
-            if (resumeMs == null) {
-                return;
+            synchronized (serverPositions) {
+                if (resumeMs == null) {
+                    serverPositions.remove(videoId);
+                } else {
+                    serverPositions.put(videoId, resumeMs);
+                }
             }
 
-            pendingVideoId = videoId;
-            pendingPositionMs = resumeMs;
-            Logger.printDebug(() -> "Server resume: found " + resumeMs + "ms for " + videoId);
+            if (resumeMs == null) {
+                Logger.printDebug(() -> "Server resume: none for " + videoId
+                        + (parsed.rawPositionMs != null ? " (ignored " + parsed.rawPositionMs + "ms)" : ""));
+                return;
+            }
+            Logger.printDebug(() -> "Server resume: found " + resumeMs + "ms for " + videoId
+                    + " at playerConfig." + parsed.fieldPath);
         } catch (Exception ex) {
-            Logger.printException(() -> "onPlayerResponseReceived failure", ex);
+            Logger.printException(() -> "onAppPlayerConfig failure", ex);
+        }
+    }
+
+    @Nullable
+    private static Long getServerPosition(String videoId) {
+        synchronized (serverPositions) {
+            return serverPositions.get(videoId);
         }
     }
 
@@ -106,9 +137,13 @@ public final class ServerResumePositionPatch {
                 return;
             }
 
-            if (!videoId.equals(pendingVideoId) || pendingPositionMs < ServerResumePositionParser.MIN_RESUME_MS) {
+            final Long serverPosition = getServerPosition(videoId);
+            if (serverPosition == null || serverPosition < ServerResumePositionParser.MIN_RESUME_MS) {
+                clearPending();
                 return;
             }
+            pendingVideoId = videoId;
+            pendingPositionMs = serverPosition;
 
             restorePending = true;
             startRestoreCheck(newVideoGeneration);
@@ -160,17 +195,22 @@ public final class ServerResumePositionPatch {
 
             final long targetPositionMs = pendingPositionMs;
             if (targetPositionMs >= videoLength - END_PADDING_MS) {
+                Logger.printDebug(() -> "Server resume: " + targetPositionMs + "ms is at the end of "
+                        + videoId + " (length " + videoLength + "ms)");
                 finishWithoutRestore();
                 return;
             }
 
             final long currentTime = VideoInformation.getVideoTime();
             if (Math.abs(currentTime - targetPositionMs) < ALREADY_RESTORED_TOLERANCE_MS) {
+                Logger.printDebug(() -> "Server resume: already at " + currentTime + "ms for " + videoId);
                 finishWithoutRestore();
                 return;
             }
 
             if (currentTime >= RESTORE_WINDOW_MS) {
+                Logger.printDebug(() -> "Server resume: restore window passed for " + videoId
+                        + " current: " + currentTime + " target: " + targetPositionMs);
                 finishWithoutRestore();
                 return;
             }
@@ -198,6 +238,9 @@ public final class ServerResumePositionPatch {
 
         Logger.printDebug(() -> "Server resume: seeking to " + targetPositionMs + "ms for " + videoId);
         VideoInformation.seekTo(targetPositionMs);
+        synchronized (serverPositions) {
+            serverPositions.remove(videoId);
+        }
         clearPending();
         restorePending = false;
     }

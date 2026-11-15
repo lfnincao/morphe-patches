@@ -9,216 +9,248 @@ package app.morphe.extension.youtube.patches.playback;
 
 import androidx.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import app.morphe.extension.shared.innertube.PlayerResponseOuterClass.PlayerResponse;
-import app.morphe.extension.youtube.patches.utils.ProtoNode;
-
 /**
- * Extracts a watch-history resume position from a player response protobuf.
+ * Extracts YouTube's watch-history resume position from the app's {@code PlayerConfig} proto
+ * (field 15 of the /player response).
  * <p>
- * The primary signal is {@code playerConfig.playbackStartConfig} ({@code startSeconds} /
- * {@code startPosition.streamTimeMillis}), as seen in public player JSON fixtures (e.g. MediaServiceCore).
- * Field numbers for nested player config messages are not fully mapped in Morphe, so extraction uses
- * {@link ProtoNode} heuristics and ignores unknown or invalid values.
+ * Field numbers were read off YouTube 21.30.216, where {@code PlaybackStartPositionResolver}
+ * resolves the start position from {@code playerConfig.playbackStartConfig.startPosition}:
+ * <pre>
+ * PlayerConfig        { PlaybackStartConfig playbackStartConfig = 60102073; }
+ * PlaybackStartConfig { float startSeconds = 1; StartPosition startPosition = 6; ... }
+ * StartPosition       { int64 timeMs = 1; int64 ? = 2; int64 relativeFreshnessSeconds = 3; }
+ * </pre>
+ * The resolver returns {@code startPosition.timeMs} directly as the playback start in milliseconds.
  */
 public final class ServerResumePositionParser {
 
     /** Ignore resume hints below this (matches {@link RememberPlaybackPositionPatch}). */
     static final long MIN_RESUME_MS = 10_000L;
 
-    /** Unix timestamps in {@code liveUtcStartSeconds} are larger than any VOD resume offset. */
-    private static final long LIVE_UTC_SECONDS_THRESHOLD = 1_000_000_000L;
+    /** Anything above this is not a VOD resume offset (48 hours). */
+    static final long MAX_RESUME_MS = 48L * 60 * 60 * 1000;
 
-    private static final int PLAYER_RESPONSE_PLAYER_CONFIG_FIELD = 15;
+    static final int PLAYER_CONFIG_PLAYBACK_START_CONFIG_FIELD = 60102073;
+    static final int PLAYBACK_START_CONFIG_START_SECONDS_FIELD = 1;
+    static final int PLAYBACK_START_CONFIG_START_POSITION_FIELD = 6;
+    static final int START_POSITION_TIME_MS_FIELD = 1;
+
+    static final String START_POSITION_PATH = PLAYER_CONFIG_PLAYBACK_START_CONFIG_FIELD + "."
+            + PLAYBACK_START_CONFIG_START_POSITION_FIELD + "." + START_POSITION_TIME_MS_FIELD;
+    static final String START_SECONDS_PATH = PLAYER_CONFIG_PLAYBACK_START_CONFIG_FIELD + "."
+            + PLAYBACK_START_CONFIG_START_SECONDS_FIELD;
 
     private ServerResumePositionParser() {
     }
 
     public static final class ParseResult {
+        /** Resume position, or null if none or below {@link #MIN_RESUME_MS}. */
         @Nullable
         public final Long resumePositionMs;
+        /** Raw value found, even if it was rejected. */
         @Nullable
-        public final String candidateFieldPath;
+        public final Long rawPositionMs;
+        @Nullable
+        public final String fieldPath;
+        public final boolean hasPlaybackStartConfig;
 
-        ParseResult(@Nullable Long resumePositionMs, @Nullable String candidateFieldPath) {
+        ParseResult(@Nullable Long resumePositionMs, @Nullable Long rawPositionMs,
+                    @Nullable String fieldPath, boolean hasPlaybackStartConfig) {
             this.resumePositionMs = resumePositionMs;
-            this.candidateFieldPath = candidateFieldPath;
+            this.rawPositionMs = rawPositionMs;
+            this.fieldPath = fieldPath;
+            this.hasPlaybackStartConfig = hasPlaybackStartConfig;
         }
+    }
+
+    private static final ParseResult EMPTY = new ParseResult(null, null, null, false);
+
+    /**
+     * @param playerConfigBytes Serialized PlayerConfig (field 15 of the player response).
+     */
+    public static ParseResult parsePlayerConfig(@Nullable byte[] playerConfigBytes) {
+        if (playerConfigBytes == null || playerConfigBytes.length == 0) {
+            return EMPTY;
+        }
+        final List<Field> playerConfig = Field.parse(playerConfigBytes);
+        if (playerConfig == null) {
+            return EMPTY;
+        }
+        final Field playbackStartConfigField = Field.find(playerConfig, PLAYER_CONFIG_PLAYBACK_START_CONFIG_FIELD,
+                Field.WIRE_LENGTH_DELIMITED);
+        if (playbackStartConfigField == null) {
+            return EMPTY;
+        }
+        final List<Field> playbackStartConfig = Field.parse(playbackStartConfigField.bytes);
+        if (playbackStartConfig == null) {
+            return new ParseResult(null, null, null, true);
+        }
+
+        Long rawMs = null;
+        String path = null;
+
+        final Field startPositionField = Field.find(playbackStartConfig, PLAYBACK_START_CONFIG_START_POSITION_FIELD,
+                Field.WIRE_LENGTH_DELIMITED);
+        if (startPositionField != null) {
+            final List<Field> startPosition = Field.parse(startPositionField.bytes);
+            if (startPosition != null) {
+                final Field timeMs = Field.find(startPosition, START_POSITION_TIME_MS_FIELD, Field.WIRE_VARINT);
+                if (timeMs != null) {
+                    rawMs = timeMs.varint;
+                    path = START_POSITION_PATH;
+                }
+            }
+        }
+
+        if (rawMs == null) {
+            final Field startSeconds = Field.find(playbackStartConfig, PLAYBACK_START_CONFIG_START_SECONDS_FIELD,
+                    Field.WIRE_FIXED32);
+            if (startSeconds != null) {
+                final float seconds = Float.intBitsToFloat((int) startSeconds.varint);
+                if (!Float.isNaN(seconds) && !Float.isInfinite(seconds)) {
+                    rawMs = (long) (seconds * 1000f);
+                    path = START_SECONDS_PATH;
+                }
+            }
+        }
+
+        final Long resumeMs = rawMs != null && rawMs >= MIN_RESUME_MS && rawMs <= MAX_RESUME_MS
+                ? rawMs
+                : null;
+        return new ParseResult(resumeMs, rawMs, path, true);
     }
 
     /**
-     * @return Resume position in milliseconds, or {@code null} if none was found or values are unusable.
+     * Minimal schema-less protobuf wire reader. Returns null for malformed input.
      */
-    @Nullable
-    public static Long parseResumePositionMs(byte[] playerResponseBytes) {
-        return parse(playerResponseBytes).resumePositionMs;
-    }
+    static final class Field {
+        static final int WIRE_VARINT = 0;
+        static final int WIRE_FIXED64 = 1;
+        static final int WIRE_LENGTH_DELIMITED = 2;
+        static final int WIRE_FIXED32 = 5;
 
-    public static ParseResult parse(byte[] playerResponseBytes) {
-        if (playerResponseBytes == null || playerResponseBytes.length == 0) {
-            return new ParseResult(null, null);
+        final int number;
+        final int wireType;
+        /** Varint, fixed32 or fixed64 value. */
+        final long varint;
+        /** Payload of a length-delimited field. */
+        @Nullable
+        final byte[] bytes;
+
+        private Field(int number, int wireType, long varint, @Nullable byte[] bytes) {
+            this.number = number;
+            this.wireType = wireType;
+            this.varint = varint;
+            this.bytes = bytes;
         }
 
-        try {
-            PlayerResponse playerResponse = PlayerResponse.parseFrom(playerResponseBytes);
-            if (playerResponse.hasPlayerConfig()) {
-                byte[] playerConfigBytes = playerResponse.getPlayerConfig().toByteString().toByteArray();
-                SearchResult fromConfig = findResumeInMessage(playerConfigBytes,
-                        String.valueOf(PLAYER_RESPONSE_PLAYER_CONFIG_FIELD));
-                if (fromConfig != null) {
-                    return new ParseResult(fromConfig.positionMs, fromConfig.fieldPath);
+        @Nullable
+        static Field find(List<Field> fields, int number, int wireType) {
+            Field last = null;
+            for (Field field : fields) {
+                // Protobuf semantics: the last occurrence of a non-repeated field wins.
+                if (field.number == number && field.wireType == wireType) {
+                    last = field;
                 }
             }
-        } catch (Exception ignored) {
-            // Fall back to schema-less parsing below.
+            return last;
         }
 
-        List<ProtoNode> root = ProtoNode.parse(playerResponseBytes);
-        if (root == null) {
-            return new ParseResult(null, null);
-        }
-        SearchResult fromRoot = findResumeDepthFirst(root, "");
-        return new ParseResult(
-                fromRoot != null ? fromRoot.positionMs : null,
-                fromRoot != null ? fromRoot.fieldPath : null);
-    }
-
-    @Nullable
-    private static SearchResult findResumeDepthFirst(List<ProtoNode> nodes, String pathPrefix) {
-        for (ProtoNode node : nodes) {
-            final String path = pathPrefix.isEmpty()
-                    ? String.valueOf(node.getFieldNumber())
-                    : pathPrefix + "." + node.getFieldNumber();
-            if (node.children != null) {
-                for (ProtoNode child : node.children) {
-                    if (child.children == null) {
-                        continue;
-                    }
-                    if (!hasStartSecondsVarint(child.children)) {
-                        continue;
-                    }
-                    Long fromChild = parsePlaybackStartConfigFields(child.children);
-                    if (fromChild != null) {
-                        final String childPath = path + "." + child.getFieldNumber();
-                        return new SearchResult(fromChild, childPath);
-                    }
-                }
-                Long fromSelf = parsePlaybackStartConfigFields(node.children);
-                if (fromSelf != null && hasStartSecondsVarint(node.children)) {
-                    return new SearchResult(fromSelf, path);
-                }
-                SearchResult nested = findResumeDepthFirst(node.children, path);
-                if (nested != null) {
-                    return nested;
-                }
-            }
-        }
-        return null;
-    }
-
-    @Nullable
-    private static SearchResult findResumeInMessage(byte[] messageBytes, String pathPrefix) {
-        List<ProtoNode> nodes = ProtoNode.parse(messageBytes);
-        if (nodes == null) {
-            return null;
-        }
-        return findResumeDepthFirst(nodes, pathPrefix);
-    }
-
-    /**
-     * Recognizes a {@code playbackStartConfig}-shaped message: a varint {@code startSeconds} and/or
-     * a nested message whose text field is {@code streamTimeMillis}.
-     */
-    @Nullable
-    static Long parsePlaybackStartConfigFields(List<ProtoNode> fields) {
-        Long startSeconds = null;
-        Long streamTimeMillis = null;
-
-        for (ProtoNode field : fields) {
-            String directText = field.decodeText();
-            if (directText != null && isDigits(directText)) {
-                try {
-                    long millis = Long.parseLong(directText);
-                    if (millis > 0) {
-                        streamTimeMillis = millis;
-                    }
-                } catch (NumberFormatException ignored) {
-                    // Not streamTimeMillis.
-                }
-            }
-            if (field.children != null) {
-                for (ProtoNode child : field.children) {
-                    String text = child.decodeText();
-                    if (text != null && isDigits(text)) {
-                        try {
-                            long millis = Long.parseLong(text);
-                            if (millis > 0) {
-                                streamTimeMillis = millis;
-                            }
-                        } catch (NumberFormatException ignored) {
-                            // Not streamTimeMillis.
-                        }
-                    }
-                }
-            }
-            Long varint = field.getVarint();
-            if (varint != null && varint > 0 && varint < LIVE_UTC_SECONDS_THRESHOLD) {
-                startSeconds = varint;
-            }
-        }
-
-        if (streamTimeMillis != null) {
-            if (streamTimeMillis < MIN_RESUME_MS) {
+        @Nullable
+        static List<Field> parse(@Nullable byte[] data) {
+            if (data == null) {
                 return null;
             }
-            if (startSeconds != null) {
-                long expectedMs = startSeconds * 1000L;
-                if (Math.abs(expectedMs - streamTimeMillis) > 5_000L) {
-                    // Prefer the more precise millis field when both disagree.
-                    return streamTimeMillis;
+            if (data.length == 0) {
+                return Collections.emptyList();
+            }
+            final List<Field> fields = new ArrayList<>();
+            final int[] pos = {0};
+            while (pos[0] < data.length) {
+                final long tag = readVarint(data, pos);
+                if (tag < 0) {
+                    return null;
+                }
+                final int number = (int) (tag >>> 3);
+                final int wireType = (int) (tag & 0x7);
+                if (number <= 0 || number > 536_870_911) {
+                    return null;
+                }
+                switch (wireType) {
+                    case WIRE_VARINT: {
+                        final long value = readVarint(data, pos);
+                        if (value == Long.MIN_VALUE) {
+                            return null;
+                        }
+                        fields.add(new Field(number, wireType, value, null));
+                        break;
+                    }
+                    case WIRE_FIXED64: {
+                        if (pos[0] + 8 > data.length) {
+                            return null;
+                        }
+                        long value = 0;
+                        for (int i = 7; i >= 0; i--) {
+                            value = (value << 8) | (data[pos[0] + i] & 0xFFL);
+                        }
+                        pos[0] += 8;
+                        fields.add(new Field(number, wireType, value, null));
+                        break;
+                    }
+                    case WIRE_LENGTH_DELIMITED: {
+                        final long length = readVarint(data, pos);
+                        if (length < 0 || length > data.length - pos[0]) {
+                            return null;
+                        }
+                        final byte[] payload = new byte[(int) length];
+                        System.arraycopy(data, pos[0], payload, 0, (int) length);
+                        pos[0] += (int) length;
+                        fields.add(new Field(number, wireType, 0, payload));
+                        break;
+                    }
+                    case WIRE_FIXED32: {
+                        if (pos[0] + 4 > data.length) {
+                            return null;
+                        }
+                        long value = 0;
+                        for (int i = 3; i >= 0; i--) {
+                            value = (value << 8) | (data[pos[0] + i] & 0xFFL);
+                        }
+                        pos[0] += 4;
+                        fields.add(new Field(number, wireType, value, null));
+                        break;
+                    }
+                    default:
+                        // Groups (3/4) are not used by YouTube responses.
+                        return null;
                 }
             }
-            return streamTimeMillis;
+            return fields;
         }
 
-        if (startSeconds != null) {
-            long millis = startSeconds * 1000L;
-            return millis >= MIN_RESUME_MS ? millis : null;
-        }
-        return null;
-    }
-
-    /** {@code playbackStartConfig} carries {@code startSeconds}; nested {@code startPosition} alone does not. */
-    private static boolean hasStartSecondsVarint(List<ProtoNode> fields) {
-        for (ProtoNode field : fields) {
-            Long varint = field.getVarint();
-            if (varint != null && varint > 0 && varint < LIVE_UTC_SECONDS_THRESHOLD) {
-                return true;
+        /**
+         * @return The varint, or {@link Long#MIN_VALUE} if malformed. Tags are never negative,
+         *         so callers reading a tag may also check for a negative value.
+         */
+        private static long readVarint(byte[] data, int[] pos) {
+            long result = 0;
+            int shift = 0;
+            while (shift < 64) {
+                if (pos[0] >= data.length) {
+                    return Long.MIN_VALUE;
+                }
+                final byte b = data[pos[0]++];
+                result |= (long) (b & 0x7F) << shift;
+                if ((b & 0x80) == 0) {
+                    return result;
+                }
+                shift += 7;
             }
-        }
-        return false;
-    }
-
-    private static boolean isDigits(String text) {
-        if (text.isEmpty()) {
-            return false;
-        }
-        for (int i = 0; i < text.length(); i++) {
-            if (!Character.isDigit(text.charAt(i))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static final class SearchResult {
-        final long positionMs;
-        final String fieldPath;
-
-        SearchResult(long positionMs, String fieldPath) {
-            this.positionMs = positionMs;
-            this.fieldPath = fieldPath;
+            return Long.MIN_VALUE;
         }
     }
 }
