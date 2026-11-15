@@ -1,3 +1,9 @@
+## [2.3.3](https://github.com/lfnincao/morphe-patches/compare/v2.3.2...v2.3.3) (2026-11-15)
+
+### 🐛 Bug Fixes
+
+* **youtube:** read server resume position from the app's player config ([#8](https://github.com/lfnincao/morphe-patches/issues/8)) ([e7da07f](https://github.com/lfnincao/morphe-patches/commit/e7da07f18984d0c9aa69f6ed11b8198133798d06))
+
 ## [2.3.2](https://github.com/lfnincao/morphe-patches/compare/v2.3.1...v2.3.2) (2026-11-14)
 
 ### 🐛 Bug Fixes
