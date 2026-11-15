@@ -29,6 +29,10 @@ public final class ServerResumePositionPatch {
     private static final long RESTORE_POLL_DELAY_MS = 500L;
     private static final int RESTORE_MAX_ATTEMPTS = 20;
     private static final long ALREADY_RESTORED_TOLERANCE_MS = 2_000L;
+    /** A thumbnail this full is a finished video. */
+    private static final float MAX_WATCHED_FRACTION = 0.95f;
+    /** Polls (500 ms each) to wait for a source once the video length is known. */
+    private static final int NO_SOURCE_MAX_ATTEMPTS = 4;
 
     private static long newVideoGeneration;
 
@@ -48,6 +52,7 @@ public final class ServerResumePositionPatch {
     private static volatile boolean restorePending;
     private static volatile boolean seekAttempted;
     private static int restoreAttempts;
+    private static int noSourceAttempts;
 
     private ServerResumePositionPatch() {
     }
@@ -97,6 +102,22 @@ public final class ServerResumePositionPatch {
         }
     }
 
+    /**
+     * Injection point. Called with the start position that YouTube's PlaybackStartPositionResolver
+     * returns (from the start time of the navigation, the client's saved position, or the player response).
+     */
+    public static void onYouTubeStartPositionResolved(@Nullable Long startPositionMs) {
+        try {
+            if (Settings.SERVER_RESUME_PLAYBACK_POSITION_EXPERIMENTAL.get()) {
+                Logger.printDebug(() -> "Server resume: YouTube resolved start position "
+                        + (startPositionMs == null ? "none" : startPositionMs + "ms")
+                        + " for " + VideoInformation.getStartingOrPlayingVideoId());
+            }
+        } catch (Exception ex) {
+            Logger.printException(() -> "onYouTubeStartPositionResolved failure", ex);
+        }
+    }
+
     @Nullable
     private static Long getServerPosition(String videoId) {
         synchronized (serverPositions) {
@@ -114,6 +135,7 @@ public final class ServerResumePositionPatch {
             newVideoGeneration++;
             restorePending = false;
             restoreAttempts = 0;
+            noSourceAttempts = 0;
             seekAttempted = false;
 
             if (!Settings.SERVER_RESUME_PLAYBACK_POSITION_EXPERIMENTAL.get()) {
@@ -121,30 +143,9 @@ public final class ServerResumePositionPatch {
                 return;
             }
 
-            final String videoId = VideoInformation.getStartingOrPlayingVideoId();
-            if (videoId.isEmpty() || VideoInformation.lastVideoIdIsShort()) {
-                clearPending();
-                return;
-            }
-            if (VideoInformation.isLiveStream()) {
-                clearPending();
-                return;
-            }
-
-            if (RememberPlaybackPositionPatch.shouldDeferToLocalRestore(videoId)) {
-                Logger.printDebug(() -> "Server resume: skipped (local position exists) for " + videoId);
-                clearPending();
-                return;
-            }
-
-            final Long serverPosition = getServerPosition(videoId);
-            if (serverPosition == null || serverPosition < ServerResumePositionParser.MIN_RESUME_MS) {
-                clearPending();
-                return;
-            }
-            pendingVideoId = videoId;
-            pendingPositionMs = serverPosition;
-
+            // The video id, the player response and the list thumbnails of this video can arrive
+            // after this call, so everything is checked while polling in checkRestore.
+            clearPending();
             restorePending = true;
             startRestoreCheck(newVideoGeneration);
         } catch (Exception ex) {
@@ -182,15 +183,46 @@ public final class ServerResumePositionPatch {
                 return;
             }
 
-            if (!videoId.equals(pendingVideoId) || pendingPositionMs < ServerResumePositionParser.MIN_RESUME_MS) {
-                finishWithoutRestore();
-                return;
-            }
-
             final long videoLength = VideoInformation.getVideoLength();
             if (videoLength <= 0) {
                 rescheduleOrGiveUp(generation);
                 return;
+            }
+
+            if (!videoId.equals(pendingVideoId)) {
+                // 1. Resume point of the player response (playerConfig.playbackStartConfig.startPosition).
+                // 2. Watched fraction of the thumbnail of the video in a list (feed, playlist panel).
+                final Long serverPosition = getServerPosition(videoId);
+                final Float fraction = ServerWatchProgress.getWatchedFraction(videoId);
+                final long target;
+                final String source;
+                if (serverPosition != null) {
+                    target = serverPosition;
+                    source = "player response";
+                } else if (fraction != null && fraction < MAX_WATCHED_FRACTION) {
+                    target = (long) (fraction * videoLength);
+                    source = "thumbnail progress " + fraction;
+                } else {
+                    if (++noSourceAttempts <= NO_SOURCE_MAX_ATTEMPTS) {
+                        // The player response can still be parsed.
+                        startRestoreCheck(generation);
+                        return;
+                    }
+                    Logger.printDebug(() -> "Server resume: no server position for " + videoId
+                            + (fraction != null ? " (watched fraction " + fraction + " counts as finished)" : ""));
+                    finishWithoutRestore();
+                    return;
+                }
+                if (target < ServerResumePositionParser.MIN_RESUME_MS) {
+                    Logger.printDebug(() -> "Server resume: " + target + "ms from " + source
+                            + " is too early for " + videoId);
+                    finishWithoutRestore();
+                    return;
+                }
+                pendingVideoId = videoId;
+                pendingPositionMs = target;
+                Logger.printDebug(() -> "Server resume: target " + target + "ms for " + videoId
+                        + " from " + source + " (length " + videoLength + "ms)");
             }
 
             final long targetPositionMs = pendingPositionMs;
@@ -241,6 +273,7 @@ public final class ServerResumePositionPatch {
         synchronized (serverPositions) {
             serverPositions.remove(videoId);
         }
+        ServerWatchProgress.forget(videoId);
         clearPending();
         restorePending = false;
     }
