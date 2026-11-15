@@ -1,3 +1,9 @@
+## [2.3.4](https://github.com/lfnincao/morphe-patches/compare/v2.3.3...v2.3.4) (2026-11-15)
+
+### 🐛 Bug Fixes
+
+* **youtube:** resume from the watch progress of the playlist panel and list thumbnails ([#9](https://github.com/lfnincao/morphe-patches/issues/9)) ([390b343](https://github.com/lfnincao/morphe-patches/commit/390b3439afa96ecf2ffd062b87db48ccf88d62e4))
+
 ## [2.3.3](https://github.com/lfnincao/morphe-patches/compare/v2.3.2...v2.3.3) (2026-11-15)
 
 ### 🐛 Bug Fixes
