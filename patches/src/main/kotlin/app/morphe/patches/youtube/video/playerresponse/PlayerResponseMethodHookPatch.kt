@@ -29,7 +29,6 @@ fun addPlayerResponseMethodHook(hook: Hook) {
 
 // Parameter numbers of the patched method.
 private const val PARAMETER_VIDEO_ID = 1
-private const val PARAMETER_RAW_PLAYER_RESPONSE = 2
 private const val PARAMETER_PROTO_BUFFER = 3
 private const val PARAMETER_PLAYLIST_ID = 4
 private var parameterIsShortAndOpeningOrPlaying = -1
@@ -109,43 +108,16 @@ val playerResponseMethodHookPatch = patch {
             numberOfInstructionsAdded += 2
         }
 
-        fun hookRawPlayerResponse(hook: Hook) {
-            val method = playerResponseMethodRef.get()!!
-            if (playerResponseMethodCopyRegisters) {
-                // Scratch registers must stay below p0Register (v0-v3). Never use v4+ here:
-                // on PlayerParameterBuilder, p0 is often v4 and equals the old buggy v4 copy slot.
-                // Briefly borrow the playlist scratch (v2), then restore it from p4 for later hooks.
-                method.addInstructions(
-                    0,
-                    """
-                        move-object/from16 v2, p$PARAMETER_RAW_PLAYER_RESPONSE
-                        invoke-static { v2, $registerVideoId, $registerIsShortAndOpeningOrPlaying }, $hook
-                        move-object/from16 v2, p$PARAMETER_PLAYLIST_ID
-                    """,
-                )
-                numberOfInstructionsAdded += 3
-            } else {
-                method.addInstruction(
-                    0,
-                    "invoke-static { p$PARAMETER_RAW_PLAYER_RESPONSE, p$PARAMETER_VIDEO_ID, " +
-                        "p$parameterIsShortAndOpeningOrPlaying }, $hook",
-                )
-                numberOfInstructionsAdded++
-            }
-        }
-
         // Reverse the order in order to preserve insertion order of the hooks.
         val beforeVideoIdHooks = hooks.filterIsInstance<Hook.ProtoBufferParameterBeforeVideoId>().asReversed()
         val playlistIdHooks = hooks.filterIsInstance<Hook.PlaylistId>().asReversed()
         val videoIdHooks = hooks.filterIsInstance<Hook.VideoId>().asReversed()
-        val rawPlayerResponseHooks = hooks.filterIsInstance<Hook.RawPlayerResponse>().asReversed()
         val afterVideoIdHooks = hooks.filterIsInstance<Hook.ProtoBufferParameter>().asReversed()
 
         // Add the hooks in this specific order as they insert instructions at the beginning of the method.
         afterVideoIdHooks.forEach(::hookProtoBufferParameter)
         playlistIdHooks.forEach(::hookPlaylistId)
         videoIdHooks.forEach(::hookVideoId)
-        rawPlayerResponseHooks.forEach(::hookRawPlayerResponse)
         beforeVideoIdHooks.forEach(::hookProtoBufferParameter)
 
         if (playerResponseMethodCopyRegisters) {
@@ -178,15 +150,5 @@ sealed class Hook(private val methodDescriptor: String) {
     class ProtoBufferParameter(methodDescriptor: String) : Hook(methodDescriptor)
     class ProtoBufferParameterBeforeVideoId(methodDescriptor: String) : Hook(methodDescriptor)
 
-    /** Observes the raw player response bytes (parameter p2). Params: [B, String, Z */
-    class RawPlayerResponse(methodDescriptor: String) : Hook(methodDescriptor)
-
     override fun toString() = methodDescriptor
 }
-
-internal fun playerResponseRawBytesHookSmali(
-    registerRawResponse: String,
-    registerVideoId: String,
-    registerIsShortAndOpeningOrPlaying: String,
-    methodDescriptor: String,
-) = "invoke-static { $registerRawResponse, $registerVideoId, $registerIsShortAndOpeningOrPlaying }, $methodDescriptor"

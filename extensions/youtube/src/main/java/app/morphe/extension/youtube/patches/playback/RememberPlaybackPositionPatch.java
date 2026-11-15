@@ -434,12 +434,9 @@ public final class RememberPlaybackPositionPatch {
         if (!Settings.REMEMBER_PLAYBACK_POSITION.get()) {
             return false;
         }
-        if (restorePending) {
-            final String activeId = VideoInformation.getStartingOrPlayingVideoId();
-            if (videoId.isEmpty() || videoId.equals(activeId)) {
-                return true;
-            }
-        }
+        // Only a saved position for this exact video defers. restorePending is set for every new
+        // video while the setting is on (before it is known whether a position is saved), so it
+        // must not be used here.
         if (videoId.isEmpty()) {
             return false;
         }

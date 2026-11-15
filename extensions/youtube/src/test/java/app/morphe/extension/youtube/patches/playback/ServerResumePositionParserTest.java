@@ -6,86 +6,97 @@
 package app.morphe.extension.youtube.patches.playback;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.CodedOutputStream;
 
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.List;
-
-import app.morphe.extension.youtube.patches.utils.ProtoNode;
 
 public class ServerResumePositionParserTest {
 
+    private static final int PSC = ServerResumePositionParser.PLAYER_CONFIG_PLAYBACK_START_CONFIG_FIELD;
+
     @Test
-    public void parsePlaybackStartConfigFields_prefersStreamTimeMillis() {
-        List<ProtoNode> fields = ProtoNode.parse(buildPlaybackStartConfig(318, "318000"));
-        assertEquals(Long.valueOf(318_000L), ServerResumePositionParser.parsePlaybackStartConfigFields(fields));
+    public void readsStartPositionTimeMs() throws IOException {
+        byte[] startPosition = concat(varint(1, 263_500L), varint(3, 42L));
+        byte[] psc = message(6, startPosition);
+        byte[] playerConfig = concat(varint(7, 1500L), message(PSC, psc), message(215771584, varint(1, 1L)));
+
+        ServerResumePositionParser.ParseResult result = ServerResumePositionParser.parsePlayerConfig(playerConfig);
+        assertTrue(result.hasPlaybackStartConfig);
+        assertEquals(Long.valueOf(263_500L), result.resumePositionMs);
+        assertEquals(PSC + ".6.1", result.fieldPath);
     }
 
     @Test
-    public void parsePlaybackStartConfigFields_startSecondsOnly() {
-        List<ProtoNode> fields = ProtoNode.parse(buildPlaybackStartConfig(45, null));
-        assertEquals(Long.valueOf(45_000L), ServerResumePositionParser.parsePlaybackStartConfigFields(fields));
+    public void fallsBackToStartSecondsFloat() throws IOException {
+        byte[] psc = fixed32Float(1, 95.5f);
+        ServerResumePositionParser.ParseResult result =
+                ServerResumePositionParser.parsePlayerConfig(message(PSC, psc));
+        assertEquals(Long.valueOf(95_500L), result.resumePositionMs);
+        assertEquals(PSC + ".1", result.fieldPath);
     }
 
     @Test
-    public void parsePlaybackStartConfigFields_ignoresShortResume() {
-        List<ProtoNode> fields = ProtoNode.parse(buildPlaybackStartConfig(5, "5000"));
-        assertNull(ServerResumePositionParser.parsePlaybackStartConfigFields(fields));
+    public void rejectsShortResume() throws IOException {
+        byte[] psc = message(6, varint(1, 4_000L));
+        ServerResumePositionParser.ParseResult result =
+                ServerResumePositionParser.parsePlayerConfig(message(PSC, psc));
+        assertNull(result.resumePositionMs);
+        assertEquals(Long.valueOf(4_000L), result.rawPositionMs);
     }
 
     @Test
-    public void parseResumePositionMs_nestedInPlayerResponse() throws IOException {
-        byte[] playbackStartConfig = buildPlaybackStartConfig(120, "120000");
-        byte[] playerConfig = wrapField(2, playbackStartConfig);
-        byte[] playerResponse = wrapField(15, playerConfig);
-        assertEquals(Long.valueOf(120_000L), ServerResumePositionParser.parseResumePositionMs(playerResponse));
+    public void noPlaybackStartConfig() throws IOException {
+        // Values in other fields that look like times must not be used.
+        byte[] playerConfig = concat(varint(4, 14L), message(2, varint(4, 939_933L)));
+        ServerResumePositionParser.ParseResult result = ServerResumePositionParser.parsePlayerConfig(playerConfig);
+        assertFalse(result.hasPlaybackStartConfig);
+        assertNull(result.resumePositionMs);
+        assertNull(result.rawPositionMs);
     }
 
     @Test
-    public void parse_returnsCandidateFieldPath() throws IOException {
-        byte[] playbackStartConfig = buildPlaybackStartConfig(120, "120000");
-        byte[] playerConfig = wrapField(2, playbackStartConfig);
-        byte[] playerResponse = wrapField(15, playerConfig);
-        ServerResumePositionParser.ParseResult result = ServerResumePositionParser.parse(playerResponse);
-        assertEquals(Long.valueOf(120_000L), result.resumePositionMs);
-        assertEquals("15.2", result.candidateFieldPath);
+    public void malformedAndEmptyInput() {
+        assertNull(ServerResumePositionParser.parsePlayerConfig(null).resumePositionMs);
+        assertNull(ServerResumePositionParser.parsePlayerConfig(new byte[0]).resumePositionMs);
+        assertNull(ServerResumePositionParser.parsePlayerConfig(new byte[]{-5, -56, 40, 57}).resumePositionMs);
     }
 
-    private static byte[] buildPlaybackStartConfig(long startSeconds, String streamTimeMillis) {
-        try {
-            ByteArrayOutputStream inner = new ByteArrayOutputStream();
-            CodedOutputStream out = CodedOutputStream.newInstance(inner);
-            if (streamTimeMillis != null) {
-                byte[] startPosition = wrapStringField(1, streamTimeMillis);
-                out.writeBytes(2, ByteString.copyFrom(startPosition));
-            }
-            out.writeUInt64(1, startSeconds);
-            out.flush();
-            return inner.toByteArray();
-        } catch (IOException ex) {
-            throw new AssertionError(ex);
+    private static byte[] varint(int field, long value) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        CodedOutputStream coded = CodedOutputStream.newInstance(out);
+        coded.writeInt64(field, value);
+        coded.flush();
+        return out.toByteArray();
+    }
+
+    private static byte[] fixed32Float(int field, float value) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        CodedOutputStream coded = CodedOutputStream.newInstance(out);
+        coded.writeFloat(field, value);
+        coded.flush();
+        return out.toByteArray();
+    }
+
+    private static byte[] message(int field, byte[] payload) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        CodedOutputStream coded = CodedOutputStream.newInstance(out);
+        coded.writeByteArray(field, payload);
+        coded.flush();
+        return out.toByteArray();
+    }
+
+    private static byte[] concat(byte[]... parts) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        for (byte[] part : parts) {
+            out.write(part, 0, part.length);
         }
-    }
-
-    private static byte[] wrapStringField(int fieldNumber, String value) throws IOException {
-        ByteArrayOutputStream message = new ByteArrayOutputStream();
-        CodedOutputStream out = CodedOutputStream.newInstance(message);
-        out.writeString(fieldNumber, value);
-        out.flush();
-        return message.toByteArray();
-    }
-
-    private static byte[] wrapField(int fieldNumber, byte[] payload) throws IOException {
-        ByteArrayOutputStream message = new ByteArrayOutputStream();
-        CodedOutputStream out = CodedOutputStream.newInstance(message);
-        out.writeBytes(fieldNumber, ByteString.copyFrom(payload));
-        out.flush();
-        return message.toByteArray();
+        return out.toByteArray();
     }
 }
