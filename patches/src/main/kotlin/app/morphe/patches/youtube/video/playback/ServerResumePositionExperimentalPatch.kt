@@ -10,11 +10,15 @@ package app.morphe.patches.youtube.video.playback
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.patch.classDefBy
+import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patches.shared.misc.settings.preference.SwitchPreference
 import app.morphe.patches.shared.misc.settings.preference.noTitleUnsortedPreferenceCategory
+import app.morphe.patches.shared.misc.proto.hookElement
 import app.morphe.patches.shared.misc.spoof.CreateStreamingDataFingerprint
+import app.morphe.patches.youtube.misc.proto.elementProtoParserHookPatch
 import app.morphe.patches.youtube.misc.extension.sharedExtensionPatch
 import app.morphe.patches.youtube.misc.settings.PreferenceScreen
 import app.morphe.patches.youtube.misc.settings.settingsPatch
@@ -24,17 +28,25 @@ import app.morphe.patches.youtube.video.information.videoInformationPatch
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.formats.Instruction35c
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import java.lang.ref.WeakReference
+import java.util.logging.Logger
 
 private const val EXTENSION_CLASS =
     "Lapp/morphe/extension/youtube/patches/playback/ServerResumePositionPatch;"
 
+private const val WATCH_PROGRESS_CLASS =
+    "Lapp/morphe/extension/youtube/patches/playback/ServerWatchProgress;"
+
 private const val HOOK_METHOD_NAME = "patch_serverResumeOnPlayerResponse"
+
+private const val PANEL_HOOK_METHOD_NAME = "patch_serverResumeOnPlaylistPanelVideo"
 
 @Suppress("unused")
 val serverResumePositionExperimentalPatch = bytecodePatch(
@@ -47,6 +59,7 @@ val serverResumePositionExperimentalPatch = bytecodePatch(
         sharedExtensionPatch,
         settingsPatch,
         videoInformationPatch,
+        elementProtoParserHookPatch,
     )
 
     compatibleWith(COMPATIBILITY_YOUTUBE)
@@ -118,6 +131,126 @@ val serverResumePositionExperimentalPatch = bytecodePatch(
             constructorRef = WeakReference(it.method)
         }
 
+        // Watch progress (red bar) of the thumbnails of Litho lists, such as feeds and related videos.
+        // Playlist navigation starts videos without a start time, and their player response has none.
+        hookElement("$WATCH_PROGRESS_CLASS->onElement")
+
+        // Watch progress of the rows of the playlist panel on the watch page, which does not use Litho.
+        // The bind method of a row reads PlaylistPanelVideoRenderer.thumbnailOverlays with a static helper
+        // that returns the ThumbnailOverlayResumePlaybackRenderer (or null), and passes it to the
+        // binder of the resume progress bar.
+        var panelHooks = 0
+        PlaylistPanelVideoResumeFingerprint.matchAll().forEach { match ->
+            val method = match.method
+            val instructions = method.implementation!!.instructions.toList()
+            // iput-object vId, vHolder, Holder->videoId:Ljava/lang/String;
+            val videoIdIput = match.instructionMatches.last()
+            val videoIdField = videoIdIput.fieldReference
+            val holderRegister = (videoIdIput.instruction as
+                com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction).registerB
+
+            // invoke-static { vList }, Lhelper;->x(Ljava/util/List;)LResumeOverlay;
+            // move-result-object vOverlay
+            // ...
+            // invoke-virtual { vBinder, vOverlay }, LBinder;->x(LResumeOverlay;)V
+            val getterIndex = instructions.indices.firstOrNull { index ->
+                val instruction = instructions[index]
+                if (instruction.opcode != Opcode.INVOKE_STATIC) return@firstOrNull false
+                val reference = (instruction as ReferenceInstruction).reference as MethodReference
+                if (reference.parameterTypes.map { it.toString() } != listOf("Ljava/util/List;")) {
+                    return@firstOrNull false
+                }
+                if (instructions.getOrNull(index + 1)?.opcode != Opcode.MOVE_RESULT_OBJECT) {
+                    return@firstOrNull false
+                }
+                val overlayType = reference.returnType
+                (index + 2 until minOf(index + 20, instructions.size)).any { next ->
+                    val call = instructions[next]
+                    call.opcode == Opcode.INVOKE_VIRTUAL && ((call as ReferenceInstruction).reference as MethodReference)
+                        .let { it.returnType == "V" && it.parameterTypes.map { type -> type.toString() } == listOf(overlayType) }
+                }
+            } ?: return@forEach
+
+            val getter = (instructions[getterIndex] as ReferenceInstruction).reference as MethodReference
+            val overlayType = getter.returnType
+            val overlayRegister = (instructions[getterIndex + 1] as OneRegisterInstruction).registerA
+            if (holderRegister > 15 || overlayRegister > 15) return@forEach
+
+            // The binder of the resume bar reads percentDurationWatched, the only int it reads of the overlay.
+            val binderCall = instructions.subList(getterIndex + 2, instructions.size).first { call ->
+                call.opcode == Opcode.INVOKE_VIRTUAL && ((call as ReferenceInstruction).reference as MethodReference)
+                    .parameterTypes.map { it.toString() } == listOf(overlayType)
+            }
+            val binder = (binderCall as ReferenceInstruction).reference as MethodReference
+            val binderMethod = classDefBy(binder.definingClass).methods.first { candidate ->
+                candidate.name == binder.name && candidate.returnType == "V" &&
+                    candidate.parameterTypes.map { it.toString() } == listOf(overlayType)
+            }
+            val percentField = binderMethod.implementation!!.instructions.firstNotNullOfOrNull { instruction ->
+                if (instruction.opcode != Opcode.IGET) return@firstNotNullOfOrNull null
+                ((instruction as ReferenceInstruction).reference as FieldReference)
+                    .takeIf { it.definingClass == overlayType && it.type == "I" }
+            } ?: return@forEach
+
+            val holderClass = mutableClassDefBy(method.definingClass)
+            val helper = ImmutableMethod(
+                holderClass.type,
+                PANEL_HOOK_METHOD_NAME,
+                listOf(
+                    ImmutableMethodParameter(videoIdField.definingClass, null, null),
+                    ImmutableMethodParameter(overlayType, null, null),
+                ),
+                "V",
+                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+                null,
+                null,
+                MutableMethodImplementation(4),
+            ).toMutable().apply {
+                addInstructionsWithLabels(
+                    0,
+                    """
+                        if-eqz p0, :exit
+                        iget-object v0, p0, $videoIdField
+                        const/4 v1, -0x1
+                        if-eqz p1, :call
+                        iget v1, p1, $percentField
+                        :call
+                        invoke-static { v0, v1 }, $WATCH_PROGRESS_CLASS->onPlaylistPanelVideo(Ljava/lang/String;I)V
+                        :exit
+                        return-void
+                    """
+                )
+            }
+            if (holderClass.methods.none { it.name == PANEL_HOOK_METHOD_NAME }) {
+                holderClass.methods.add(helper)
+            }
+            match.method.addInstruction(
+                getterIndex + 2,
+                "invoke-static { v$holderRegister, v$overlayRegister }, $helper",
+            )
+            panelHooks++
+        }
+        if (panelHooks == 0) {
+            Logger.getLogger(this::class.java.name).warning(
+                "Could not find the playlist panel resume overlay. Playlist panel watch progress is not used."
+            )
+        }
+
+        // Debug log of the start position YouTube itself resolves (PlaybackStartPositionResolver).
+        PlaybackStartPositionResolverFingerprint.method.apply {
+            implementation!!.instructions.withIndex()
+                .filter { (_, instruction) -> instruction.opcode == Opcode.RETURN_OBJECT }
+                .map { (index, instruction) -> index to (instruction as OneRegisterInstruction).registerA }
+                .asReversed()
+                .forEach { (index, register) ->
+                    addInstruction(
+                        index,
+                        "invoke-static/range { v$register .. v$register }, " +
+                            "$EXTENSION_CLASS->onYouTubeStartPositionResolved(Ljava/lang/Long;)V",
+                    )
+                }
+        }
+
         onCreateHook(EXTENSION_CLASS, "newVideoStarted")
     }
 
@@ -140,3 +273,41 @@ val serverResumePositionExperimentalPatch = bytecodePatch(
         }
     }
 }
+
+/**
+ * PlaybackStartPositionResolver: picks the start position of a video from the start time of its
+ * navigation (watchEndpoint.startTimeSeconds), the client's saved position and the player response.
+ */
+internal object PlaybackStartPositionResolverFingerprint : app.morphe.patcher.Fingerprint(
+    returnType = "Ljava/lang/Long;",
+    parameters = listOf("L", "L", "L"),
+    filters = listOf(
+        app.morphe.patcher.string(
+            "clientPlaybackStartPosition=",
+            comparison = app.morphe.patcher.StringComparisonType.CONTAINS,
+        ),
+    ),
+)
+
+/**
+ * Binds a row of the playlist panel on the watch page (PlaylistPanelVideoRenderer, not Litho),
+ * and stores its video id in a field of the view holder.
+ */
+internal object PlaylistPanelVideoResumeFingerprint : app.morphe.patcher.Fingerprint(
+    returnType = "V",
+    parameters = listOf("L", "Ljava/lang/Object;"),
+    filters = listOf(
+        app.morphe.patcher.string("PLAYLIST_CURRENT_VIDEO_MONITOR"),
+        // Video id.
+        app.morphe.patcher.fieldAccess(
+            opcode = Opcode.IGET_OBJECT,
+            type = "Ljava/lang/String;",
+            location = app.morphe.patcher.InstructionLocation.MatchAfterWithin(10),
+        ),
+        app.morphe.patcher.fieldAccess(
+            opcode = Opcode.IPUT_OBJECT,
+            type = "Ljava/lang/String;",
+            location = app.morphe.patcher.InstructionLocation.MatchAfterImmediately(),
+        ),
+    ),
+)
