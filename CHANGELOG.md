@@ -1,3 +1,9 @@
+## [2.3.5](https://github.com/lfnincao/morphe-patches/compare/v2.3.4...v2.3.5) (2026-11-15)
+
+### 🐛 Bug Fixes
+
+* **youtube:** resume from the position entities of the playlist page ([#10](https://github.com/lfnincao/morphe-patches/issues/10)) ([3a43fc9](https://github.com/lfnincao/morphe-patches/commit/3a43fc9c5569bc921a2cee92576060569bae2560))
+
 ## [2.3.4](https://github.com/lfnincao/morphe-patches/compare/v2.3.3...v2.3.4) (2026-11-15)
 
 ### 🐛 Bug Fixes
