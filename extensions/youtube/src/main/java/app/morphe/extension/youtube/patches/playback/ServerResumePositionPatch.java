@@ -18,21 +18,31 @@ import app.morphe.extension.youtube.patches.VideoInformation;
 import app.morphe.extension.youtube.settings.Settings;
 
 /**
- * Experimental: seeks once to YouTube's server-provided watch-history start position when no local
- * {@link RememberPlaybackPositionPatch} restore will run.
+ * Experimental: seeks to the account's server watch progress of a video when no local
+ * {@link RememberPlaybackPositionPatch} position was saved before the video started.
+ * <p>
+ * Sources, in order: the resume point of the player response, the position entity of the video on
+ * its playlist page ({@link ServerPlaylistProgress}), the start time of the video on the playlist page,
+ * and the watched fraction of the playlist page or of a thumbnail ({@link ServerWatchProgress}).
  */
 @SuppressWarnings("unused")
 public final class ServerResumePositionPatch {
 
     private static final long END_PADDING_MS = 10_000L;
-    private static final long RESTORE_WINDOW_MS = 5_000L;
     private static final long RESTORE_POLL_DELAY_MS = 500L;
-    private static final int RESTORE_MAX_ATTEMPTS = 20;
     private static final long ALREADY_RESTORED_TOLERANCE_MS = 2_000L;
     /** A thumbnail this full is a finished video. */
     private static final float MAX_WATCHED_FRACTION = 0.95f;
-    /** Polls (500 ms each) to wait for a source once the video length is known. */
-    private static final int NO_SOURCE_MAX_ATTEMPTS = 4;
+    /**
+     * How long after the start of a video the server position is still applied. Measured in wall
+     * time, not playback time, because a SponsorBlock skip at the start moves the playback time
+     * far ahead before the playlist page arrives.
+     */
+    private static final long RESTORE_WALL_WINDOW_MS = 20_000L;
+    /** How long to wait for a source (player response, playlist page, thumbnails) after the start. */
+    private static final long SOURCE_WAIT_MS = 12_000L;
+    /** Give up if the video id or length is still unknown after this long. */
+    private static final long SETUP_WAIT_MS = 15_000L;
 
     private static long newVideoGeneration;
 
@@ -51,8 +61,14 @@ public final class ServerResumePositionPatch {
     private static volatile long pendingPositionMs = -1L;
     private static volatile boolean restorePending;
     private static volatile boolean seekAttempted;
-    private static int restoreAttempts;
-    private static int noSourceAttempts;
+    /** Wall time of newVideoStarted. */
+    private static long videoStartedAt;
+    /** Video id the local position check was done for, and its outcome. */
+    @Nullable
+    private static String localCheckVideoId;
+    /** Video id the playlist page was requested for. */
+    @Nullable
+    private static String playlistRequestVideoId;
 
     private ServerResumePositionPatch() {
     }
@@ -134,17 +150,18 @@ public final class ServerResumePositionPatch {
 
             newVideoGeneration++;
             restorePending = false;
-            restoreAttempts = 0;
-            noSourceAttempts = 0;
             seekAttempted = false;
+            videoStartedAt = System.currentTimeMillis();
+            localCheckVideoId = null;
+            playlistRequestVideoId = null;
 
             if (!Settings.SERVER_RESUME_PLAYBACK_POSITION_EXPERIMENTAL.get()) {
                 clearPending();
                 return;
             }
 
-            // The video id, the player response and the list thumbnails of this video can arrive
-            // after this call, so everything is checked while polling in checkRestore.
+            // The video id, the player response, the playlist page and the list thumbnails of this
+            // video arrive after this call, so everything is checked while polling in checkRestore.
             clearPending();
             restorePending = true;
             startRestoreCheck(newVideoGeneration);
@@ -155,6 +172,10 @@ public final class ServerResumePositionPatch {
 
     private static void startRestoreCheck(long generation) {
         Utils.runOnMainThreadDelayed(() -> checkRestore(generation), RESTORE_POLL_DELAY_MS);
+    }
+
+    private static long sinceStart() {
+        return System.currentTimeMillis() - videoStartedAt;
     }
 
     private static void checkRestore(long generation) {
@@ -172,57 +193,110 @@ public final class ServerResumePositionPatch {
             }
 
             final String videoId = VideoInformation.getStartingOrPlayingVideoId();
-            if (videoId.isEmpty()) {
-                rescheduleOrGiveUp(generation);
-                return;
-            }
-
-            if (RememberPlaybackPositionPatch.shouldDeferToLocalRestore(videoId)) {
-                Logger.printDebug(() -> "Server resume: skipped (local position exists) for " + videoId);
-                finishWithoutRestore();
-                return;
-            }
-
             final long videoLength = VideoInformation.getVideoLength();
-            if (videoLength <= 0) {
-                rescheduleOrGiveUp(generation);
+            if (videoId.isEmpty() || videoLength <= 0) {
+                if (sinceStart() > SETUP_WAIT_MS) {
+                    Logger.printDebug(() -> "Server resume: gave up, video id '" + videoId
+                            + "' or length " + videoLength + " unknown");
+                    finishWithoutRestore();
+                    return;
+                }
+                startRestoreCheck(generation);
                 return;
+            }
+
+            // Start the playlist page fetch as early as possible.
+            if (!videoId.equals(playlistRequestVideoId)) {
+                playlistRequestVideoId = videoId;
+                ServerPlaylistProgress.request(videoId, VideoInformation.getPlaylistId());
+            }
+
+            // Local position of RememberPlaybackPosition, as it was when the video started.
+            if (!videoId.equals(localCheckVideoId)) {
+                final Boolean hadLocal = RememberPlaybackPositionPatch.hadSavedPositionAtStart(videoId);
+                if (hadLocal == null) {
+                    if (sinceStart() > SETUP_WAIT_MS) {
+                        Logger.printDebug(() -> "Server resume: gave up, local position check never ran for " + videoId);
+                        finishWithoutRestore();
+                        return;
+                    }
+                    startRestoreCheck(generation);
+                    return;
+                }
+                if (hadLocal) {
+                    Logger.printDebug(() -> "Server resume: skipped, a local position was saved before " + videoId
+                            + " started (RememberPlaybackPosition restores it)");
+                    finishWithoutRestore();
+                    return;
+                }
+                localCheckVideoId = videoId;
+                Logger.printDebug(() -> "Server resume: no local position at the start of " + videoId
+                        + ", looking for a server position");
             }
 
             if (!videoId.equals(pendingVideoId)) {
                 // 1. Resume point of the player response (playerConfig.playbackStartConfig.startPosition).
-                // 2. Watched fraction of the thumbnail of the video in a list (feed, playlist panel).
+                // 2. Position entity of the video on the playlist page (exact).
+                // 3. Start time of the video on the playlist page.
+                // 4. Watched fraction of the playlist page, or of a thumbnail in a list (feed, panel).
                 final Long serverPosition = getServerPosition(videoId);
-                final Float fraction = ServerWatchProgress.getWatchedFraction(videoId);
-                final long target;
-                final String source;
+                final ServerPlaylistProgress.Result playlist = ServerPlaylistProgress.get(videoId);
+                final Float thumbnailFraction = ServerWatchProgress.getWatchedFraction(videoId);
+                final boolean playlistDone = playlist == null || playlist.done;
+
+                long target = -1;
+                String source = null;
                 if (serverPosition != null) {
                     target = serverPosition;
                     source = "player response";
-                } else if (fraction != null && fraction < MAX_WATCHED_FRACTION) {
-                    target = (long) (fraction * videoLength);
-                    source = "thumbnail progress " + fraction;
-                } else {
-                    if (++noSourceAttempts <= NO_SOURCE_MAX_ATTEMPTS) {
-                        // The player response can still be parsed.
+                } else if (playlist != null && playlist.positionMs != null) {
+                    target = playlist.positionMs;
+                    source = "playlist page position entity";
+                } else if (playlist != null && playlist.startTimeMs != null) {
+                    target = playlist.startTimeMs;
+                    source = "playlist page start time";
+                } else if (playlistDone) {
+                    Float fraction = null;
+                    String fractionSource = null;
+                    if (playlist != null && playlist.percent > 0 && playlist.percent <= 100) {
+                        fraction = playlist.percent / 100f;
+                        fractionSource = "playlist page percent " + playlist.percent;
+                    } else if (thumbnailFraction != null) {
+                        fraction = thumbnailFraction;
+                        fractionSource = "thumbnail progress " + thumbnailFraction;
+                    }
+                    if (fraction != null && fraction < MAX_WATCHED_FRACTION) {
+                        target = (long) (fraction * videoLength);
+                        source = fractionSource;
+                    }
+                }
+
+                if (source == null) {
+                    if (!playlistDone || sinceStart() < SOURCE_WAIT_MS) {
+                        // The player response, the playlist page or the thumbnails can still arrive.
                         startRestoreCheck(generation);
                         return;
                     }
                     Logger.printDebug(() -> "Server resume: no server position for " + videoId
-                            + (fraction != null ? " (watched fraction " + fraction + " counts as finished)" : ""));
+                            + " (player response: none, playlist page: "
+                            + (playlist == null ? "not requested" : playlist.status)
+                            + ", thumbnail: " + (thumbnailFraction == null ? "none" : thumbnailFraction
+                            + (thumbnailFraction >= MAX_WATCHED_FRACTION ? " counts as finished" : "")) + ")");
                     finishWithoutRestore();
                     return;
                 }
+                final long finalTarget = target;
+                final String finalSource = source;
                 if (target < ServerResumePositionParser.MIN_RESUME_MS) {
-                    Logger.printDebug(() -> "Server resume: " + target + "ms from " + source
+                    Logger.printDebug(() -> "Server resume: " + finalTarget + "ms from " + finalSource
                             + " is too early for " + videoId);
                     finishWithoutRestore();
                     return;
                 }
                 pendingVideoId = videoId;
                 pendingPositionMs = target;
-                Logger.printDebug(() -> "Server resume: target " + target + "ms for " + videoId
-                        + " from " + source + " (length " + videoLength + "ms)");
+                Logger.printDebug(() -> "Server resume: target " + finalTarget + "ms for " + videoId
+                        + " from " + finalSource + " (length " + videoLength + "ms)");
             }
 
             final long targetPositionMs = pendingPositionMs;
@@ -240,9 +314,19 @@ public final class ServerResumePositionPatch {
                 return;
             }
 
-            if (currentTime >= RESTORE_WINDOW_MS) {
+            if (currentTime > targetPositionMs) {
+                // Playback is already past the server position (a SponsorBlock skip or a seek).
+                Logger.printDebug(() -> "Server resume: playback is already at " + currentTime
+                        + "ms, past the target " + targetPositionMs + "ms for " + videoId);
+                finishWithoutRestore();
+                return;
+            }
+
+            final long elapsed = sinceStart();
+            if (elapsed > RESTORE_WALL_WINDOW_MS) {
                 Logger.printDebug(() -> "Server resume: restore window passed for " + videoId
-                        + " current: " + currentTime + " target: " + targetPositionMs);
+                        + " (" + elapsed + "ms after the start) current: " + currentTime
+                        + " target: " + targetPositionMs);
                 finishWithoutRestore();
                 return;
             }
@@ -258,7 +342,14 @@ public final class ServerResumePositionPatch {
         }
     }
 
+    private static final int SEEK_MAX_ATTEMPTS = 6;
+    private static final long SEEK_RETRY_DELAY_MS = 1_000L;
+
     private static void attemptSeek(long generation, String videoId, long targetPositionMs) {
+        attemptSeek(generation, videoId, targetPositionMs, 1);
+    }
+
+    private static void attemptSeek(long generation, String videoId, long targetPositionMs, int attempt) {
         if (generation != newVideoGeneration) {
             return;
         }
@@ -268,23 +359,35 @@ public final class ServerResumePositionPatch {
             return;
         }
 
-        Logger.printDebug(() -> "Server resume: seeking to " + targetPositionMs + "ms for " + videoId);
-        VideoInformation.seekTo(targetPositionMs);
-        synchronized (serverPositions) {
-            serverPositions.remove(videoId);
-        }
-        ServerWatchProgress.forget(videoId);
-        clearPending();
-        restorePending = false;
-    }
+        final long before = VideoInformation.getVideoTime();
+        final boolean accepted = VideoInformation.seekTo(targetPositionMs);
+        Logger.printDebug(() -> "Server resume: seeking to " + targetPositionMs + "ms for " + videoId
+                + " (attempt " + attempt + ", from " + before + "ms, accepted: " + accepted + ")");
 
-    private static void rescheduleOrGiveUp(long generation) {
-        Utils.verifyOnMainThread();
-        if (++restoreAttempts <= RESTORE_MAX_ATTEMPTS) {
-            startRestoreCheck(generation);
-            return;
-        }
-        finishWithoutRestore();
+        // Early seeks are sometimes dropped while the player is still loading.
+        Utils.runOnMainThreadDelayed(() -> {
+            if (generation != newVideoGeneration || !videoId.equals(VideoInformation.getStartingOrPlayingVideoId())) {
+                finishWithoutRestore();
+                return;
+            }
+            final long now = VideoInformation.getVideoTime();
+            if (Math.abs(now - targetPositionMs) <= ALREADY_RESTORED_TOLERANCE_MS + SEEK_RETRY_DELAY_MS * 2) {
+                Logger.printDebug(() -> "Server resume: resumed " + videoId + " at " + now + "ms");
+                synchronized (serverPositions) {
+                    serverPositions.remove(videoId);
+                }
+                ServerWatchProgress.forget(videoId);
+                finishWithoutRestore();
+                return;
+            }
+            if (attempt < SEEK_MAX_ATTEMPTS && now < targetPositionMs && sinceStart() <= RESTORE_WALL_WINDOW_MS) {
+                attemptSeek(generation, videoId, targetPositionMs, attempt + 1);
+                return;
+            }
+            Logger.printDebug(() -> "Server resume: seek gave up for " + videoId + ", current: " + now
+                    + " target: " + targetPositionMs);
+            finishWithoutRestore();
+        }, SEEK_RETRY_DELAY_MS);
     }
 
     private static void finishWithoutRestore() {
