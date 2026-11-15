@@ -116,6 +116,15 @@ public final class RememberPlaybackPositionPatch {
     }
 
     /**
+     * Video id of the last restore decision at video start, for {@link ServerResumePositionPatch}.
+     * Decided before this playback saves anything, so a position saved during the current playback
+     * (such as right after a SponsorBlock skip) is never taken for an earlier saved position.
+     */
+    @Nullable
+    private static volatile String startDecisionVideoId;
+    private static volatile boolean startDecisionHadSavedPosition;
+
+    /**
      * Injection point. Called when a new video starts playing.
      */
     public static void newVideoStarted(VideoInformation.PlaybackController ignoredPlayerController) {
@@ -128,6 +137,8 @@ public final class RememberPlaybackPositionPatch {
             restorePending = false;
             restoreSeekInProgress = false;
             newVideoGeneration++;
+            startDecisionVideoId = null;
+            startDecisionHadSavedPosition = false;
 
             if (!Settings.REMEMBER_PLAYBACK_POSITION.get()) {
                 return;
@@ -220,6 +231,8 @@ public final class RememberPlaybackPositionPatch {
             }
 
             final SavedPosition saved = loadPlaybackPosition(videoId);
+            startDecisionHadSavedPosition = saved != null && isRestorable(saved.position(), videoLength);
+            startDecisionVideoId = videoId;
             if (saved == null || !isRestorable(saved.position(), videoLength)) {
                 finishWithoutRestore(videoId, saved != null);
                 return;
@@ -429,26 +442,21 @@ public final class RememberPlaybackPositionPatch {
 
     /**
      * Used by {@link ServerResumePositionPatch} so server resume never races local remember restore.
+     * Decided from the saved positions at the start of the video, not from positions saved by the
+     * current playback.
+     *
+     * @return TRUE if a restorable position was saved before the video started, FALSE if not,
+     *         or null if this patch has not checked the video yet.
      */
-    public static boolean shouldDeferToLocalRestore(String videoId) {
+    @Nullable
+    public static Boolean hadSavedPositionAtStart(String videoId) {
         if (!Settings.REMEMBER_PLAYBACK_POSITION.get()) {
-            return false;
+            return Boolean.FALSE;
         }
-        // Only a saved position for this exact video defers. restorePending is set for every new
-        // video while the setting is on (before it is known whether a position is saved), so it
-        // must not be used here.
-        if (videoId.isEmpty()) {
-            return false;
+        if (videoId.isEmpty() || !videoId.equals(startDecisionVideoId)) {
+            return null;
         }
-        final SavedPosition saved = loadPlaybackPosition(videoId);
-        if (saved == null) {
-            return false;
-        }
-        final long videoLength = VideoInformation.getVideoLength();
-        if (videoLength <= 0) {
-            return saved.position() > MIN_PROGRESS_MS;
-        }
-        return isRestorable(saved.position(), videoLength);
+        return startDecisionHadSavedPosition;
     }
 
     private static void trimSavedPositions() {
