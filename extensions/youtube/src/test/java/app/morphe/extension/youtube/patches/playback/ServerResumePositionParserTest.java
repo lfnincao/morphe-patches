@@ -34,6 +34,36 @@ public class ServerResumePositionParserTest {
     }
 
     @Test
+    public void appendsStartPosition() throws IOException {
+        // Without a playback start config.
+        byte[] playerConfig = concat(varint(7, 1500L), message(215771584, varint(1, 1L)));
+        byte[] withStart = ServerResumePositionParser.withStartPosition(playerConfig, 740_000L);
+        ServerResumePositionParser.ParseResult result = ServerResumePositionParser.parsePlayerConfig(withStart);
+        assertTrue(result.hasPlaybackStartConfig);
+        assertEquals(Long.valueOf(740_000L), result.resumePositionMs);
+        assertEquals(PSC + ".6.1", result.fieldPath);
+
+        // With a playback start config that has no start position: the appended one is a second
+        // occurrence of the field, which protobuf merges into the first.
+        byte[] playerConfig2 = concat(varint(7, 1500L), message(PSC, varint(4, 20_000L)));
+        byte[] withStart2 = ServerResumePositionParser.withStartPosition(playerConfig2, 224_000L);
+        byte[] expectedTail = message(PSC, message(6, varint(1, 224_000L)));
+        assertEquals(playerConfig2.length + expectedTail.length, withStart2.length);
+        for (int i = 0; i < expectedTail.length; i++) {
+            assertEquals(expectedTail[i], withStart2[playerConfig2.length + i]);
+        }
+        com.google.protobuf.CodedInputStream input = com.google.protobuf.CodedInputStream.newInstance(withStart2);
+        int fields = 0;
+        while (true) {
+            int tag = input.readTag();
+            if (tag == 0) break;
+            input.skipField(tag);
+            fields++;
+        }
+        assertEquals(3, fields);
+    }
+
+    @Test
     public void fallsBackToStartSecondsFloat() throws IOException {
         byte[] psc = fixed32Float(1, 95.5f);
         ServerResumePositionParser.ParseResult result =
