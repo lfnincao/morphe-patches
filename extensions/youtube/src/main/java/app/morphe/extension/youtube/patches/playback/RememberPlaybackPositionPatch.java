@@ -459,6 +459,35 @@ public final class RememberPlaybackPositionPatch {
         return startDecisionHadSavedPosition;
     }
 
+    /**
+     * Used by {@link ServerResumePositionPatch} before a video starts, possibly off the main thread,
+     * so it reads the stored setting instead of the in-memory map.
+     *
+     * @return If a restorable position is saved now for the video.
+     */
+    public static boolean hasRestorableSavedPosition(String videoId, long videoLengthMs) {
+        if (!Settings.REMEMBER_PLAYBACK_POSITION.get() || videoId == null || videoId.isEmpty()) {
+            return false;
+        }
+        try {
+            final String raw = Settings.REMEMBER_PLAYBACK_POSITION_TIMES.get();
+            if (raw.isEmpty()) {
+                return false;
+            }
+            final JSONObject entry = new JSONObject(raw).optJSONObject(videoId);
+            if (entry == null) {
+                return false;
+            }
+            final long position = entry.optLong("position", -1);
+            return videoLengthMs > 0
+                    ? isRestorable(position, videoLengthMs)
+                    : position > MIN_PROGRESS_MS;
+        } catch (Exception ex) {
+            // Never take over from a position that could not be read.
+            return true;
+        }
+    }
+
     private static void trimSavedPositions() {
         Map<String, SavedPosition> map = getSavedPositions();
 

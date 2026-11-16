@@ -1742,8 +1742,8 @@ Videos are requested by a short prefix of the hashed video ID, so the server can
     <string name="morphe_remember_playback_position_summary">Videos resume where you left off, even when they auto-advance in a playlist</string>
 
     <!-- video.playback.serverResumePositionExperimentalPatch -->
-    <string name="morphe_server_resume_playback_position_experimental_title">Server resume position (experimental)</string>
-    <string name="morphe_server_resume_playback_position_experimental_summary">Experimental: if Remember playback position does not apply, seek once to YouTube\'s server watch-history start position from the player response</string>
+    <string name="morphe_server_resume_playback_position_experimental_title">Resume next and previous in playlists</string>
+    <string name="morphe_server_resume_playback_position_experimental_summary">When you skip to the next or previous video in a playlist, it starts where you left off, like the first video you open does.</string>
 
     <!-- video.livestream.rememberLiveStreamPositionPatch -->
     <string name="morphe_remember_live_stream_position_title">Remember live stream playback position</string>

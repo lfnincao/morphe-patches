@@ -125,6 +125,43 @@ public final class ServerResumePositionParser {
     }
 
     /**
+     * Sets playerConfig.playbackStartConfig.startPosition.timeMs, the start position YouTube itself
+     * uses when a video is opened with a start time (watchEndpoint.startTimeSeconds or &amp;t=).
+     * <p>
+     * A message field that occurs twice in protobuf wire data is merged, so appending a
+     * playbackStartConfig that only has the start position keeps the other fields of the original.
+     *
+     * @return The serialized player config with the start position.
+     */
+    public static byte[] withStartPosition(byte[] playerConfigBytes, long startPositionMs) {
+        final java.io.ByteArrayOutputStream startPosition = new java.io.ByteArrayOutputStream();
+        writeVarint(startPosition, ((long) START_POSITION_TIME_MS_FIELD << 3) | Field.WIRE_VARINT);
+        writeVarint(startPosition, startPositionMs);
+
+        final java.io.ByteArrayOutputStream playbackStartConfig = new java.io.ByteArrayOutputStream();
+        writeLengthDelimited(playbackStartConfig, PLAYBACK_START_CONFIG_START_POSITION_FIELD, startPosition.toByteArray());
+
+        final java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(playerConfigBytes.length + 24);
+        out.write(playerConfigBytes, 0, playerConfigBytes.length);
+        writeLengthDelimited(out, PLAYER_CONFIG_PLAYBACK_START_CONFIG_FIELD, playbackStartConfig.toByteArray());
+        return out.toByteArray();
+    }
+
+    private static void writeLengthDelimited(java.io.ByteArrayOutputStream out, int fieldNumber, byte[] bytes) {
+        writeVarint(out, ((long) fieldNumber << 3) | Field.WIRE_LENGTH_DELIMITED);
+        writeVarint(out, bytes.length);
+        out.write(bytes, 0, bytes.length);
+    }
+
+    private static void writeVarint(java.io.ByteArrayOutputStream out, long value) {
+        while ((value & ~0x7FL) != 0) {
+            out.write((int) ((value & 0x7F) | 0x80));
+            value >>>= 7;
+        }
+        out.write((int) value);
+    }
+
+    /**
      * Minimal schema-less protobuf wire reader. Returns null for malformed input.
      */
     static final class Field {

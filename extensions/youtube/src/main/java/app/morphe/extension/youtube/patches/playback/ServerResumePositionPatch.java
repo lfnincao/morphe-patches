@@ -24,6 +24,14 @@ import app.morphe.extension.youtube.settings.Settings;
  * Sources, in order: the resume point of the player response, the position entity of the video on
  * its playlist page ({@link ServerPlaylistProgress}), the start time of the video on the playlist page,
  * and the watched fraction of the playlist page or of a thumbnail ({@link ServerWatchProgress}).
+ * <p>
+ * Paths, in order:
+ * <ol>
+ * <li>injected: the start position cached from the playlist page is put in the player response
+ *     before the player uses it, so the video starts there, as when a video is opened with a start time.</li>
+ * <li>cached seek: the cached start position is known when the video starts, and is seeked to at once.</li>
+ * <li>fallback seek: the playlist page is fetched after the video started, then seeked to.</li>
+ * </ol>
  */
 @SuppressWarnings("unused")
 public final class ServerResumePositionPatch {
@@ -69,6 +77,29 @@ public final class ServerResumePositionPatch {
     /** Video id the playlist page was requested for. */
     @Nullable
     private static String playlistRequestVideoId;
+
+    /** Start positions put in player responses, by video id. */
+    private static final Map<String, Long> injectedPositions = new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Long> eldest) {
+            return size() > MAX_SERVER_POSITIONS;
+        }
+    };
+    /**
+     * Videos that started playing in this session. Their cached position is from before they
+     * played, and a player response built again while one plays (a reload) must not move it.
+     */
+    private static final Map<String, Boolean> startedVideoIds = new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+            return size() > 500;
+        }
+    };
+    /** Video id of the last 'not injected' log line, to log it once per video. */
+    @Nullable
+    private static volatile String lastNotInjectedVideoId;
+    /** How long an injected start position may take to show up in the playback time. */
+    private static final long INJECTED_START_GRACE_MS = 4_000L;
 
     private ServerResumePositionPatch() {
     }
@@ -131,6 +162,99 @@ public final class ServerResumePositionPatch {
             }
         } catch (Exception ex) {
             Logger.printException(() -> "onYouTubeStartPositionResolved failure", ex);
+        }
+    }
+
+    /**
+     * Injection point. Called when the app builds its player response model, after
+     * "Spoof video streams" set the player config, and before the player reads the start position.
+     *
+     * @param videoId      {@code playerResponse.videoDetails.videoId}.
+     * @param playerConfig Serialized {@code playerResponse.playerConfig}.
+     * @return The serialized player config with the cached server position as its start position,
+     *         or null to keep the player config.
+     */
+    @Nullable
+    public static byte[] getPlayerConfigWithStartPosition(@Nullable String videoId, @Nullable byte[] playerConfig) {
+        try {
+            if (videoId == null || videoId.isEmpty() || playerConfig == null) {
+                return null;
+            }
+            synchronized (startedVideoIds) {
+                if (startedVideoIds.containsKey(videoId)) {
+                    return null; // Played already in this session, or a reload of the playing video.
+                }
+            }
+            final byte[] modified = injectStartPosition(videoId, playerConfig);
+            if (modified == null) {
+                // An earlier response of the video, such as an inline preview, may have been injected.
+                forgetInjected(videoId);
+            }
+            return modified;
+        } catch (Exception ex) {
+            Logger.printException(() -> "getPlayerConfigWithStartPosition failure", ex);
+            return null;
+        }
+    }
+
+    @Nullable
+    private static byte[] injectStartPosition(String videoId, byte[] playerConfig) {
+        final String playlistId = VideoInformation.getPlaylistId();
+        final ServerPlaylistProgress.CachedRow row = ServerPlaylistProgress.getCached(videoId, playlistId);
+        if (row == null) {
+            if (!playlistId.isEmpty() && !playlistId.startsWith("RD") && !videoId.equals(lastNotInjectedVideoId)) {
+                lastNotInjectedVideoId = videoId;
+                Logger.printDebug(() -> "Server resume: no cached position for " + videoId
+                        + " in playlist " + playlistId + " (cached playlist: "
+                        + ServerPlaylistProgress.getCachedPlaylistId() + "), not injecting");
+            }
+            return null;
+        }
+        if (row.startMs < 0) {
+            return null; // Not watched, or finished.
+        }
+
+        final ServerResumePositionParser.ParseResult parsed =
+                ServerResumePositionParser.parsePlayerConfig(playerConfig);
+        if (parsed.rawPositionMs != null && parsed.rawPositionMs > 0) {
+            Logger.printDebug(() -> "Server resume: not injecting for " + videoId
+                    + ", the player response already starts at " + parsed.rawPositionMs + "ms");
+            return null;
+        }
+        final long target = row.startMs;
+        if (target < ServerResumePositionParser.MIN_RESUME_MS
+                || (row.lengthMs > 0 && target >= row.lengthMs - END_PADDING_MS)) {
+            Logger.printDebug(() -> "Server resume: not injecting " + target + "ms for " + videoId
+                    + " (too early or at the end, length " + row.lengthMs + "ms)");
+            return null;
+        }
+        if (RememberPlaybackPositionPatch.hasRestorableSavedPosition(videoId, row.lengthMs)) {
+            Logger.printDebug(() -> "Server resume: not injecting for " + videoId
+                    + ", a local position is saved (RememberPlaybackPosition restores it)");
+            return null;
+        }
+
+        final byte[] modified = ServerResumePositionParser.withStartPosition(playerConfig, target);
+        // Check the result before the app parses it.
+        final ServerResumePositionParser.ParseResult check =
+                ServerResumePositionParser.parsePlayerConfig(modified);
+        if (!check.hasPlaybackStartConfig) {
+            Logger.printDebug(() -> "Server resume: not injecting for " + videoId + ", the result does not parse");
+            return null;
+        }
+        synchronized (injectedPositions) {
+            injectedPositions.put(videoId, target);
+        }
+        Logger.printDebug(() -> "Server resume: injected start position " + target + "ms for " + videoId
+                + " from the cached playlist page " + row.source + " (fetched " + (row.ageMs() / 1000)
+                + "s ago, playlist " + playlistId + ")");
+        return modified;
+    }
+
+    @Nullable
+    private static Long getInjectedPosition(String videoId) {
+        synchronized (injectedPositions) {
+            return injectedPositions.get(videoId);
         }
     }
 
@@ -205,7 +329,11 @@ public final class ServerResumePositionPatch {
                 return;
             }
 
-            // Start the playlist page fetch as early as possible.
+            synchronized (startedVideoIds) {
+                startedVideoIds.put(videoId, Boolean.TRUE);
+            }
+            // Fetch the playlist page as early as possible. This also refreshes the cached start
+            // positions of the other videos of the playlist, for the next or previous video.
             if (!videoId.equals(playlistRequestVideoId)) {
                 playlistRequestVideoId = videoId;
                 ServerPlaylistProgress.request(videoId, VideoInformation.getPlaylistId());
@@ -239,22 +367,33 @@ public final class ServerResumePositionPatch {
                 // 2. Position entity of the video on the playlist page (exact).
                 // 3. Start time of the video on the playlist page.
                 // 4. Watched fraction of the playlist page, or of a thumbnail in a list (feed, panel).
+                final Long injected = getInjectedPosition(videoId);
                 final Long serverPosition = getServerPosition(videoId);
                 final ServerPlaylistProgress.Result playlist = ServerPlaylistProgress.get(videoId);
+                // Cached before this fetch, from the page fetched for an earlier video of the playlist.
+                final ServerPlaylistProgress.CachedRow cached = playlist != null && playlist.done
+                        ? null : ServerPlaylistProgress.getCached(videoId, VideoInformation.getPlaylistId());
                 final Float thumbnailFraction = ServerWatchProgress.getWatchedFraction(videoId);
                 final boolean playlistDone = playlist == null || playlist.done;
 
                 long target = -1;
                 String source = null;
-                if (serverPosition != null) {
+                if (injected != null) {
+                    target = injected;
+                    source = INJECTED_SOURCE;
+                } else if (serverPosition != null) {
                     target = serverPosition;
                     source = "player response";
+                } else if (cached != null && cached.startMs >= 0) {
+                    target = cached.startMs;
+                    source = "cached playlist page " + cached.source + " (cached seek, fetched "
+                            + (cached.ageMs() / 1000) + "s ago)";
                 } else if (playlist != null && playlist.positionMs != null) {
                     target = playlist.positionMs;
-                    source = "playlist page position entity";
+                    source = "playlist page position entity (fallback seek)";
                 } else if (playlist != null && playlist.startTimeMs != null) {
                     target = playlist.startTimeMs;
-                    source = "playlist page start time";
+                    source = "playlist page start time (fallback seek)";
                 } else if (playlistDone) {
                     Float fraction = null;
                     String fractionSource = null;
@@ -308,10 +447,28 @@ public final class ServerResumePositionPatch {
             }
 
             final long currentTime = VideoInformation.getVideoTime();
+            final boolean injectedTarget = getInjectedPosition(videoId) != null;
             if (Math.abs(currentTime - targetPositionMs) < ALREADY_RESTORED_TOLERANCE_MS) {
-                Logger.printDebug(() -> "Server resume: already at " + currentTime + "ms for " + videoId);
+                if (injectedTarget) {
+                    Logger.printDebug(() -> "Server resume: started at the injected position, now at "
+                            + currentTime + "ms for " + videoId + " (no seek)");
+                    forgetInjected(videoId);
+                } else {
+                    Logger.printDebug(() -> "Server resume: already at " + currentTime + "ms for " + videoId);
+                }
                 finishWithoutRestore();
                 return;
+            }
+            if (injectedTarget && currentTime < ALREADY_RESTORED_TOLERANCE_MS / 2
+                    && sinceStart() < INJECTED_START_GRACE_MS) {
+                // The player may not have reported the injected start position yet.
+                startRestoreCheck(generation);
+                return;
+            }
+            if (injectedTarget && !seekAttempted) {
+                Logger.printDebug(() -> "Server resume: the injected start position was not used for " + videoId
+                        + " (now at " + currentTime + "ms), falling back to a seek");
+                forgetInjected(videoId);
             }
 
             if (currentTime > targetPositionMs) {
@@ -388,6 +545,14 @@ public final class ServerResumePositionPatch {
                     + " target: " + targetPositionMs);
             finishWithoutRestore();
         }, SEEK_RETRY_DELAY_MS);
+    }
+
+    private static final String INJECTED_SOURCE = "injected start position";
+
+    private static void forgetInjected(String videoId) {
+        synchronized (injectedPositions) {
+            injectedPositions.remove(videoId);
+        }
     }
 
     private static void finishWithoutRestore() {
