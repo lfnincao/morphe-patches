@@ -230,6 +230,11 @@ public final class ServerPlaylistProgress {
         }
     }
 
+    /** TEST ONLY. */
+    public static CachedRow fakeRowForTest(String videoId) {
+        return new CachedRow(videoId, 60_000L, "FAKE test row", 0, System.currentTimeMillis());
+    }
+
     /** Playlist id of the cached rows, for the debug log. */
     @Nullable
     public static String getCachedPlaylistId() {

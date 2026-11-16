@@ -200,7 +200,9 @@ public final class ServerResumePositionPatch {
     @Nullable
     private static byte[] injectStartPosition(String videoId, byte[] playerConfig) {
         final String playlistId = VideoInformation.getPlaylistId();
-        final ServerPlaylistProgress.CachedRow row = ServerPlaylistProgress.getCached(videoId, playlistId);
+        final ServerPlaylistProgress.CachedRow cachedRow = ServerPlaylistProgress.getCached(videoId, playlistId);
+        final ServerPlaylistProgress.CachedRow row = cachedRow == null && !playlistId.isEmpty() && !playlistId.startsWith("RD")
+                ? ServerPlaylistProgress.fakeRowForTest(videoId) : cachedRow; // TEST ONLY
         if (row == null) {
             if (!playlistId.isEmpty() && !playlistId.startsWith("RD") && !videoId.equals(lastNotInjectedVideoId)) {
                 lastNotInjectedVideoId = videoId;
