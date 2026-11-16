@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v2.3.5](https://github.com/lfnincao/morphe-patches/releases/tag/v2.3.5)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;213 patches total
+> **[v2.3.6](https://github.com/lfnincao/morphe-patches/releases/tag/v2.3.6)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;213 patches total
 <details>
 <summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;56 patches</summary>
 <br>
@@ -218,7 +218,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 | [Search comments](#search-comments) | Adds a button to the comments to show only the loaded comments that contain the searched words. |  |
 | [Seekbar](#seekbar) | Adds options to show old seekbar thumbnails, disable precise seeking when swiping up on the seekbar, slide to seek instead of playing at 2x speed when pressing and holding, tapping the player seekbar to seek, hiding the video player seekbar, enabling seeking in live streams, customizing the seekbar thumb with an image or GIF, and expanding the live stream DVR duration. |  |
 | [Series tracking](#series-tracking) | Adds a series library to History with local progress and episode continuation. This patch works with YouTube 21.02 and newer. |  |
-| [Server resume position (experimental)](#server-resume-position-experimental) | Experimental: when Remember playback position will not restore a video, seek once to YouTube's server-side watch-history start position from the player response. Local saved positions always take precedence. |  |
+| [Server resume position (experimental)](#server-resume-position-experimental) | Experimental: when you skip to the next or previous video in a playlist, it starts where you left off, from the watch history of the playlist page. A position saved by Remember playback position takes precedence. |  |
 | [Settings menu filter](#settings-menu-filter) | Adds an option to hide items on the standard YouTube settings screen by their visible name. |  |
 | [Shorts autoplay](#shorts-autoplay) | Adds options to automatically play the next Short. |  |
 | [Shorts icon style](#shorts-icon-style) | Adds an option to change the style of the Shorts action button icons. | • Custom icons |

@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-11-15T08:09:11",
-  "description": "## [2.3.5](https://github.com/lfnincao/morphe-patches/compare/v2.3.4...v2.3.5) (2026-11-15)\n\n### 🐛 Bug Fixes\n\n* **youtube:** resume from the position entities of the playlist page ([#10](https://github.com/lfnincao/morphe-patches/issues/10)) ([3a43fc9](https://github.com/lfnincao/morphe-patches/commit/3a43fc9c5569bc921a2cee92576060569bae2560))",
-  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.3.5/patches-2.3.5.mpp",
+  "created_at": "2026-11-16T03:15:07",
+  "description": "## [2.3.6](https://github.com/lfnincao/morphe-patches/compare/v2.3.5...v2.3.6) (2026-11-16)\n\n### 🐛 Bug Fixes\n\n* **youtube:** start playlist videos at the server position without playing from 0 first ([#11](https://github.com/lfnincao/morphe-patches/issues/11)) ([3bf2121](https://github.com/lfnincao/morphe-patches/commit/3bf21211f20f790ffe1b9684eea5ed905acc9fc6))",
+  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.3.6/patches-2.3.6.mpp",
   "signature_download_url": "",
-  "version": "2.3.5",
+  "version": "2.3.6",
   "public_key": "PPMsWvMqp78cL8h+2UgBGQwsJkuAL/sLWsNr2b5kqmE="
 }

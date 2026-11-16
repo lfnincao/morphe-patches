@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "2.3.5",
+  "version": "2.3.6",
   "patches": [
     {
       "name": "A-B loop",
@@ -13191,7 +13191,7 @@
     },
     {
       "name": "Server resume position (experimental)",
-      "description": "Experimental: when Remember playback position will not restore a video, seek once to YouTube's server-side watch-history start position from the player response. Local saved positions always take precedence.",
+      "description": "Experimental: when you skip to the next or previous video in a playlist, it starts where you left off, from the watch history of the playlist page. A position saved by Remember playback position takes precedence.",
       "default": true,
       "category": null,
       "compatiblePackages": [

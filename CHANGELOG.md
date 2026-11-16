@@ -1,3 +1,9 @@
+## [2.3.6](https://github.com/lfnincao/morphe-patches/compare/v2.3.5...v2.3.6) (2026-11-16)
+
+### 🐛 Bug Fixes
+
+* **youtube:** start playlist videos at the server position without playing from 0 first ([#11](https://github.com/lfnincao/morphe-patches/issues/11)) ([3bf2121](https://github.com/lfnincao/morphe-patches/commit/3bf21211f20f790ffe1b9684eea5ed905acc9fc6))
+
 ## [2.3.5](https://github.com/lfnincao/morphe-patches/compare/v2.3.4...v2.3.5) (2026-11-15)
 
 ### 🐛 Bug Fixes
