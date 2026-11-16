@@ -18,6 +18,7 @@ import app.morphe.patches.shared.misc.settings.preference.SwitchPreference
 import app.morphe.patches.shared.misc.settings.preference.noTitleUnsortedPreferenceCategory
 import app.morphe.patches.shared.misc.proto.hookElement
 import app.morphe.patches.shared.misc.spoof.CreateStreamingDataFingerprint
+import app.morphe.patches.shared.misc.spoof.PlayerConfigBuilderFingerprint
 import app.morphe.patches.youtube.misc.proto.elementProtoParserHookPatch
 import app.morphe.patches.youtube.misc.extension.sharedExtensionPatch
 import app.morphe.patches.youtube.misc.settings.PreferenceScreen
@@ -46,14 +47,16 @@ private const val WATCH_PROGRESS_CLASS =
 
 private const val HOOK_METHOD_NAME = "patch_serverResumeOnPlayerResponse"
 
+private const val INJECT_HOOK_METHOD_NAME = "patch_serverResumeSetStartPosition"
+
 private const val PANEL_HOOK_METHOD_NAME = "patch_serverResumeOnPlaylistPanelVideo"
 
 @Suppress("unused")
 val serverResumePositionExperimentalPatch = bytecodePatch(
     name = "Server resume position (experimental)",
-    description = "Experimental: when Remember playback position will not restore a video, " +
-        "seek once to YouTube's server-side watch-history start position from the player response. " +
-        "Local saved positions always take precedence.",
+    description = "Experimental: when you skip to the next or previous video in a playlist, " +
+        "it starts where you left off, from the watch history of the playlist page. " +
+        "A position saved by Remember playback position takes precedence.",
 ) {
     dependsOn(
         sharedExtensionPatch,
@@ -66,6 +69,8 @@ val serverResumePositionExperimentalPatch = bytecodePatch(
 
     lateinit var constructorRef: WeakReference<MutableMethod>
     lateinit var hookMethod: MutableMethod
+    lateinit var injectHookMethod: MutableMethod
+    lateinit var playerConfigFieldRef: FieldReference
 
     execute {
         PreferenceScreen.VIDEO.addPreferences(
@@ -129,6 +134,80 @@ val serverResumePositionExperimentalPatch = bytecodePatch(
             }
             it.classDef.methods.add(hookMethod)
             constructorRef = WeakReference(it.method)
+            playerConfigFieldRef = playerConfigField
+
+            // Puts the server position cached from the playlist page in
+            // playerResponse.playerConfig.playbackStartConfig.startPosition, where the player reads the
+            // start position of a video opened with a start time, so playlist navigation (which has no
+            // start time) starts at the right position instead of seeking after the video started.
+            val (createBuilderMethod, mergeFromMethod) = with(PlayerConfigBuilderFingerprint) {
+                Pair(instructionMatches[2].methodReference, instructionMatches[4].methodReference)
+            }
+            val (castReference, buildMethod) = with(PlayerConfigBuilderFingerprint) {
+                Pair(
+                    (instructionMatches[5].instruction as ReferenceInstruction).reference
+                        as com.android.tools.smali.dexlib2.iface.reference.TypeReference,
+                    instructionMatches[6].methodReference,
+                )
+            }
+            val castInstruction = if (castReference.type != buildMethod.definingClass) {
+                "check-cast v4, $castReference"
+            } else {
+                "nop"
+            }
+            injectHookMethod = ImmutableMethod(
+                it.classDef.type,
+                INJECT_HOOK_METHOD_NAME,
+                listOf(ImmutableMethodParameter(playerResponseClass, null, null)),
+                "V",
+                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+                null,
+                null,
+                MutableMethodImplementation(7),
+            ).toMutable().apply {
+                addInstructionsWithLabels(
+                    0,
+                    """
+                        invoke-static { }, $EXTENSION_CLASS->isEnabled()Z
+                        move-result v0
+                        if-eqz v0, :exit
+                        if-eqz p0, :exit
+
+                        # Video id (videoDetails.videoId).
+                        iget-object v1, p0, $videoDetailsField
+                        if-eqz v1, :exit
+                        iget-object v1, v1, $videoDetailsClass->c:Ljava/lang/String;
+                        if-eqz v1, :exit
+
+                        iget-object v2, p0, $playerConfigField
+                        if-eqz v2, :exit
+                        invoke-virtual { v2 }, $playerConfigClass->toByteArray()[B
+                        move-result-object v3
+                        invoke-static { v1, v3 }, $EXTENSION_CLASS->getPlayerConfigWithStartPosition(Ljava/lang/String;[B)[B
+                        move-result-object v3
+                        if-eqz v3, :exit
+
+                        # Parse the new player config, as "Spoof video streams" does.
+                        sget-object v4, $playerConfigClass->a:$playerConfigClass
+                        invoke-virtual { v4 }, $createBuilderMethod
+                        move-result-object v4
+                        $castInstruction
+                        invoke-static { }, Lcom/google/protobuf/ExtensionRegistryLite;->getGeneratedRegistry()Lcom/google/protobuf/ExtensionRegistryLite;
+                        move-result-object v5
+                        invoke-virtual { v4, v3, v5 }, $mergeFromMethod
+                        move-result-object v5
+                        check-cast v5, $castReference
+                        invoke-virtual { v5 }, $buildMethod
+                        move-result-object v5
+                        check-cast v5, $playerConfigClass
+                        iput-object v5, p0, $playerConfigField
+
+                        :exit
+                        return-void
+                    """
+                )
+            }
+            it.classDef.methods.add(injectHookMethod)
         }
 
         // Watch progress (red bar) of the thumbnails of Litho lists, such as feeds and related videos.
@@ -266,6 +345,33 @@ val serverResumePositionExperimentalPatch = bytecodePatch(
                     (instruction as Instruction35c).registerC == implementation!!.registerCount - 2
             }
             val insertIndex = if (superInitIndex >= 0) superInitIndex + 1 else 0
+
+            // Right before the player config model is made from the player response, after
+            // "Spoof video streams" replaced the player config.
+            // iget-object vX, p1, PlayerResponse->playerConfig
+            val playerConfigIndex = instructions.indexOfLast { instruction ->
+                instruction.opcode == Opcode.IGET_OBJECT &&
+                    (instruction as ReferenceInstruction).reference == playerConfigFieldRef &&
+                    (instruction as com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction)
+                        .registerB == implementation!!.registerCount - 1
+            }
+            if (playerConfigIndex > insertIndex) {
+                // new-instance vX, PlayerConfigModel (before the player config is read).
+                val injectIndex = if (instructions[playerConfigIndex - 1].opcode == Opcode.NEW_INSTANCE) {
+                    playerConfigIndex - 1
+                } else {
+                    playerConfigIndex
+                }
+                addInstruction(
+                    injectIndex,
+                    "invoke-static/range { p1 .. p1 }, $injectHookMethod",
+                )
+            } else {
+                Logger.getLogger(this::class.java.name).warning(
+                    "Could not find where the player config model is made. The start position is not injected."
+                )
+            }
+
             addInstruction(
                 insertIndex,
                 "invoke-static/range { p1 .. p1 }, $hookMethod",

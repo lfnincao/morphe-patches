@@ -63,6 +63,51 @@ public final class ServerPlaylistProgress {
     private static final int MAX_PAGES = 30;
     /** A finished request is reused for this long, such as for the retries of one video start. */
     private static final long RESULT_REUSE_MS = 15_000L;
+    /**
+     * If the video is this close to the end of its page, the next page is fetched too,
+     * so the start time of the next video is cached before Next or autoplay starts it.
+     */
+    private static final int NEXT_PAGE_MARGIN_ROWS = 3;
+    /** Cached start times of the rows of the playlist page are used for this long. */
+    private static final long CACHE_TTL_MS = 30 * 60 * 1000L;
+    private static final int MAX_CACHED_ROWS = 5_000;
+
+    /** Start position of a video of the playlist, as of the last fetch of its page. */
+    public static final class CachedRow {
+        public final String videoId;
+        /** Start position, or -1 if the row has none (not watched, or finished). */
+        public final long startMs;
+        /** Where the start position comes from, for the debug log. */
+        public final String source;
+        /** Length of the video according to the playlist page, or 0. */
+        public final long lengthMs;
+        public final long fetchedAt;
+
+        CachedRow(String videoId, long startMs, String source, long lengthMs, long fetchedAt) {
+            this.videoId = videoId;
+            this.startMs = startMs;
+            this.source = source;
+            this.lengthMs = lengthMs;
+            this.fetchedAt = fetchedAt;
+        }
+
+        public long ageMs() {
+            return System.currentTimeMillis() - fetchedAt;
+        }
+    }
+
+    /** Rows of the playlist pages fetched last, of a single playlist. */
+    private static final class PlaylistCache {
+        final String playlistId;
+        final Map<String, CachedRow> rows = new HashMap<>();
+
+        PlaylistCache(String playlistId) {
+            this.playlistId = playlistId;
+        }
+    }
+
+    @Nullable
+    private static PlaylistCache playlistCache;
 
     /** Result of the playlist page for one video. */
     public static final class Result {
@@ -160,6 +205,69 @@ public final class ServerPlaylistProgress {
         return results.get(videoId);
     }
 
+    /**
+     * Cached row of the video in the playlist, from an earlier fetch of the playlist page.
+     * Never blocks or fetches, so it can be called while the app builds a player response.
+     *
+     * @param playlistId Playlist of the video, or empty if not known yet (then the cached playlist is used).
+     * @return The row, or null if the playlist page with the video was not fetched recently.
+     */
+    @Nullable
+    public static CachedRow getCached(@Nullable String videoId, @Nullable String playlistId) {
+        if (videoId == null || videoId.isEmpty()) {
+            return null;
+        }
+        synchronized (ServerPlaylistProgress.class) {
+            final PlaylistCache cache = playlistCache;
+            if (cache == null || (playlistId != null && !playlistId.isEmpty() && !cache.playlistId.equals(playlistId))) {
+                return null;
+            }
+            final CachedRow row = cache.rows.get(videoId);
+            if (row == null || row.ageMs() > CACHE_TTL_MS) {
+                return null;
+            }
+            return row;
+        }
+    }
+
+    /** Playlist id of the cached rows, for the debug log. */
+    @Nullable
+    public static String getCachedPlaylistId() {
+        synchronized (ServerPlaylistProgress.class) {
+            return playlistCache == null ? null : playlistCache.playlistId;
+        }
+    }
+
+    private static void updateCache(String playlistId, Map<String, Row> rows, Map<String, Long> positionsByVideoId,
+                                    Map<String, Long> positionsByKey) {
+        final long now = System.currentTimeMillis();
+        synchronized (ServerPlaylistProgress.class) {
+            PlaylistCache cache = playlistCache;
+            if (cache == null || !cache.playlistId.equals(playlistId) || cache.rows.size() > MAX_CACHED_ROWS) {
+                cache = new PlaylistCache(playlistId);
+                playlistCache = cache;
+            }
+            for (Map.Entry<String, Row> entry : rows.entrySet()) {
+                final String id = entry.getKey();
+                final Row row = entry.getValue();
+                long startMs = -1;
+                String source = "none";
+                Long positionMs = positionsByVideoId.get(id);
+                if (positionMs == null && row.positionKey != null) {
+                    positionMs = positionsByKey.get(normalizeKey(row.positionKey));
+                }
+                if (positionMs != null) {
+                    startMs = positionMs;
+                    source = "position entity";
+                } else if (row.startTimeMs != null) {
+                    startMs = row.startTimeMs;
+                    source = "start time";
+                }
+                cache.rows.put(id, new CachedRow(id, startMs, source, row.lengthMs, now));
+            }
+        }
+    }
+
     private static Result put(Result result) {
         synchronized (results) {
             if (results.size() > 50) {
@@ -196,6 +304,8 @@ public final class ServerPlaylistProgress {
         int startTimes = 0;
         Row target = null;
         int targetPage = -1;
+        int targetIndexInPage = -1;
+        final Map<String, Row> rowsById = new HashMap<>();
 
         JSONObject response = send(PlaylistRoutes.browsePlaylistBody(playlistId), headers);
         if (response == null) {
@@ -248,6 +358,7 @@ public final class ServerPlaylistProgress {
 
             // Rows.
             final JSONArray contents = page == null ? null : page.optJSONArray("contents");
+            int pageRows = 0;
             if (contents != null) {
                 for (int i = 0, n = contents.length(); i < n; i++) {
                     final JSONObject element = contents.optJSONObject(i);
@@ -256,7 +367,12 @@ public final class ServerPlaylistProgress {
                         continue;
                     }
                     rows++;
+                    pageRows++;
                     final Row row = parseRow(renderer);
+                    final String rowVideoId = renderer.optString("videoId");
+                    if (rowVideoId.length() == 11) {
+                        rowsById.put(rowVideoId, row);
+                    }
                     if (row.percent >= 0) {
                         overlays++;
                     }
@@ -266,14 +382,20 @@ public final class ServerPlaylistProgress {
                     if (row.startTimeMs != null) {
                         startTimes++;
                     }
-                    if (target == null && videoId.equals(renderer.optString("videoId"))) {
+                    if (target == null && videoId.equals(rowVideoId)) {
                         target = row;
                         targetPage = pageIndex;
+                        targetIndexInPage = pageRows - 1;
                     }
                 }
             }
             if (target != null) {
-                break;
+                if (targetPage != pageIndex) {
+                    break; // The page after the page of the video, for the next video.
+                }
+                if (targetIndexInPage < pageRows - NEXT_PAGE_MARGIN_ROWS) {
+                    break;
+                }
             }
 
             final JSONArray continuations = page == null ? null : page.optJSONArray("continuations");
@@ -293,8 +415,10 @@ public final class ServerPlaylistProgress {
                     ? null : continuationContents.optJSONObject("playlistVideoListContinuation");
         }
 
+        updateCache(playlistId, rowsById, positionsByVideoId, positionsByKey);
+
         final long elapsed = System.currentTimeMillis() - start;
-        final String summary = rows + " rows, " + overlays + " resume overlays (" + overlayKeys + " with a position key), "
+        final String summary = rows + " rows (" + rowsById.size() + " cached), " + overlays + " resume overlays (" + overlayKeys + " with a position key), "
                 + startTimes + " start times, " + positionsByVideoId.size() + " position entities, mutation types "
                 + mutationTypes + ", " + elapsed + "ms"
                 + (firstPositionPayload != null ? ", first position entity: " + firstPositionPayload : "");
