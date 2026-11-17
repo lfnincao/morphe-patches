@@ -1,6 +1,9 @@
 package app.morphe.patches.mxplayer.misc.fix
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.instructions
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import app.morphe.patcher.util.getReference
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.deleteResource
 import app.morphe.patcher.patch.mutableClassDefBy
@@ -9,6 +12,8 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableClass
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
@@ -25,6 +30,8 @@ private val LIB_MX_BH_PATHS = listOf(
 )
 
 internal fun disableLibMxBhLoadingAndNative() {
+    skipLvOnCreateMxBhLoad()
+
     listOf(MX_BH_CLASS, MX_AS_CLASS).forEach { type ->
         mutableClassDefBy(type).methods.first { it.name == "<clinit>" }.apply {
             addInstructions(0, "return-void")
@@ -38,6 +45,22 @@ internal fun disableLibMxBhLoadingAndNative() {
 
 internal fun removeLibMxBhFromApk() {
     LIB_MX_BH_PATHS.forEach { path -> deleteResource(path) }
+}
+
+private fun skipLvOnCreateMxBhLoad() {
+    val fingerprint = MxLvOnCreateMxBhStringFingerprint
+    val stringIndex = fingerprint.instructionMatches.first().index
+    val method = fingerprint.method
+    val loadLibraryIndex = method.instructions.withIndex()
+        .drop(stringIndex)
+        .first { (_, instruction) ->
+            instruction.opcode == Opcode.INVOKE_STATIC &&
+                instruction.getReference<MethodReference>()?.let { reference ->
+                    reference.definingClass == "Ljava/lang/System;" && reference.name == "loadLibrary"
+                } == true
+        }
+        .index
+    method.replaceInstruction(loadLibraryIndex, "nop")
 }
 
 private fun MutableClass.stubAllNativeMethods() {
