@@ -76,6 +76,9 @@ fun main(arguments: Array<String>) {
         password = "morphe",
     )
     ApkUtils.signApk(unsigned, outputApk, "MorpheTest", keyDetails, minSdkVersion = 24)
+    if (!stockOnly) {
+        verifyMxPlayerPatchedApkDex(outputApk)
+    }
     val pkg = when {
         stockOnly -> "com.mxtech.videoplayer.pro"
         clone -> "com.mxtech.videoplayer.pro.morphe"

@@ -1,13 +1,17 @@
 package app.morphe.patches.mxplayer.interaction.shortcuts
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.util.addInstructionsAtControlFlowLabel
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.patch.resourceXml
 import app.morphe.patcher.util.cloneParameters
 import app.morphe.patcher.util.proxy.mutableTypes.MutableField.Companion.toMutable
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
+import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patches.mxplayer.misc.extension.sharedExtensionPatch
 import app.morphe.patches.mxplayer.misc.fix.mxPlayerPatchedInstallPatch
 import app.morphe.patches.mxplayer.shared.Constants
@@ -21,6 +25,7 @@ import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_LIST_INDEX
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_VIEW_TYPE
 import app.morphe.patches.mxplayer.shared.Constants.SHORTCUT_ADAPTER_ON_CLICK_CLASS
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
@@ -63,7 +68,8 @@ val playerDeleteShortcutPatch = bytecodePatch(
         val bitHex = "0x%x".format(DELETE_SHORTCUT_BIT)
 
         CustomizeItemsToggleFingerprint.method.cloneParameters().apply {
-            addInstructions(
+            val packedSwitchIndex = indexOfFirstPackedSwitch()
+            addInstructionsAtControlFlowLabel(
                 0,
                 """
                 iget v0, p0, Ln20;->d:I
@@ -80,13 +86,14 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 const v0, $bitHex
                 invoke-static {v1, v0}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
                 return-void
-                :morphe_delete_toggle_continue
                 """.trimIndent(),
+                ExternalLabel("morphe_delete_toggle_continue", packedSwitchIndex),
             )
         }
 
         CustomizeItemsOnBindFingerprint.method.cloneParameters().apply {
-            addInstructions(
+            val packedSwitchIndex = indexOfFirstPackedSwitch()
+            addInstructionsAtControlFlowLabel(
                 0,
                 """
                 const/16 v0, $DELETE_SHORTCUT_LIST_INDEX
@@ -112,8 +119,8 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 invoke-direct {v1, p0, p2, p1}, Ln20;-><init>(Lo20${'$'}a;ILo20${'$'}a${'$'}a;)V
                 invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
                 return-void
-                :morphe_bind_continue
                 """.trimIndent(),
+                ExternalLabel("morphe_bind_continue", packedSwitchIndex),
             )
         }
 
@@ -150,11 +157,19 @@ val playerDeleteShortcutPatch = bytecodePatch(
         )
         activityScreenClass.methods.add(deleteInvoker)
 
-        ActivityScreenBuildShortcutsFingerprint.method.cloneParameters().apply {
-            val insertIndex = ActivityScreenBuildShortcutsFingerprint.instructionMatches.last().index
-            addInstructions(
-                insertIndex,
-                """
+        val syncDeleteShortcut = ImmutableMethod(
+            ACTIVITY_SCREEN_CLASS,
+            "patch_syncDeleteShortcut",
+            emptyList(),
+            "V",
+            AccessFlags.PUBLIC.value or AccessFlags.SYNTHETIC.value,
+            null,
+            null,
+            MutableMethodImplementation(12),
+        ).toMutable()
+        syncDeleteShortcut.addInstructions(
+            0,
+            """
                 sget v6, LV90;->e1:I
                 const v7, $bitHex
                 and-int/2addr v7, v6
@@ -189,6 +204,17 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 const/4 v7, 0x0
                 iput-object v7, p0, $ACTIVITY_SCREEN_CLASS->$DELETE_PP0_FIELD_NAME:LPp0;
                 :morphe_delete_shortcut_done
+                return-void
+            """.trimIndent(),
+        )
+        activityScreenClass.methods.add(syncDeleteShortcut)
+
+        ActivityScreenBuildShortcutsFingerprint.method.cloneParameters().apply {
+            val returnIndex = indexOfLastReturnVoid()
+            addInstructions(
+                returnIndex,
+                """
+                invoke-virtual {p0}, $ACTIVITY_SCREEN_CLASS->patch_syncDeleteShortcut()V
                 """.trimIndent(),
             )
         }
@@ -213,15 +239,25 @@ val playerDeleteShortcutPatch = bytecodePatch(
         }
 
         ShortcutAdapterCreateViewHolderFingerprint.method.cloneParameters().apply {
-            addInstructions(
+            val packedSwitchIndex = indexOfFirstPackedSwitch()
+            addInstructionsAtControlFlowLabel(
                 0,
                 """
                 const/16 v0, $DELETE_SHORTCUT_VIEW_TYPE
                 if-ne p1, v0, :morphe_vh_continue
                 const/4 p1, 0x0
-                :morphe_vh_continue
+                goto :morphe_vh_continue
                 """.trimIndent(),
+                ExternalLabel("morphe_vh_continue", packedSwitchIndex),
             )
         }
     }
 }
+
+private fun MutableMethod.indexOfFirstPackedSwitch(): Int =
+    implementation!!.instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }.also { index ->
+        require(index >= 0) { "packed-switch not found in ${definingClass}->$name" }
+    }
+
+private fun MutableMethod.indexOfLastReturnVoid(): Int =
+    implementation!!.instructions.indexOfLast { it.opcode == Opcode.RETURN_VOID }
