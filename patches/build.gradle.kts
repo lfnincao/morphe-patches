@@ -143,6 +143,26 @@ tasks {
         }
     }
 
+    register<JavaExec>("buildMxPlayerEmulatorApk") {
+        description = "Patch, sign MX Player Pro for emulator (optional --clone in args)"
+        group = "verification"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("app.morphe.patches.mxplayer.interaction.shortcuts.MxPlayerProEmulatorApkBuildKt")
+        doFirst {
+            val input = providers.gradleProperty("mxPlayerApk").orNull
+                ?: throw GradleException("-PmxPlayerApk required")
+            val output = providers.gradleProperty("mxPlayerOutput").orNull
+                ?: throw GradleException("-PmxPlayerOutput required")
+            val extra = buildList {
+                if (providers.gradleProperty("mxPlayerClone").orNull == "true") add("--clone")
+                if (providers.gradleProperty("mxPlayerStock").orNull == "true") add("--stock")
+                if (providers.gradleProperty("mxPlayerResignOnly").orNull == "true") add("--resign-only")
+            }
+            setArgs(listOf(input, output) + extra)
+        }
+    }
+
     register<JavaExec>("validateMxPlayerProDeleteShortcut") {
         description = "Applies Player delete shortcut to a stock MX Player Pro APK or APKM bundle"
         group = "verification"

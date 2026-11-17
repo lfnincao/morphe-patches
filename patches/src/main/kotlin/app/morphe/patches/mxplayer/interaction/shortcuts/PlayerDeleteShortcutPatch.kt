@@ -9,6 +9,7 @@ import app.morphe.patcher.util.cloneParameters
 import app.morphe.patcher.util.proxy.mutableTypes.MutableField.Companion.toMutable
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patches.mxplayer.misc.extension.sharedExtensionPatch
+import app.morphe.patches.mxplayer.misc.fix.mxPlayerPatchedInstallPatch
 import app.morphe.patches.mxplayer.shared.Constants
 import app.morphe.patches.mxplayer.shared.Constants.ACTIVITY_SCREEN_CLASS
 import app.morphe.patches.mxplayer.shared.Constants.COMPATIBILITY_MX_PLAYER_PRO
@@ -56,7 +57,7 @@ val playerDeleteShortcutPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_MX_PLAYER_PRO)
-    dependsOn(sharedExtensionPatch, playerDeleteShortcutResourcePatch)
+    dependsOn(sharedExtensionPatch, mxPlayerPatchedInstallPatch, playerDeleteShortcutResourcePatch)
 
     execute {
         val bitHex = "0x%x".format(DELETE_SHORTCUT_BIT)
