@@ -15,6 +15,7 @@ package app.morphe.extension.opera.patches;
 
 import com.opera.android.browser.chromium.OperaWebContentsDelegate;
 
+import app.morphe.extension.opera.settings.OperaPlaybackSpeedPreferences;
 import app.morphe.extension.shared.Logger;
 
 @SuppressWarnings("unused")
@@ -28,10 +29,17 @@ public class UniversalVideoPlaybackSpeedPatch {
     }
 
     /**
-     * Patched at build time from the patch option {@code playbackSpeed}.
+     * Initial default from the Morphe patch option {@code playbackSpeed} (build time only).
+     */
+    public static float getPatchDefaultPlaybackSpeed() {
+        return 1.0f;
+    }
+
+    /**
+     * Effective speed for script injection; reads {@link SharedPreferences} on each call.
      */
     public static float getPlaybackSpeed() {
-        return 1.0f;
+        return OperaPlaybackSpeedPreferences.resolvePlaybackSpeed(getPatchDefaultPlaybackSpeed());
     }
 
     /**
@@ -56,28 +64,41 @@ public class UniversalVideoPlaybackSpeedPatch {
         if (rate <= 0f || Float.isNaN(rate) || Float.isInfinite(rate)) {
             rate = 1.0f;
         }
-        // Keep the script compact; it runs on every navigation.
+        // Compact script; runs on every navigation in the page main world.
         return "(function(){"
-                + "try{console.log('morphe-playback-speed-applied',"
-                + rate
-                + ");}catch(e){}"
                 + "var r="
                 + rate
                 + ";"
-                + "function a(){"
-                + "try{"
-                + "var m=document.querySelectorAll('video,audio');"
-                + "for(var i=0;i<m.length;i++){"
-                + "try{if(m[i].playbackRate!==r)m[i].playbackRate=r;}catch(e){}"
+                + "function s(e){"
+                + "try{if(e&&typeof e.playbackRate==='number'&&e.playbackRate!==r)e.playbackRate=r;}catch(x){}"
                 + "}"
+                + "function a(){"
+                + "try{var m=document.querySelectorAll('video,audio');"
+                + "for(var i=0;i<m.length;i++)s(m[i]);"
                 + "}catch(e){}"
                 + "}"
+                + "try{console.log('morphe-playback-speed-applied',r);}catch(e){}"
                 + "a();"
                 + "try{"
-                + "new MutationObserver(a).observe(document.documentElement,{childList:true,subtree:true});"
-                + "document.addEventListener('play',function(e){"
-                + "try{var t=e.target;if(t&&typeof t.playbackRate==='number'&&t.playbackRate!==r)t.playbackRate=r;}catch(x){}"
-                + "},true);"
+                + "new MutationObserver(function(ms){"
+                + "for(var i=0;i<ms.length;i++){"
+                + "var ns=ms[i].addedNodes;"
+                + "for(var j=0;j<ns.length;j++){"
+                + "var n=ns[j];"
+                + "if(n.nodeType!==1)continue;"
+                + "var t=n.nodeName;"
+                + "if(t==='VIDEO'||t==='AUDIO')s(n);"
+                + "else if(n.querySelectorAll){"
+                + "var q=n.querySelectorAll('video,audio');"
+                + "for(var k=0;k<q.length;k++)s(q[k]);"
+                + "}"
+                + "}"
+                + "}"
+                + "}).observe(document.documentElement,{childList:true,subtree:true});"
+                + "var ev=['play','loadedmetadata','ratechange'];"
+                + "for(var x=0;x<ev.length;x++){"
+                + "document.addEventListener(ev[x],function(e){s(e.target);},true);"
+                + "}"
                 + "}catch(e){}"
                 + "})();";
     }

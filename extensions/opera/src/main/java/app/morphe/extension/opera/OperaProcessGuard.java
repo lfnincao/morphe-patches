@@ -15,7 +15,13 @@ import android.os.Process;
 import app.morphe.extension.shared.Utils;
 
 public final class OperaProcessGuard {
+    private static volatile Context applicationContext;
+
     private OperaProcessGuard() {
+    }
+
+    public static Context getApplicationContext() {
+        return applicationContext;
     }
 
     /**
@@ -34,6 +40,7 @@ public final class OperaProcessGuard {
         if (processName == null || !"com.opera.browser".equals(processName)) {
             return;
         }
+        applicationContext = applicationContext.getApplicationContext();
         Utils.setContext(applicationContext);
     }
 

@@ -21,9 +21,15 @@ private const val RENDER_FRAME_HOST_TYPE =
     "Lorg/chromium/content_public/browser/RenderFrameHost;"
 private const val WEB_AUTH_RESULT_TYPE =
     "Lorg/chromium/content_public/browser/RenderFrameHost${'$'}WebAuthSecurityChecksResults;"
+private const val CHROMIUM_JNI_CLASS = "LJ/N;"
+private const val EVALUATE_JS_NATIVE = "Mhlly_d7"
+private const val WEB_CONTENTS_TYPE = "Lorg/chromium/content_public/browser/WebContents;"
 private const val OPERA_APPLICATION_TYPE = "Lcom/opera/android/OperaApplication;"
 private const val SHARED_UTILS_TYPE = "Lapp/morphe/extension/shared/Utils;"
-private const val BASE_SETTINGS_TYPE = "Lapp/morphe/extension/shared/settings/BaseSettings;"
+private const val OPERA_PROCESS_GUARD_TYPE = "Lapp/morphe/extension/opera/OperaProcessGuard;"
+private const val PLAYBACK_PREFS_TYPE = "Lapp/morphe/extension/opera/settings/OperaPlaybackSpeedPreferences;"
+private const val MEDIA_SETTINGS_HOOK_TYPE =
+    "Lapp/morphe/extension/opera/settings/OperaPlaybackSpeedMediaSettingsHook;"
 
 fun main(args: Array<String>) {
     require(args.size == 1) { "Usage: OperaPlaybackSpeedDexVerifyKt <patched.apk>" }
@@ -41,25 +47,8 @@ fun main(args: Array<String>) {
                 val dex = DexBackedDexFile.fromInputStream(Opcodes.getDefault(), bytes.inputStream())
                 val classDef = dex.classes.firstOrNull { it.type == EXTENSION_TYPE } ?: return@forEach
                 found = true
-                val method = classDef.methods.firstOrNull { it.name == "getPlaybackSpeed" }
-                    ?: error("getPlaybackSpeed not found in $EXTENSION_TYPE")
-                val impl = method.implementation
-                    ?: error("getPlaybackSpeed has no implementation")
-                val instructions = impl.instructions.toList()
-                check(instructions.size >= 2) {
-                    "getPlaybackSpeed too short (${instructions.size} insns): $instructions"
-                }
-                val first = instructions.first()
-                val last = instructions.last()
-                check(first.opcode == Opcode.CONST || first.opcode == Opcode.CONST_HIGH16) {
-                    "First instruction must load a float constant, got ${first.opcode}"
-                }
-                check(last.opcode == Opcode.RETURN) {
-                    "Last instruction must be return, got ${last.opcode}"
-                }
-                smaliOut.appendLine("# ${entry.name} :: $EXTENSION_TYPE->getPlaybackSpeed()")
-                instructions.forEach { ins -> smaliOut.appendLine(instructionToSmali(ins)) }
-                smaliOut.appendLine()
+                verifyPatchDefaultSpeedConstant(classDef, smaliOut)
+                verifyGetPlaybackSpeedUsesPrefs(classDef)
                 val tmp = File.createTempFile("opera-verify-", ".dex")
                 tmp.writeBytes(bytes)
                 dexFiles += tmp
@@ -69,21 +58,57 @@ fun main(args: Array<String>) {
 
     verifyExtensionMethodExists(apk, INJECTOR_TYPE, "evaluate")
     verifyInjectorDoesNotCallWebAuth(apk)
+    verifyInjectorUsesEvaluateJavaScript(apk)
     listOf(
         "patch_executePlaybackSpeedScript" to "Lcom/opera/android/browser/chromium/OperaWebContentsDelegate;",
     ).forEach { (name, type) ->
         verifyHelperMethod(apk, type, name, smaliOut)
     }
 
-    verifySpeedPatchDoesNotHookOperaApplication(apk)
-    verifyExtensionNeverReferencesSettings(apk)
+    verifyOperaApplicationUsesProcessGuard(apk)
+    verifyMediaSettingsHookPresent(apk)
 
     val sdk = System.getenv("ANDROID_HOME") ?: error("ANDROID_HOME required")
     val verifier = SdkDexVerifier(File(sdk))
     dexFiles.forEach { verifier.verifyDexFile(it) }
     println("ART/SDK DEX verification passed for ${dexFiles.size} file(s) containing extension.")
-    println("--- getPlaybackSpeed() smali ---")
+    println("--- getPatchDefaultPlaybackSpeed() smali ---")
     print(smaliOut)
+}
+
+private fun verifyPatchDefaultSpeedConstant(
+    classDef: com.android.tools.smali.dexlib2.iface.ClassDef,
+    smaliOut: StringBuilder,
+) {
+    val method = classDef.methods.firstOrNull { it.name == "getPatchDefaultPlaybackSpeed" }
+        ?: error("getPatchDefaultPlaybackSpeed not found in $EXTENSION_TYPE")
+    val instructions = method.implementation?.instructions?.toList()
+        ?: error("getPatchDefaultPlaybackSpeed has no implementation")
+    check(instructions.size >= 2) { "getPatchDefaultPlaybackSpeed too short" }
+    val first = instructions.first()
+    val last = instructions.last()
+    check(first.opcode == Opcode.CONST || first.opcode == Opcode.CONST_HIGH16) {
+        "getPatchDefaultPlaybackSpeed must load a float constant"
+    }
+    check(last.opcode == Opcode.RETURN) { "getPatchDefaultPlaybackSpeed must return float" }
+    smaliOut.appendLine("# $EXTENSION_TYPE->getPatchDefaultPlaybackSpeed()")
+    instructions.forEach { ins -> smaliOut.appendLine(instructionToSmali(ins)) }
+    smaliOut.appendLine()
+}
+
+private fun verifyGetPlaybackSpeedUsesPrefs(
+    classDef: com.android.tools.smali.dexlib2.iface.ClassDef,
+) {
+    val method = classDef.methods.firstOrNull { it.name == "getPlaybackSpeed" }
+        ?: error("getPlaybackSpeed not found")
+    val callsPrefs = method.implementation?.instructions?.any { instruction ->
+        val ref = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+        val methodRef = ref?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+        methodRef?.definingClass == PLAYBACK_PREFS_TYPE
+    } == true
+    check(callsPrefs) {
+        "getPlaybackSpeed must resolve stored speed via $PLAYBACK_PREFS_TYPE"
+    }
 }
 
 private fun instructionToSmali(ins: Instruction): String {
@@ -101,7 +126,9 @@ private fun instructionToSmali(ins: Instruction): String {
     }
 }
 
-private fun verifySpeedPatchDoesNotHookOperaApplication(apk: File) {
+private fun verifyOperaApplicationUsesProcessGuard(apk: File) {
+    var sawGuard = false
+    var sawDirectUtils = false
     ZipFile(apk).use { zip ->
         zip.entries().asSequence()
             .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
@@ -121,44 +148,48 @@ private fun verifySpeedPatchDoesNotHookOperaApplication(apk: File) {
                     val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
                         ?: return@forEach
                     val owner = methodRef.definingClass
-                    check(
-                        owner != SHARED_UTILS_TYPE &&
-                            owner != "Lapp/morphe/extension/opera/OperaProcessGuard;" &&
-                            !owner.startsWith("Lapp/morphe/extension/shared/settings/"),
-                    ) {
-                        "OperaApplication.onCreate must not call Morphe context/settings in speed-only patch " +
-                            "(found $owner->${methodRef.name} in ${entry.name})"
+                    if (owner == OPERA_PROCESS_GUARD_TYPE && methodRef.name == "initMainProcessContext") {
+                        sawGuard = true
+                    }
+                    if (owner == SHARED_UTILS_TYPE && methodRef.name == "setContext") {
+                        sawDirectUtils = true
                     }
                 }
             }
     }
-    println("Static check passed: OperaApplication.onCreate has no Morphe context/settings hooks.")
+    check(sawGuard) { "OperaApplication.onCreate must call OperaProcessGuard.initMainProcessContext" }
+    check(!sawDirectUtils) { "OperaApplication.onCreate must not call Utils.setContext without ProcessGuard" }
+    println("Static check passed: OperaApplication.onCreate uses OperaProcessGuard.")
 }
 
-private fun verifyExtensionNeverReferencesSettings(apk: File) {
-    ZipFile(apk).use { zip ->
+private fun verifyMediaSettingsHookPresent(apk: File) {
+    val found = ZipFile(apk).use { zip ->
         zip.entries().asSequence()
             .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
-            .forEach { entry ->
+            .any { entry ->
                 val dex = DexBackedDexFile.fromInputStream(
                     Opcodes.getDefault(),
                     zip.getInputStream(entry).readBytes().inputStream(),
                 )
-                val speedClass = dex.classes.firstOrNull { it.type == EXTENSION_TYPE } ?: return@forEach
-                speedClass.methods.forEach { method ->
-                    method.implementation?.instructions?.forEach { instruction ->
-                        val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-                        val typeRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.TypeReference
-                        val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
-                        val touched = typeRef?.type ?: methodRef?.definingClass
-                        check(touched != BASE_SETTINGS_TYPE && !touched.orEmpty().contains("/settings/")) {
-                            "UniversalVideoPlaybackSpeedPatch must not reference settings ($touched)"
+                dex.classes.any { classDef ->
+                    classDef.type == "Ldid;" &&
+                        classDef.methods.any { method ->
+                            method.name == "h" &&
+                                method.implementation?.instructions?.any { instruction ->
+                                    val ref = instruction as?
+                                        com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                                    val methodRef = ref?.reference as?
+                                        com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                                    methodRef?.definingClass == MEDIA_SETTINGS_HOOK_TYPE &&
+                                        methodRef.name == "onMediaSettingsScreen"
+                                } == true
                         }
-                    }
                 }
             }
     }
-    println("Static check passed: playback speed extension does not reference settings.")
+    check(found) { "Media settings inflater must call OperaPlaybackSpeedMediaSettingsHook" }
+    verifyExtensionMethodExists(apk, MEDIA_SETTINGS_HOOK_TYPE, "onMediaSettingsScreen")
+    println("Static check passed: Media settings UI hook installed.")
 }
 
 private fun verifyInjectorDoesNotCallWebAuth(apk: File) {
@@ -191,6 +222,39 @@ private fun verifyInjectorDoesNotCallWebAuth(apk: File) {
             }
     }
     println("Static check passed: injector does not reference WebAuth RenderFrameHost APIs.")
+}
+
+private fun verifyInjectorUsesEvaluateJavaScript(apk: File) {
+    var sawEvaluateNative = false
+    ZipFile(apk).use { zip ->
+        zip.entries().asSequence()
+            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
+            .forEach { entry ->
+                val dex = DexBackedDexFile.fromInputStream(
+                    Opcodes.getDefault(),
+                    zip.getInputStream(entry).readBytes().inputStream(),
+                )
+                val injector = dex.classes.firstOrNull { it.type == INJECTOR_TYPE } ?: return@forEach
+                val evaluate = injector.methods.firstOrNull { it.name == "evaluate" }
+                    ?: error("evaluate() missing from injector")
+                evaluate.implementation?.instructions?.forEach { instruction ->
+                    val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                    val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                    if (methodRef != null) {
+                        check(methodRef.definingClass != WEB_CONTENTS_TYPE || methodRef.name != "R0") {
+                            "Injector must not call WebContents.R0 (devtools console only)"
+                        }
+                        if (methodRef.definingClass == CHROMIUM_JNI_CLASS && methodRef.name == EVALUATE_JS_NATIVE) {
+                            sawEvaluateNative = true
+                        }
+                    }
+                }
+            }
+    }
+    check(sawEvaluateNative) {
+        "Injector must invoke $CHROMIUM_JNI_CLASS->$EVALUATE_JS_NATIVE (Chromium EvaluateJavaScript)"
+    }
+    println("Static check passed: injector calls $CHROMIUM_JNI_CLASS->$EVALUATE_JS_NATIVE.")
 }
 
 private fun verifyExtensionMethodExists(apk: File, type: String, name: String) {
