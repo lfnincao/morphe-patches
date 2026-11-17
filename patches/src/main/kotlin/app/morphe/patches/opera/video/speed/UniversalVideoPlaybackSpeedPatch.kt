@@ -134,12 +134,12 @@ private fun installOperaDelegateScriptBridge(chromiumField: String) {
         """
             if-eqz p0, :return
             if-eqz p1, :return
-            iget-object v0, p0, $OPERA_DELEGATE_CLASS->$chromiumField $CHROMIUM_CONTENT_CLASS
+            iget-object v0, p0, $OPERA_DELEGATE_CLASS->$chromiumField:$CHROMIUM_CONTENT_CLASS
             if-eqz v0, :return
             invoke-virtual {v0}, $WEB_CONTENTS_WRAPPER_CLASS->e()$WEB_CONTENTS_CLASS
             move-result-object v0
             if-eqz v0, :return
-            invoke-static {v0, p1}, $WEB_CONTENTS_WRAPPER_CLASS->patch_evaluateJavascript($WEB_CONTENTS_CLASS Ljava/lang/String;)V
+            invoke-static {v0, p1}, $WEB_CONTENTS_WRAPPER_CLASS->patch_evaluateJavascript(${WEB_CONTENTS_CLASS}Ljava/lang/String;)V
             :return
             return-void
         """,
