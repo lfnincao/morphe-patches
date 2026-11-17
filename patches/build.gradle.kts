@@ -143,6 +143,22 @@ tasks {
         }
     }
 
+    register<JavaExec>("validateMxPlayerProDeleteShortcut") {
+        description = "Applies Player delete shortcut to a stock MX Player Pro APK or APKM bundle"
+        group = "verification"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("app.morphe.patches.mxplayer.interaction.shortcuts.MxPlayerProDeleteShortcutApkBuildKt")
+        doFirst {
+            val apk = providers.gradleProperty("mxPlayerApk").orNull
+                ?: throw GradleException(
+                    "validateMxPlayerProDeleteShortcut requires -PmxPlayerApk=/absolute/path/to/base.apk or .apkm/.zip",
+                )
+            val output = providers.gradleProperty("mxPlayerOutput").orNull
+            setArgs(listOfNotNull(apk, output))
+        }
+    }
+
     register<JavaExec>("validatePlaylistQueue") {
         description = "Applies Native playlist queue to a stock APK and verifies it with Android SDK tools"
         group = "verification"
