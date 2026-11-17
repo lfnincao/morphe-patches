@@ -1,0 +1,7 @@
+VERS_1.0 {
+  global:
+    bh_nn_*;
+    Java_com_ddx_axx_axx_axx_*;
+  local:
+    *;
+};

@@ -5,8 +5,9 @@ import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.util.getReference
 import app.morphe.patcher.patch.PatchException
-import app.morphe.patcher.patch.deleteResource
 import app.morphe.patcher.patch.mutableClassDefBy
+import app.morphe.patcher.patch.resourceFile
+import app.morphe.util.inputStreamFromBundledResource
 import app.morphe.patcher.util.numberOfParameterRegistersLogical
 import app.morphe.patcher.util.proxy.mutableTypes.MutableClass
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
@@ -22,12 +23,10 @@ internal const val MX_BH_CLASS = "Lcom/ddx/axx/axx/axx/BH;"
 internal const val MX_AS_CLASS = "Lcom/ddx/axx/axx/axx/AS;"
 internal const val MX_AG_CLASS = "Lcom/ddx/axx/axx/axx/AG;"
 
-private val LIB_MX_BH_PATHS = listOf(
-    "lib/arm64-v8a/libmx-bh.so",
-    "lib/armeabi-v7a/libmx-bh.so",
-    "lib/x86_64/libmx-bh.so",
-    "lib/x86/libmx-bh.so",
-)
+private const val MX_BH_STUBS_BUNDLE = "mxplayer/native"
+
+private const val LIB_MX_BH_ARM64_PATH = "lib/arm64-v8a/libmx-bh.so"
+private const val LIB_MX_BH_ARM64_STUB = "lib/arm64-v8a/libmx-bh.so"
 
 internal fun disableLibMxBhLoadingAndNative() {
     skipLvOnCreateMxBhLoad()
@@ -43,8 +42,10 @@ internal fun disableLibMxBhLoadingAndNative() {
     }
 }
 
-internal fun removeLibMxBhFromApk() {
-    LIB_MX_BH_PATHS.forEach { path -> deleteResource(path) }
+internal fun replaceLibMxBhWithStubInApk() {
+    val stubBytes = inputStreamFromBundledResource(MX_BH_STUBS_BUNDLE, LIB_MX_BH_ARM64_STUB)?.use { it.readBytes() }
+        ?: throw PatchException("Missing bundled libmx-bh stub: $LIB_MX_BH_ARM64_STUB")
+    resourceFile(LIB_MX_BH_ARM64_PATH, copy = false).writeBytes(stubBytes)
 }
 
 private fun skipLvOnCreateMxBhLoad() {

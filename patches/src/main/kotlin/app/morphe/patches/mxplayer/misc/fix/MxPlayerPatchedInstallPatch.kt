@@ -15,16 +15,18 @@ import app.morphe.patches.mxplayer.shared.Constants.COMPATIBILITY_MX_PLAYER_PRO
  * v2.4.3 only skipped BH.d/BH.b; the library still loaded and crashed via other paths
  * (e.g. tagged-pointer `free()` in verifier worker code).
  *
- * This patch never loads the library: `<clinit>` returns immediately, every JNI export is a
- * Java stub, and the `.so` is removed from the APK. Signature spoof remains for any Java-side
- * PackageManager checks (requires an unmodified stock APK as patch input).
+ * Java never loads the original library: `<clinit>` returns immediately and every JNI export is a
+ * Java stub. `libmxvp.so` still needs `libmx-bh.so` at link time, so the real `.so` is replaced
+ * with a Morphe-built stub that exports the same symbols without verifier threads or init hooks.
+ * Signature spoof remains for any Java-side PackageManager checks (requires stock APK input).
  */
 @Suppress("unused")
 val mxPlayerPatchedInstallPatch = patch(
     name = "MX Player patched install support",
-    description = "Keeps MX Player Pro launchable on Morphe re-signed builds by not loading " +
-        "libmx-bh at all (stub com.ddx.axx.axx.axx BH/AS/AG natives and drop the library), " +
-        "plus spoofing the original package signature when patching from a stock APK.",
+    description = "Keeps MX Player Pro launchable on Morphe re-signed builds by stubbing " +
+        "com.ddx.axx.axx.axx BH/AS/AG natives and replacing libmx-bh.so with a no-op stub " +
+        "(libmxvp still links), plus spoofing the original package signature when patching " +
+        "from a stock APK.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_MX_PLAYER_PRO)
@@ -44,6 +46,6 @@ val mxPlayerPatchedInstallPatch = patch(
     }
 
     finalize {
-        removeLibMxBhFromApk()
+        replaceLibMxBhWithStubInApk()
     }
 }
