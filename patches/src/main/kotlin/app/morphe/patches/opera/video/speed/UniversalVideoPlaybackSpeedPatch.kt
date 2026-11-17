@@ -20,13 +20,14 @@ import java.util.Locale
 
 private const val EXTENSION_CLASS =
     "Lapp/morphe/extension/opera/patches/UniversalVideoPlaybackSpeedPatch;"
+private const val SCRIPT_INJECTOR_CLASS =
+    "Lapp/morphe/extension/opera/patches/OperaPlaybackSpeedScriptInjector;"
 
 private const val WEB_CONTENTS_WRAPPER_CLASS = "Lcom/opera/android/browser/WebContentsWrapper;"
 private const val OPERA_DELEGATE_CLASS = "Lcom/opera/android/browser/chromium/OperaWebContentsDelegate;"
 private const val CHROMIUM_CONTENT_CLASS = "Lcom/opera/android/browser/chromium/ChromiumContent;"
 
 private const val WEB_CONTENTS_CLASS = "Lorg/chromium/content_public/browser/WebContents;"
-private const val RENDER_FRAME_HOST_CLASS = "Lorg/chromium/content_public/browser/RenderFrameHost;"
 
 @Suppress("unused")
 val operaUniversalVideoPlaybackSpeedPatch = patch(
@@ -65,7 +66,6 @@ val operaUniversalVideoPlaybackSpeedPatch = patch(
         val speed = playbackSpeedOption.value!!.toFloat()
         check(speed in 0.25f..3f)
 
-        installWebContentsWrapperEvaluateHelper()
         val loadingMatch = operaWebContentsLoadingStateChangedFingerprint.match()
         val chromiumField = chromiumContentFieldFromLoadingStateChanged(loadingMatch.method)
         installOperaDelegateScriptBridge(chromiumField)
@@ -80,40 +80,6 @@ val operaUniversalVideoPlaybackSpeedPatch = patch(
 
         setExtensionIsPatchIncluded(EXTENSION_CLASS)
     }
-}
-
-private fun installWebContentsWrapperEvaluateHelper() {
-    val wrapper = mutableClassDefBy(WEB_CONTENTS_WRAPPER_CLASS)
-    val method = ImmutableMethod(
-        WEB_CONTENTS_WRAPPER_CLASS,
-        "patch_evaluateJavascript",
-        listOf(
-            ImmutableMethodParameter(WEB_CONTENTS_CLASS, null, "webContents"),
-            ImmutableMethodParameter("Ljava/lang/String;", null, "script"),
-        ),
-        "V",
-        AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
-        null,
-        null,
-        MutableMethodImplementation(4),
-    ).toMutable()
-
-    method.addInstructions(
-        0,
-        """
-            if-eqz p0, :return
-            invoke-interface {p0}, $WEB_CONTENTS_CLASS->F()$RENDER_FRAME_HOST_CLASS
-            move-result-object v0
-            if-eqz v0, :return
-            const/4 v1, 0x0
-            const/4 v2, 0x0
-            invoke-interface {v0, p1, v1, v2}, $RENDER_FRAME_HOST_CLASS->d(Ljava/lang/String;Lorg/chromium/url/Origin;Lorg/chromium/base/Callback;)V
-            :return
-            return-void
-        """,
-    )
-
-    wrapper.methods.add(method)
 }
 
 private fun installOperaDelegateScriptBridge(chromiumField: String) {
@@ -142,7 +108,7 @@ private fun installOperaDelegateScriptBridge(chromiumField: String) {
             invoke-virtual {v0}, $WEB_CONTENTS_WRAPPER_CLASS->e()$WEB_CONTENTS_CLASS
             move-result-object v0
             if-eqz v0, :return
-            invoke-static {v0, p1}, $WEB_CONTENTS_WRAPPER_CLASS->patch_evaluateJavascript(${WEB_CONTENTS_CLASS}Ljava/lang/String;)V
+            invoke-static {v0, p1}, $SCRIPT_INJECTOR_CLASS->evaluate(${WEB_CONTENTS_CLASS}Ljava/lang/String;)V
             :return
             return-void
         """,

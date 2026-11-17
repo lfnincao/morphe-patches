@@ -15,6 +15,8 @@ import java.util.zip.ZipFile
 
 private const val EXTENSION_TYPE =
     "Lapp/morphe/extension/opera/patches/UniversalVideoPlaybackSpeedPatch;"
+private const val INJECTOR_TYPE =
+    "Lapp/morphe/extension/opera/patches/OperaPlaybackSpeedScriptInjector;"
 private const val OPERA_APPLICATION_TYPE = "Lcom/opera/android/OperaApplication;"
 private const val SHARED_UTILS_TYPE = "Lapp/morphe/extension/shared/Utils;"
 private const val BASE_SETTINGS_TYPE = "Lapp/morphe/extension/shared/settings/BaseSettings;"
@@ -61,8 +63,8 @@ fun main(args: Array<String>) {
     }
     check(found) { "Extension class not in patched APK" }
 
+    verifyExtensionMethodExists(apk, INJECTOR_TYPE, "evaluate")
     listOf(
-        "patch_evaluateJavascript" to "Lcom/opera/android/browser/WebContentsWrapper;",
         "patch_executePlaybackSpeedScript" to "Lcom/opera/android/browser/chromium/OperaWebContentsDelegate;",
     ).forEach { (name, type) ->
         verifyHelperMethod(apk, type, name, smaliOut)
@@ -152,6 +154,24 @@ private fun verifyExtensionNeverReferencesSettings(apk: File) {
             }
     }
     println("Static check passed: playback speed extension does not reference settings.")
+}
+
+private fun verifyExtensionMethodExists(apk: File, type: String, name: String) {
+    ZipFile(apk).use { zip ->
+        val found = zip.entries().asSequence()
+            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
+            .any { entry ->
+                val dex = DexBackedDexFile.fromInputStream(
+                    Opcodes.getDefault(),
+                    zip.getInputStream(entry).readBytes().inputStream(),
+                )
+                dex.classes.any { classDef ->
+                    classDef.type == type && classDef.methods.any { it.name == name }
+                }
+            }
+        check(found) { "$type->$name missing from patched APK" }
+    }
+    println("Static check passed: $type->$name present in DEX.")
 }
 
 private fun verifyHelperMethod(apk: File, type: String, name: String, out: StringBuilder) {
