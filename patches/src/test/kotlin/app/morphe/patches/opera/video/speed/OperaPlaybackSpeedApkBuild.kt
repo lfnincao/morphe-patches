@@ -32,7 +32,10 @@ fun main(arguments: Array<String>) {
     require(bundle.isFile) { "Bundle missing: $bundle" }
 
     val patches = when (mode) {
-        "speed-only" -> setOf(operaUniversalVideoPlaybackSpeedPatch)
+        "speed-only" -> {
+            operaUniversalVideoPlaybackSpeedPatch.options["playbackSpeed"] = "1.5"
+            setOf(operaUniversalVideoPlaybackSpeedPatch)
+        }
         "speed-clone" -> setOf(operaUniversalVideoPlaybackSpeedPatch, cloneAppPatch)
         "manager-default" -> loadPatchesFromJar(setOf(bundle)).filter { patch ->
             val packages = runCatching { patch.compatibility }.getOrNull()

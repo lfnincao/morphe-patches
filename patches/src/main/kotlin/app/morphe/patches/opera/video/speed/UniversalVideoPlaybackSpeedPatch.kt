@@ -6,7 +6,7 @@ import app.morphe.patcher.patch.patch
 import app.morphe.patcher.patch.stringOption
 import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
-import app.morphe.patches.opera.misc.extension.operaSharedExtensionPatch
+import app.morphe.patches.opera.misc.extension.operaExtensionDexPatch
 import app.morphe.patches.opera.shared.COMPATIBILITY_OPERA
 import app.morphe.patches.opera.shared.COMPATIBILITY_OPERA_DIRECT
 import app.morphe.patches.shared.misc.bridge.addBridge
@@ -59,7 +59,7 @@ val operaUniversalVideoPlaybackSpeedPatch = patch(
 
     compatibleWith(COMPATIBILITY_OPERA, COMPATIBILITY_OPERA_DIRECT)
 
-    dependsOn(operaSharedExtensionPatch)
+    dependsOn(operaExtensionDexPatch)
 
     execute {
         val speed = playbackSpeedOption.value!!.toFloat()

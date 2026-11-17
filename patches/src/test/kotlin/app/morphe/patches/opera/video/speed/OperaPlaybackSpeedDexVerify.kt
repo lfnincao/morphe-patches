@@ -15,6 +15,9 @@ import java.util.zip.ZipFile
 
 private const val EXTENSION_TYPE =
     "Lapp/morphe/extension/opera/patches/UniversalVideoPlaybackSpeedPatch;"
+private const val OPERA_APPLICATION_TYPE = "Lcom/opera/android/OperaApplication;"
+private const val SHARED_UTILS_TYPE = "Lapp/morphe/extension/shared/Utils;"
+private const val BASE_SETTINGS_TYPE = "Lapp/morphe/extension/shared/settings/BaseSettings;"
 
 fun main(args: Array<String>) {
     require(args.size == 1) { "Usage: OperaPlaybackSpeedDexVerifyKt <patched.apk>" }
@@ -65,6 +68,9 @@ fun main(args: Array<String>) {
         verifyHelperMethod(apk, type, name, smaliOut)
     }
 
+    verifySpeedPatchDoesNotHookOperaApplication(apk)
+    verifyExtensionNeverReferencesSettings(apk)
+
     val sdk = System.getenv("ANDROID_HOME") ?: error("ANDROID_HOME required")
     val verifier = SdkDexVerifier(File(sdk))
     dexFiles.forEach { verifier.verifyDexFile(it) }
@@ -86,6 +92,66 @@ private fun instructionToSmali(ins: Instruction): String {
         }
         else -> ins.opcode.toString()
     }
+}
+
+private fun verifySpeedPatchDoesNotHookOperaApplication(apk: File) {
+    ZipFile(apk).use { zip ->
+        zip.entries().asSequence()
+            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
+            .forEach { entry ->
+                val dex = DexBackedDexFile.fromInputStream(
+                    Opcodes.getDefault(),
+                    zip.getInputStream(entry).readBytes().inputStream(),
+                )
+                val onCreate = dex.classes
+                    .firstOrNull { it.type == OPERA_APPLICATION_TYPE }
+                    ?.methods
+                    ?.firstOrNull { it.name == "onCreate" && it.parameterTypes.isEmpty() }
+                    ?: return@forEach
+                val impl = onCreate.implementation ?: return@forEach
+                impl.instructions.forEach { instruction ->
+                    val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                    val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                        ?: return@forEach
+                    val owner = methodRef.definingClass
+                    check(
+                        owner != SHARED_UTILS_TYPE &&
+                            owner != "Lapp/morphe/extension/opera/OperaProcessGuard;" &&
+                            !owner.startsWith("Lapp/morphe/extension/shared/settings/"),
+                    ) {
+                        "OperaApplication.onCreate must not call Morphe context/settings in speed-only patch " +
+                            "(found $owner->${methodRef.name} in ${entry.name})"
+                    }
+                }
+            }
+    }
+    println("Static check passed: OperaApplication.onCreate has no Morphe context/settings hooks.")
+}
+
+private fun verifyExtensionNeverReferencesSettings(apk: File) {
+    ZipFile(apk).use { zip ->
+        zip.entries().asSequence()
+            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
+            .forEach { entry ->
+                val dex = DexBackedDexFile.fromInputStream(
+                    Opcodes.getDefault(),
+                    zip.getInputStream(entry).readBytes().inputStream(),
+                )
+                val speedClass = dex.classes.firstOrNull { it.type == EXTENSION_TYPE } ?: return@forEach
+                speedClass.methods.forEach { method ->
+                    method.implementation?.instructions?.forEach { instruction ->
+                        val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                        val typeRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.TypeReference
+                        val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                        val touched = typeRef?.type ?: methodRef?.definingClass
+                        check(touched != BASE_SETTINGS_TYPE && !touched.orEmpty().contains("/settings/")) {
+                            "UniversalVideoPlaybackSpeedPatch must not reference settings ($touched)"
+                        }
+                    }
+                }
+            }
+    }
+    println("Static check passed: playback speed extension does not reference settings.")
 }
 
 private fun verifyHelperMethod(apk: File, type: String, name: String, out: StringBuilder) {
