@@ -159,6 +159,26 @@ tasks {
         }
     }
 
+    register<JavaExec>("validateOperaPlaybackSpeed") {
+        description = "Applies Opera playback-speed (and optional clone) patches for device verification"
+        group = "verification"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("app.morphe.patches.opera.video.speed.OperaPlaybackSpeedApkBuildKt")
+        val bundlePath = layout.buildDirectory.file("libs/patches-${project.version}.mpp")
+        doFirst {
+            val apk = providers.gradleProperty("operaApk").orNull
+                ?: throw GradleException("validateOperaPlaybackSpeed requires -PoperaApk=/absolute/path/to/opera.apk")
+            val mode = providers.gradleProperty("operaPatchMode").getOrElse("speed-only")
+            val output = providers.gradleProperty("operaOutput").orNull
+            systemProperty(
+                "morpheBundle",
+                providers.gradleProperty("operaBundle").orNull ?: bundlePath.get().asFile.absolutePath,
+            )
+            setArgs(listOfNotNull(apk, mode, output))
+        }
+    }
+
     register<JavaExec>("validatePlaylistQueue") {
         description = "Applies Native playlist queue to a stock APK and verifies it with Android SDK tools"
         group = "verification"

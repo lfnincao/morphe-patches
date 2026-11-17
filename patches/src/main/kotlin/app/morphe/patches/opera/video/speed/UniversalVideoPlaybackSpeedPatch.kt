@@ -34,7 +34,9 @@ val operaUniversalVideoPlaybackSpeedPatch = patch(
         "every page by injecting a script when a tab finishes loading. Supports 0.25x through " +
         "3x (including 2.5x). Target: Opera Browser 103.3.5234.91185 (and close Play/generic " +
         "builds). Does not change Opera's native download player or Chromium overlay menus; " +
-        "those keep their built-in speed lists unless the page uses HTML5 media.",
+        "those keep their built-in speed lists unless the page uses HTML5 media. " +
+        "Not compatible with the Clone app / package-rename patch: Chromium and Opera's native " +
+        "layer bind to the original package name and cloned installs typically crash on launch.",
 ) {
     val playbackSpeedOption = stringOption(
         key = "playbackSpeed",
@@ -168,10 +170,10 @@ private fun chromiumContentFieldFromLoadingStateChanged(
 
 private fun patchExtensionPlaybackSpeed(speed: Float) {
     val bits = speed.toBits()
-    val smaliConst = if (bits ushr 16 == 0) {
-        "const v0, 0x${Integer.toHexString(bits)}"
-    } else {
+    val smaliConst = if (bits and 0xffff == 0) {
         "const/high16 v0, 0x${Integer.toHexString(bits ushr 16)}"
+    } else {
+        "const v0, 0x${Integer.toHexString(bits)}"
     }
 
     mutableClassDefBy(EXTENSION_CLASS).apply {

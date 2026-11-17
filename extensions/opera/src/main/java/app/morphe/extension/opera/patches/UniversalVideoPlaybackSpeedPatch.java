@@ -42,9 +42,11 @@ public class UniversalVideoPlaybackSpeedPatch {
             return;
         }
         try {
-            String script = buildInjectionScript(getPlaybackSpeed());
+            float rate = getPlaybackSpeed();
+            String script = buildInjectionScript(rate);
             OperaWebContentsDelegate.patch_executePlaybackSpeedScript(
                     (OperaWebContentsDelegate) delegate, script);
+            Logger.printInfo(() -> "Applied HTML5 playback speed script (rate=" + rate + ")");
         } catch (Exception ex) {
             Logger.printException(() -> "onLoadingStateChanged failure", ex);
         }
