@@ -29,6 +29,7 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 /**
  * Adds "Delete" to Customize Items and wires it to [ActivityScreen.w] (stock delete + confirm dialog).
@@ -159,6 +160,28 @@ val playerDeleteShortcutPatch = bytecodePatch(
         )
         activityScreenClass.methods.add(deleteInvoker)
 
+        val remapShortcutViewType = ImmutableMethod(
+            ACTIVITY_SCREEN_CLASS,
+            "patch_remapShortcutViewType",
+            listOf(ImmutableMethodParameter("I", null, "viewType")),
+            "I",
+            AccessFlags.PUBLIC.value or AccessFlags.STATIC.value or AccessFlags.SYNTHETIC.value,
+            null,
+            null,
+            MutableMethodImplementation(2),
+        ).toMutable()
+        remapShortcutViewType.addInstructions(
+            0,
+            """
+                const/16 v0, $DELETE_SHORTCUT_VIEW_TYPE
+                if-ne p0, v0, :morphe_remap_ret
+                const/4 p0, 0x0
+                :morphe_remap_ret
+                return p0
+            """.trimIndent(),
+        )
+        activityScreenClass.methods.add(remapShortcutViewType)
+
         val syncDeleteShortcut = ImmutableMethod(
             ACTIVITY_SCREEN_CLASS,
             "patch_syncDeleteShortcut",
@@ -241,22 +264,12 @@ val playerDeleteShortcutPatch = bytecodePatch(
         }
 
         ShortcutAdapterCreateViewHolderFingerprint.method.cloneParameters().apply {
-            val viewTypeMoveIndex =
-                implementation!!.instructions.indexOfFirst { instruction ->
-                    instruction.opcode == Opcode.MOVE_FROM16
-                }
-            require(viewTypeMoveIndex > 0) {
-                "move/from16 for view type not found in ${definingClass}->$name"
-            }
-            val continueIndex = viewTypeMoveIndex + 3
-            addInstructionsWithLabels(
-                viewTypeMoveIndex,
+            addInstructions(
+                0,
                 """
-                const/16 v0, $DELETE_SHORTCUT_VIEW_TYPE
-                if-ne p1, v0, :morphe_vh_continue
-                const/4 p1, 0x0
+                invoke-static {p1}, $ACTIVITY_SCREEN_CLASS->patch_remapShortcutViewType(I)I
+                move-result p1
                 """.trimIndent(),
-                ExternalLabel("morphe_vh_continue", continueIndex),
             )
         }
     }
