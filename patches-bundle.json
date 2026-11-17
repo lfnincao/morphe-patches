@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-11-17T09:07:42",
-  "description": "## [2.4.0](https://github.com/lfnincao/morphe-patches/compare/v2.3.6...v2.4.0) (2026-11-17)\n\n### ✨ New Features\n\n* **mxplayer:** add delete item to Customize items for MX Player Pro ([#13](https://github.com/lfnincao/morphe-patches/issues/13)) ([276ad50](https://github.com/lfnincao/morphe-patches/commit/276ad504b5c87d2b48f91b7feb3b5cadb54628e2))\n* **opera:** add universal video playback speed patch ([#12](https://github.com/lfnincao/morphe-patches/issues/12)) ([ce3718c](https://github.com/lfnincao/morphe-patches/commit/ce3718cd78fd068d4854d3a6cc3dcb24c2fd69d4))\n\n### 🐛 Bug Fixes\n\n* **mxplayer:** fix delete item patch compilation ([#14](https://github.com/lfnincao/morphe-patches/issues/14)) ([b84c60e](https://github.com/lfnincao/morphe-patches/commit/b84c60e10af17963f86831a3bfd0fc29f778fc30))",
-  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.4.0/patches-2.4.0.mpp",
+  "created_at": "2026-11-17T09:32:24",
+  "description": "## [2.4.1](https://github.com/lfnincao/morphe-patches/compare/v2.4.0...v2.4.1) (2026-11-17)\n\n### 🐛 Bug Fixes\n\n* **opera:** fix playback speed patch smali ([#15](https://github.com/lfnincao/morphe-patches/issues/15)) ([c7544c0](https://github.com/lfnincao/morphe-patches/commit/c7544c0d716ac116ff08c5eddf3c0da2488c5d01))",
+  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.4.1/patches-2.4.1.mpp",
   "signature_download_url": "",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "public_key": "PPMsWvMqp78cL8h+2UgBGQwsJkuAL/sLWsNr2b5kqmE="
 }

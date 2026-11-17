@@ -1,3 +1,9 @@
+## [2.4.1](https://github.com/lfnincao/morphe-patches/compare/v2.4.0...v2.4.1) (2026-11-17)
+
+### 🐛 Bug Fixes
+
+* **opera:** fix playback speed patch smali ([#15](https://github.com/lfnincao/morphe-patches/issues/15)) ([c7544c0](https://github.com/lfnincao/morphe-patches/commit/c7544c0d716ac116ff08c5eddf3c0da2488c5d01))
+
 ## [2.4.0](https://github.com/lfnincao/morphe-patches/compare/v2.3.6...v2.4.0) (2026-11-17)
 
 ### ✨ New Features
