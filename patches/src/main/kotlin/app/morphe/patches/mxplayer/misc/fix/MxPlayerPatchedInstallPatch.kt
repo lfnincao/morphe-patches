@@ -8,17 +8,23 @@ import app.morphe.patches.mxplayer.misc.extension.sharedExtensionPatch
 import app.morphe.patches.mxplayer.shared.Constants.COMPATIBILITY_MX_PLAYER_PRO
 
 /**
- * MX Player Pro loads `libmx-bh.so` on startup via obfuscated [com.ddx.axx.axx.axx.BH] and aborts
- * (~1s) when the install APK is not signed with the original publisher certificate.
+ * MX Player Pro loads `libmx-bh.so` from [MX_BH_CLASS] / [MX_AS_CLASS] static initializers.
+ * On arm64 with heap tagging (Android 14+), JNI init and background verifier threads inside
+ * that library abort the process when the APK is re-signed.
  *
- * Hooks PackageManager through Morphe's signature-spoof extension and no-ops the Java stubs that
- * spawn the native verifier thread (BH.d / BH.b → BH.n).
+ * v2.4.3 only skipped BH.d/BH.b; the library still loaded and crashed via other paths
+ * (e.g. tagged-pointer `free()` in verifier worker code).
+ *
+ * This patch never loads the library: `<clinit>` returns immediately, every JNI export is a
+ * Java stub, and the `.so` is removed from the APK. Signature spoof remains for any Java-side
+ * PackageManager checks (requires an unmodified stock APK as patch input).
  */
 @Suppress("unused")
 val mxPlayerPatchedInstallPatch = patch(
     name = "MX Player patched install support",
-    description = "Restores launch on re-signed builds by spoofing the original package signature for " +
-        "Java-side checks and skipping libmx-bh native install verification (BH.d / BH.b).",
+    description = "Keeps MX Player Pro launchable on Morphe re-signed builds by not loading " +
+        "libmx-bh at all (stub com.ddx.axx.axx.axx BH/AS/AG natives and drop the library), " +
+        "plus spoofing the original package signature when patching from a stock APK.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_MX_PLAYER_PRO)
@@ -26,30 +32,18 @@ val mxPlayerPatchedInstallPatch = patch(
     dependsOn(sharedExtensionPatch, spoofSignaturePatch)
 
     execute {
-        MxBhStartupDFingerprint.method.cloneParameters().apply {
-            addInstructions(
-                0,
-                """
-                    return-void
-                """.trimIndent(),
-            )
-        }
+        disableLibMxBhLoadingAndNative()
 
-        MxBhStartupBFingerprint.method.cloneParameters().apply {
-            addInstructions(
-                0,
-                """
-                    return-void
-                """.trimIndent(),
-            )
+        // Emulator / BlueStacks gate in BH.c (non-native); avoid false positives when testing.
+        MxBhEmulatorGateCFingerprint.method.cloneParameters().apply {
+            addInstructions(0, """
+                const/4 v0, 0x0
+                return v0
+            """.trimIndent())
         }
+    }
 
-        // Native BH.w cannot be bytecode-patched; skip entire startup stubs instead.
-        MxAppStartupFFingerprint.method.cloneParameters().apply {
-            addInstructions(0, "return-void")
-        }
-        MxAppStartupGFingerprint.method.cloneParameters().apply {
-            addInstructions(0, "return-void")
-        }
+    finalize {
+        removeLibMxBhFromApk()
     }
 }

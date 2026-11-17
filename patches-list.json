@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "2.4.3",
+  "version": "2.4.2",
   "patches": [
     {
       "name": "A-B loop",
@@ -8786,7 +8786,7 @@
     },
     {
       "name": "MX Player patched install support",
-      "description": "Restores launch on re-signed builds by spoofing the original package signature for Java-side checks and skipping libmx-bh native install verification (BH.d / BH.b).",
+      "description": "Keeps MX Player Pro launchable on Morphe re-signed builds by not loading libmx-bh at all (stub com.ddx.axx.axx.axx BH/AS/AG natives and drop the library), plus spoofing the original package signature when patching from a stock APK.",
       "default": true,
       "category": null,
       "compatiblePackages": [
