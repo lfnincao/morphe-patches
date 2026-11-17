@@ -2,7 +2,7 @@ package app.morphe.patches.mxplayer.interaction.shortcuts
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
-import app.morphe.util.addInstructionsAtControlFlowLabel
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.resourcePatch
@@ -68,65 +68,6 @@ val playerDeleteShortcutPatch = bytecodePatch(
     execute {
         val bitHex = "0x%x".format(DELETE_SHORTCUT_BIT)
 
-        CustomizeItemsToggleFingerprint.method.cloneParameters().apply {
-            val packedSwitchIndex = indexOfFirstPackedSwitch()
-            val continueIndex = packedSwitchIndex - 6
-            addInstructionsAtControlFlowLabel(
-                0,
-                """
-                iget v0, p0, Ln20;->d:I
-                const/16 v1, $DELETE_SHORTCUT_LIST_INDEX
-                if-ne v0, v1, :morphe_delete_toggle_continue
-                invoke-virtual {p1}, Landroid/widget/CompoundButton;->isChecked()Z
-                move-result v0
-                iget-object v1, p0, Ln20;->k:Lo20${'$'}a;
-                if-eqz v0, :morphe_delete_toggle_on
-                const v0, $bitHex
-                invoke-static {v1, v0}, Lo20${'$'}a;->r(Lo20${'$'}a;I)V
-                return-void
-                :morphe_delete_toggle_on
-                const v0, $bitHex
-                invoke-static {v1, v0}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
-                return-void
-                """.trimIndent(),
-                ExternalLabel("morphe_delete_toggle_continue", continueIndex),
-            )
-        }
-
-        CustomizeItemsOnBindFingerprint.method.cloneParameters().apply {
-            val packedSwitchIndex = indexOfFirstPackedSwitch()
-            val continueIndex = packedSwitchIndex - 11
-            addInstructionsAtControlFlowLabel(
-                0,
-                """
-                const/16 v0, $DELETE_SHORTCUT_LIST_INDEX
-                if-ne p2, v0, :morphe_bind_continue
-                iget-object v0, p1, Lo20${'$'}a${'$'}a;->I:Landroidx/appcompat/widget/AppCompatCheckBox;
-                invoke-virtual {v0}, Landroid/view/View;->getContext()Landroid/content/Context;
-                move-result-object v1
-                const v2, 0x7f120475
-                invoke-virtual {v1, v2}, Landroid/content/Context;->getString(I)Ljava/lang/String;
-                move-result-object v1
-                invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
-                iget v1, p0, Lo20${'$'}a;->d:I
-                const v2, $bitHex
-                and-int/2addr v1, v2
-                if-eqz v1, :morphe_bind_off
-                const/4 v1, 0x1
-                goto :morphe_bind_set
-                :morphe_bind_off
-                const/4 v1, 0x0
-                :morphe_bind_set
-                invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setChecked(Z)V
-                new-instance v1, Ln20;
-                invoke-direct {v1, p0, p2, p1}, Ln20;-><init>(Lo20${'$'}a;ILo20${'$'}a${'$'}a;)V
-                invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
-                return-void
-                """.trimIndent(),
-                ExternalLabel("morphe_bind_continue", continueIndex),
-            )
-        }
-
         val activityScreenClass = mutableClassDefBy(ACTIVITY_SCREEN_CLASS)
         activityScreenClass.fields.add(
             ImmutableField(
@@ -181,6 +122,148 @@ val playerDeleteShortcutPatch = bytecodePatch(
             """.trimIndent(),
         )
         activityScreenClass.methods.add(remapShortcutViewType)
+
+        val persistShortcutFlags = ImmutableMethod(
+            ACTIVITY_SCREEN_CLASS,
+            "patch_persistShortcutFlags",
+            listOf(ImmutableMethodParameter("Lo20\$a;", null, "adapter")),
+            "V",
+            AccessFlags.PUBLIC.value or AccessFlags.STATIC.value or AccessFlags.SYNTHETIC.value,
+            null,
+            null,
+            MutableMethodImplementation(4),
+        ).toMutable()
+        persistShortcutFlags.addInstructions(
+            0,
+            """
+                iget v0, p0, Lo20${'$'}a;->d:I
+                sget-object v1, LlV;->A:LM90;
+                iget-object v1, v1, LM90;->d:Landroid/content/SharedPreferences;
+                invoke-interface {v1}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences${'$'}Editor;
+                move-result-object v1
+                const-string v2, "shortcuts_flag.3"
+                invoke-interface {v1, v2, v0}, Landroid/content/SharedPreferences${'$'}Editor;->putInt(Ljava/lang/String;I)Landroid/content/SharedPreferences${'$'}Editor;
+                invoke-interface {v1}, Landroid/content/SharedPreferences${'$'}Editor;->commit()Z
+                return-void
+            """.trimIndent(),
+        )
+        activityScreenClass.methods.add(persistShortcutFlags)
+
+        val bindDeleteCustomizeItem = ImmutableMethod(
+            ACTIVITY_SCREEN_CLASS,
+            "patch_bindDeleteShortcutCustomizeItem",
+            listOf(
+                ImmutableMethodParameter("Lo20\$a;", null, "adapter"),
+                ImmutableMethodParameter("Lo20\$a\$a;", null, "holder"),
+                ImmutableMethodParameter("I", null, "position"),
+            ),
+            "Z",
+            AccessFlags.PUBLIC.value or AccessFlags.STATIC.value or AccessFlags.SYNTHETIC.value,
+            null,
+            null,
+            MutableMethodImplementation(6),
+        ).toMutable()
+        bindDeleteCustomizeItem.addInstructions(
+            0,
+            """
+                const/16 v0, $DELETE_SHORTCUT_LIST_INDEX
+                if-eq p2, v0, :morphe_bind_not_delete
+                iget-object v0, p1, Lo20${'$'}a${'$'}a;->I:Landroidx/appcompat/widget/AppCompatCheckBox;
+                invoke-virtual {v0}, Landroid/view/View;->getContext()Landroid/content/Context;
+                move-result-object v1
+                const v2, 0x7f120475
+                invoke-virtual {v1, v2}, Landroid/content/Context;->getString(I)Ljava/lang/String;
+                move-result-object v1
+                invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                iget v1, p0, Lo20${'$'}a;->d:I
+                const v2, $bitHex
+                and-int/2addr v1, v2
+                if-eqz v1, :morphe_bind_off
+                const/4 v1, 0x1
+                goto :morphe_bind_set
+                :morphe_bind_off
+                const/4 v1, 0x0
+                :morphe_bind_set
+                invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setChecked(Z)V
+                new-instance v1, Ln20;
+                invoke-direct {v1, p0, p2, p1}, Ln20;-><init>(Lo20${'$'}a;ILo20${'$'}a${'$'}a;)V
+                invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
+                const/4 v0, 0x1
+                return v0
+                :morphe_bind_not_delete
+                const/4 v0, 0x0
+                return v0
+            """.trimIndent(),
+        )
+        activityScreenClass.methods.add(bindDeleteCustomizeItem)
+
+        val toggleDeleteCustomizeItem = ImmutableMethod(
+            ACTIVITY_SCREEN_CLASS,
+            "patch_onDeleteShortcutCustomizeToggle",
+            listOf(
+                ImmutableMethodParameter("Ln20;", null, "listener"),
+                ImmutableMethodParameter("Landroid/widget/CompoundButton;", null, "button"),
+            ),
+            "Z",
+            AccessFlags.PUBLIC.value or AccessFlags.STATIC.value or AccessFlags.SYNTHETIC.value,
+            null,
+            null,
+            MutableMethodImplementation(4),
+        ).toMutable()
+        toggleDeleteCustomizeItem.addInstructions(
+            0,
+            """
+                iget v0, p0, Ln20;->d:I
+                const/16 v1, $DELETE_SHORTCUT_LIST_INDEX
+                if-eq v0, v1, :morphe_toggle_not_delete
+                invoke-virtual {p1}, Landroid/widget/CompoundButton;->isChecked()Z
+                move-result v0
+                iget-object v1, p0, Ln20;->k:Lo20${'$'}a;
+                if-eqz v0, :morphe_toggle_on
+                const v0, $bitHex
+                invoke-static {v1, v0}, Lo20${'$'}a;->r(Lo20${'$'}a;I)V
+                goto :morphe_toggle_persist
+                :morphe_toggle_on
+                const v0, $bitHex
+                invoke-static {v1, v0}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
+                :morphe_toggle_persist
+                invoke-static {v1}, $ACTIVITY_SCREEN_CLASS->patch_persistShortcutFlags(Lo20${'$'}a;)V
+                const/4 v0, 0x1
+                return v0
+                :morphe_toggle_not_delete
+                const/4 v0, 0x0
+                return v0
+            """.trimIndent(),
+        )
+        activityScreenClass.methods.add(toggleDeleteCustomizeItem)
+
+        CustomizeItemsOnBindFingerprint.method.cloneParameters().apply {
+            val continueInstruction = getInstruction(0)
+            addInstructionsWithLabels(
+                0,
+                """
+                invoke-static {p0, p1, p2}, $ACTIVITY_SCREEN_CLASS->patch_bindDeleteShortcutCustomizeItem(Lo20${'$'}a;Lo20${'$'}a${'$'}a;I)Z
+                move-result v0
+                if-eqz v0, :morphe_bind_continue
+                return-void
+                """.trimIndent(),
+                ExternalLabel("morphe_bind_continue", continueInstruction),
+            )
+        }
+
+        CustomizeItemsToggleFingerprint.method.cloneParameters().apply {
+            val continueInstruction = getInstruction(0)
+            addInstructionsWithLabels(
+                0,
+                """
+                invoke-static {p0, p1}, $ACTIVITY_SCREEN_CLASS->patch_onDeleteShortcutCustomizeToggle(Ln20;Landroid/widget/CompoundButton;)Z
+                move-result v0
+                if-eqz v0, :morphe_toggle_continue
+                return-void
+                """.trimIndent(),
+                ExternalLabel("morphe_toggle_continue", continueInstruction),
+            )
+        }
 
         val syncDeleteShortcut = ImmutableMethod(
             ACTIVITY_SCREEN_CLASS,
