@@ -8785,6 +8785,38 @@
       "options": []
     },
     {
+      "name": "MX Player patched install support",
+      "description": "Restores launch on re-signed builds by spoofing the original package signature for Java-side checks and skipping libmx-bh native install verification (BH.d / BH.b).",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.mxtech.videoplayer.pro",
+          "name": "MX Player Pro",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": null,
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "1.93.4",
+              "versionCodes": {
+                "ARM64_V8A": 2001002584,
+                "ARMEABI_V7A": 2001002584,
+                "X86_64": 2001002584,
+                "X86": 2001002584
+              },
+              "isExperimental": false,
+              "minSdk": 24,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Media notification controls",
       "description": "Adds options to disable the seekbar and previous/next buttons in the media notification and headphone controls.",
       "default": true,
