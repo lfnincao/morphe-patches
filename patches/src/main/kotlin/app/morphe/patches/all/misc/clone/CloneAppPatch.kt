@@ -173,6 +173,10 @@ val cloneAppPatch = patch(
             "com.duolingo",
             "tv.twitch.android.app",
 
+            // CHECK_LICENSE / package identity checks (Play licensing, signature metadata).
+            // Cloned package id breaks startup on real devices (reported with Morphe 2.5.0 + Pro 1.93.4).
+            "com.mxtech.videoplayer.pro",
+
             // Resources fail to decode correctly.
             // https://github.com/MorpheApp/morphe-patcher/issues/178
             "cn.wps.moffice_eng",
