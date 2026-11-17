@@ -69,6 +69,7 @@ val playerDeleteShortcutPatch = bytecodePatch(
 
         CustomizeItemsToggleFingerprint.method.cloneParameters().apply {
             val packedSwitchIndex = indexOfFirstPackedSwitch()
+            val continueIndex = packedSwitchIndex - 6
             addInstructionsAtControlFlowLabel(
                 0,
                 """
@@ -87,12 +88,13 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 invoke-static {v1, v0}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
                 return-void
                 """.trimIndent(),
-                ExternalLabel("morphe_delete_toggle_continue", packedSwitchIndex),
+                ExternalLabel("morphe_delete_toggle_continue", continueIndex),
             )
         }
 
         CustomizeItemsOnBindFingerprint.method.cloneParameters().apply {
             val packedSwitchIndex = indexOfFirstPackedSwitch()
+            val continueIndex = packedSwitchIndex - 11
             addInstructionsAtControlFlowLabel(
                 0,
                 """
@@ -120,7 +122,7 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
                 return-void
                 """.trimIndent(),
-                ExternalLabel("morphe_bind_continue", packedSwitchIndex),
+                ExternalLabel("morphe_bind_continue", continueIndex),
             )
         }
 
@@ -239,16 +241,22 @@ val playerDeleteShortcutPatch = bytecodePatch(
         }
 
         ShortcutAdapterCreateViewHolderFingerprint.method.cloneParameters().apply {
-            val packedSwitchIndex = indexOfFirstPackedSwitch()
-            addInstructionsAtControlFlowLabel(
-                0,
+            val viewTypeMoveIndex =
+                implementation!!.instructions.indexOfFirst { instruction ->
+                    instruction.opcode == Opcode.MOVE_FROM16
+                }
+            require(viewTypeMoveIndex > 0) {
+                "move/from16 for view type not found in ${definingClass}->$name"
+            }
+            val continueIndex = viewTypeMoveIndex + 3
+            addInstructionsWithLabels(
+                viewTypeMoveIndex,
                 """
                 const/16 v0, $DELETE_SHORTCUT_VIEW_TYPE
                 if-ne p1, v0, :morphe_vh_continue
                 const/4 p1, 0x0
-                goto :morphe_vh_continue
                 """.trimIndent(),
-                ExternalLabel("morphe_vh_continue", packedSwitchIndex),
+                ExternalLabel("morphe_vh_continue", continueIndex),
             )
         }
     }

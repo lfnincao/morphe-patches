@@ -149,6 +149,11 @@ tasks {
         dependsOn("testClasses")
         classpath = sourceSets["test"].runtimeClasspath
         mainClass.set("app.morphe.patches.mxplayer.interaction.shortcuts.MxPlayerProEmulatorApkBuildKt")
+        val androidHome = System.getenv("ANDROID_HOME")
+            ?: System.getenv("ANDROID_SDK_ROOT")
+            ?: "${System.getProperty("user.home")}/android-sdk"
+        environment("ANDROID_HOME", androidHome)
+        environment("ANDROID_SDK_ROOT", androidHome)
         doFirst {
             val input = providers.gradleProperty("mxPlayerApk").orNull
                 ?: throw GradleException("-PmxPlayerApk required")

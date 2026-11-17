@@ -69,22 +69,17 @@ fun main(arguments: Array<String>) {
     }
     }
 
-    val keyStore = File(workspace, "debug.jks")
-    val keyDetails = ApkUtils.KeyStoreDetails(
-        keyStore = keyStore,
-        alias = "morphe",
-        password = "morphe",
-    )
-    ApkUtils.signApk(unsigned, outputApk, "MorpheTest", keyDetails, minSdkVersion = 24)
-    if (!stockOnly) {
-        verifyMxPlayerPatchedApkDex(outputApk)
-    }
     val pkg = when {
         stockOnly -> "com.mxtech.videoplayer.pro"
         clone -> "com.mxtech.videoplayer.pro.morphe"
         else -> "com.mxtech.videoplayer.pro"
     }
-    println("Signed $outputApk (stock=$stockOnly, clone=$clone, package=$pkg)")
+    val keyDetails = mxPlayerEmulatorKeyStoreDetails()
+    ApkUtils.signApk(unsigned, outputApk, "MorpheTest", keyDetails, minSdkVersion = 24)
+    if (!stockOnly) {
+        verifyMxPlayerPatchedApk(outputApk, packageName = pkg)
+    }
+    println("Signed $outputApk (stock=$stockOnly, clone=$clone, package=$pkg, keystore=${keyDetails.keyStore})")
 }
 
 private fun mergeApkmBundle(bundle: File): File {

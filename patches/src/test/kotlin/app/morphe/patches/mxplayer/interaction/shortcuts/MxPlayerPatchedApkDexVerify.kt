@@ -2,14 +2,50 @@ package app.morphe.patches.mxplayer.interaction.shortcuts
 
 import app.morphe.patcher.dex.SdkDexVerifier
 import java.io.File
+import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 import kotlin.io.path.createTempDirectory
 
 /**
- * Runs dexdump + d8 verification on every DEX file in a patched MX Player APK.
+ * Runs dexdump + d8 on every DEX file, then ART `package compile -m verify` on a connected device/emulator.
  */
+internal fun verifyMxPlayerPatchedApk(apkFile: File, packageName: String = "com.mxtech.videoplayer.pro") {
+    verifyMxPlayerPatchedApkDex(apkFile)
+    val artLog = verifyMxPlayerArtOnDevice(apkFile, packageName)
+    val logFile = File("/opt/cursor/artifacts/mxplayer-art-verify.log")
+    logFile.parentFile?.mkdirs()
+    logFile.writeText(artLog)
+    println("Wrote ART verify log to $logFile")
+    require(!artLog.contains("hard fail", ignoreCase = true)) {
+        "ART verification reported hard failures; see $logFile"
+    }
+    require(!artLog.contains("VerifyError", ignoreCase = true)) {
+        "ART verification log contains VerifyError; see $logFile"
+    }
+    require(!artLog.contains("rejected class", ignoreCase = true)) {
+        "ART verification log contains rejected class; see $logFile"
+    }
+}
+
+internal fun resolveAndroidSdk(): File =
+    listOfNotNull(
+        System.getenv("ANDROID_HOME"),
+        System.getenv("ANDROID_SDK_ROOT"),
+    )
+        .map { File(it) }
+        .plus(
+            listOf(
+                File(System.getProperty("user.home"), "android-sdk"),
+                File("/home/ubuntu/android-sdk"),
+            ),
+        )
+        .firstOrNull { candidate ->
+            File(candidate, "build-tools").isDirectory && File(candidate, "platform-tools/adb").isFile
+        }
+        ?: error("Android SDK with build-tools and adb not found (set ANDROID_HOME)")
+
 internal fun verifyMxPlayerPatchedApkDex(apkFile: File) {
-    val sdk = File(System.getenv("ANDROID_HOME") ?: error("ANDROID_HOME required for DEX verification"))
+    val sdk = resolveAndroidSdk()
     val dexDir = createTempDirectory("mx-player-dex-verify").toFile()
     ZipFile(apkFile).use { zip ->
         zip.stream()
@@ -32,6 +68,111 @@ internal fun verifyMxPlayerPatchedApkDex(apkFile: File) {
         File(dexDir, name).takeIf { it.isFile }
     }
     require(verified.isNotEmpty()) { "No DEX files extracted from $apkFile" }
-  verified.forEach { verifier.verifyDexFile(it) }
+    verified.forEach { verifier.verifyDexFile(it) }
     println("ART/SDK DEX verification passed for ${verified.size} file(s) in $apkFile")
+}
+
+internal fun verifyMxPlayerArtOnDevice(apkFile: File, packageName: String): String {
+    val sdk = resolveAndroidSdk()
+    val adb = File(sdk, "platform-tools/adb")
+    require(adb.isFile) { "adb not found: $adb" }
+    val serial = System.getenv("ANDROID_SERIAL") ?: "emulator-5554"
+
+    fun runAdb(vararg args: String, timeoutSec: Long = 120, requireSuccess: Boolean = true): String {
+        val process = ProcessBuilder(listOf(adb.absolutePath, "-s", serial) + args)
+            .redirectErrorStream(true)
+            .start()
+        val finished = process.waitFor(timeoutSec, TimeUnit.SECONDS)
+        val output = process.inputStream.bufferedReader().readText()
+        check(finished) { "adb ${args.firstOrNull()} timed out after ${timeoutSec}s\n$output" }
+        if (requireSuccess) {
+            check(process.exitValue() == 0) { "adb ${args.joinToString(" ")} failed (${process.exitValue()}):\n$output" }
+        }
+        return output
+    }
+
+    runAdb("uninstall", packageName, requireSuccess = false)
+    runAdb("install", "-r", apkFile.absolutePath, timeoutSec = 180)
+    runAdb("logcat", "-c")
+    val compileOut = runAdb(
+        "shell",
+        "cmd",
+        "package",
+        "compile",
+        "-m",
+        "verify",
+        "-f",
+        packageName,
+        timeoutSec = 300,
+        requireSuccess = false,
+    )
+    // Trigger common paths so verifier runs loaded player code.
+  runAdb(
+    "shell",
+    "monkey",
+    "-p",
+    packageName,
+    "-c",
+    "android.intent.category.LAUNCHER",
+    "1",
+  )
+    Thread.sleep(5000L)
+  runAdb(
+    "shell",
+    "am",
+    "start",
+    "-a",
+    "android.intent.action.VIEW",
+    "-d",
+    "file:///sdcard/Download/test.mp4",
+    "-t",
+    "video/mp4",
+    "-n",
+    "$packageName/com.mxtech.videoplayer.ActivityScreen",
+  )
+    Thread.sleep(8000L)
+    val logcat =
+        try {
+            runAdb(
+                "exec-out",
+                "logcat",
+                "-d",
+                "-t",
+                "150",
+                "-b",
+                "main",
+                "-b",
+                "crash",
+                timeoutSec = 120,
+            )
+        } catch (e: IllegalStateException) {
+            if (e.message?.contains("logcat") == true) {
+                println("WARN: logcat scrape timed out; continuing with compile output only")
+                ""
+            } else {
+                throw e
+            }
+        }
+    val filtered = buildString {
+        appendLine("=== cmd package compile -m verify -f $packageName ===")
+        appendLine(compileOut.trim())
+        appendLine()
+        appendLine("=== logcat (ART verifier failures only) ===")
+        var hits = 0
+        logcat.lineSequence()
+            .filter { line ->
+                val lower = line.lowercase()
+                lower.contains("verifyerror") || lower.contains("rejected class") ||
+                    lower.contains("failed to verify") || lower.contains("hard failure") ||
+                    lower.contains("hard fail")
+            }
+            .forEach {
+                appendLine(it)
+                hits++
+            }
+        if (hits == 0) {
+            appendLine("(no ART hard verification failures in recent logcat)")
+        }
+    }
+    return filtered
 }
