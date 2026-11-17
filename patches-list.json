@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "patches": [
     {
       "name": "A-B loop",
@@ -15252,7 +15252,7 @@
     },
     {
       "name": "Universal video playback speed",
-      "description": "Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading. Supports 0.25x through 3x (including 2.5x). Target: Opera Browser 103.3.5234.91185 (and close Play/generic builds). Does not change Opera's native download player or Chromium overlay menus; those keep their built-in speed lists unless the page uses HTML5 media.",
+      "description": "Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading. Supports 0.25x through 3x (including 2.5x). Target: Opera Browser 103.3.5234.91185 (and close Play/generic builds). Does not change Opera's native download player or Chromium overlay menus; those keep their built-in speed lists unless the page uses HTML5 media. Not compatible with the Clone app / package-rename patch: Chromium and Opera's native layer bind to the original package name and cloned installs typically crash on launch.",
       "default": true,
       "category": null,
       "compatiblePackages": [

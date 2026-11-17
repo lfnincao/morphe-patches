@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v2.4.2](https://github.com/lfnincao/morphe-patches/releases/tag/v2.4.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;215 patches total
+> **[v2.4.3](https://github.com/lfnincao/morphe-patches/releases/tag/v2.4.3)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;216 patches total
 <details>
 <summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;56 patches</summary>
 <br>
@@ -287,7 +287,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 </details>
 
 <details>
-<summary>📦 MX Player Pro&nbsp;&nbsp;•&nbsp;&nbsp;1 patch</summary>
+<summary>📦 MX Player Pro&nbsp;&nbsp;•&nbsp;&nbsp;2 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -297,6 +297,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
+| [MX Player patched install support](#mx-player-patched-install-support) | Restores launch on re-signed builds by spoofing the original package signature for Java-side checks and skipping libmx-bh native install verification (BH.d / BH.b). |  |
 | [Player delete shortcut](#player-delete-shortcut) | Adds a Delete item to the player's Customize Items list. Tapping it runs the same delete flow as Menu → Delete (confirmation dialog, then next file or exit). Targets MX Player Pro 1.93.4 (versionCode 2001002584). |  |
 
 </details>
@@ -312,7 +313,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
-| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading. Supports 0.25x through 3x (including 2.5x). Target: Opera Browser 103.3.5234.91185 (and close Play/generic builds). Does not change Opera's native download player or Chromium overlay menus; those keep their built-in speed lists unless the page uses HTML5 media. | • Default HTML5 playback speed |
+| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading. Supports 0.25x through 3x (including 2.5x). Target: Opera Browser 103.3.5234.91185 (and close Play/generic builds). Does not change Opera's native download player or Chromium overlay menus; those keep their built-in speed lists unless the page uses HTML5 media. Not compatible with the Clone app / package-rename patch: Chromium and Opera's native layer bind to the original package name and cloned installs typically crash on launch. | • Default HTML5 playback speed |
 
 </details>
 

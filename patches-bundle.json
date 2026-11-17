@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-11-17T09:39:06",
-  "description": "## [2.4.2](https://github.com/lfnincao/morphe-patches/compare/v2.4.1...v2.4.2) (2026-11-17)\n\n### 🐛 Bug Fixes\n\n* **mxplayer:** fix delete shortcut resource lookup ([#16](https://github.com/lfnincao/morphe-patches/issues/16)) ([3629be7](https://github.com/lfnincao/morphe-patches/commit/3629be7a23ddcf1196c767ae05fb79292ea9df39))",
-  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.4.2/patches-2.4.2.mpp",
+  "created_at": "2026-11-17T19:06:04",
+  "description": "## [2.4.3](https://github.com/lfnincao/morphe-patches/compare/v2.4.2...v2.4.3) (2026-11-17)\n\n### 🐛 Bug Fixes\n\n* **mxplayer:** bypass libmx-bh check for patched installs ([462ff4d](https://github.com/lfnincao/morphe-patches/commit/462ff4da1725e65984c7f38fd60fdcf6de08a662))\n* **opera:** document clone incompatibility and harden playback speed ([7ba2ddd](https://github.com/lfnincao/morphe-patches/commit/7ba2ddd83ca6d44e17e0ded43207ca2ebff8e6b8))",
+  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.4.3/patches-2.4.3.mpp",
   "signature_download_url": "",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "public_key": "PPMsWvMqp78cL8h+2UgBGQwsJkuAL/sLWsNr2b5kqmE="
 }

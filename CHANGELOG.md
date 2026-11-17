@@ -1,3 +1,10 @@
+## [2.4.3](https://github.com/lfnincao/morphe-patches/compare/v2.4.2...v2.4.3) (2026-11-17)
+
+### 🐛 Bug Fixes
+
+* **mxplayer:** bypass libmx-bh check for patched installs ([462ff4d](https://github.com/lfnincao/morphe-patches/commit/462ff4da1725e65984c7f38fd60fdcf6de08a662))
+* **opera:** document clone incompatibility and harden playback speed ([7ba2ddd](https://github.com/lfnincao/morphe-patches/commit/7ba2ddd83ca6d44e17e0ded43207ca2ebff8e6b8))
+
 ## [2.4.2](https://github.com/lfnincao/morphe-patches/compare/v2.4.1...v2.4.2) (2026-11-17)
 
 ### 🐛 Bug Fixes
