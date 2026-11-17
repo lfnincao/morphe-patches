@@ -1,3 +1,9 @@
+## [2.4.2](https://github.com/lfnincao/morphe-patches/compare/v2.4.1...v2.4.2) (2026-11-17)
+
+### 🐛 Bug Fixes
+
+* **mxplayer:** fix delete shortcut resource lookup ([#16](https://github.com/lfnincao/morphe-patches/issues/16)) ([3629be7](https://github.com/lfnincao/morphe-patches/commit/3629be7a23ddcf1196c767ae05fb79292ea9df39))
+
 ## [2.4.1](https://github.com/lfnincao/morphe-patches/compare/v2.4.0...v2.4.1) (2026-11-17)
 
 ### 🐛 Bug Fixes

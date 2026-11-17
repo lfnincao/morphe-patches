@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-11-17T09:32:24",
-  "description": "## [2.4.1](https://github.com/lfnincao/morphe-patches/compare/v2.4.0...v2.4.1) (2026-11-17)\n\n### 🐛 Bug Fixes\n\n* **opera:** fix playback speed patch smali ([#15](https://github.com/lfnincao/morphe-patches/issues/15)) ([c7544c0](https://github.com/lfnincao/morphe-patches/commit/c7544c0d716ac116ff08c5eddf3c0da2488c5d01))",
-  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.4.1/patches-2.4.1.mpp",
+  "created_at": "2026-11-17T09:39:06",
+  "description": "## [2.4.2](https://github.com/lfnincao/morphe-patches/compare/v2.4.1...v2.4.2) (2026-11-17)\n\n### 🐛 Bug Fixes\n\n* **mxplayer:** fix delete shortcut resource lookup ([#16](https://github.com/lfnincao/morphe-patches/issues/16)) ([3629be7](https://github.com/lfnincao/morphe-patches/commit/3629be7a23ddcf1196c767ae05fb79292ea9df39))",
+  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.4.2/patches-2.4.2.mpp",
   "signature_download_url": "",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "public_key": "PPMsWvMqp78cL8h+2UgBGQwsJkuAL/sLWsNr2b5kqmE="
 }
