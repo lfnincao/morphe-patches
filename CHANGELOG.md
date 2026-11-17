@@ -1,3 +1,14 @@
+## [2.4.0](https://github.com/lfnincao/morphe-patches/compare/v2.3.6...v2.4.0) (2026-11-17)
+
+### ✨ New Features
+
+* **mxplayer:** add delete item to Customize items for MX Player Pro ([#13](https://github.com/lfnincao/morphe-patches/issues/13)) ([276ad50](https://github.com/lfnincao/morphe-patches/commit/276ad504b5c87d2b48f91b7feb3b5cadb54628e2))
+* **opera:** add universal video playback speed patch ([#12](https://github.com/lfnincao/morphe-patches/issues/12)) ([ce3718c](https://github.com/lfnincao/morphe-patches/commit/ce3718cd78fd068d4854d3a6cc3dcb24c2fd69d4))
+
+### 🐛 Bug Fixes
+
+* **mxplayer:** fix delete item patch compilation ([#14](https://github.com/lfnincao/morphe-patches/issues/14)) ([b84c60e](https://github.com/lfnincao/morphe-patches/commit/b84c60e10af17963f86831a3bfd0fc29f778fc30))
+
 ## [2.3.6](https://github.com/lfnincao/morphe-patches/compare/v2.3.5...v2.3.6) (2026-11-16)
 
 ### 🐛 Bug Fixes

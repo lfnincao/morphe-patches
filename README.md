@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v2.3.6](https://github.com/lfnincao/morphe-patches/releases/tag/v2.3.6)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;213 patches total
+> **[v2.4.0](https://github.com/lfnincao/morphe-patches/releases/tag/v2.4.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;215 patches total
 <details>
 <summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;56 patches</summary>
 <br>
@@ -283,6 +283,36 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 | [Show flairs in home feed](#show-flairs-in-home-feed) | Adds an option to show post flair badges in the home feed. This patch works with Reddit 2026.24.0 and newer. |  |
 | [Spoof signature](#spoof-signature) | Spoofs the signature of the app to fix notification issues. |  |
 | [Start as guest](#start-as-guest) | Skips the forced startup login screen using Reddit's native guest browsing mode. |  |
+
+</details>
+
+<details>
+<summary>📦 MX Player Pro&nbsp;&nbsp;•&nbsp;&nbsp;1 patch</summary>
+<br>
+
+**🎯 Supported versions:**
+
+| 1.93.4 |
+| :---: |
+
+| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+|----------|----------------|-----------|
+| [Player delete shortcut](#player-delete-shortcut) | Adds a Delete item to the player's Customize Items list. Tapping it runs the same delete flow as Menu → Delete (confirmation dialog, then next file or exit). Targets MX Player Pro 1.93.4 (versionCode 2001002584). |  |
+
+</details>
+
+<details>
+<summary>📦 Opera Browser&nbsp;&nbsp;•&nbsp;&nbsp;1 patch</summary>
+<br>
+
+**🎯 Supported versions:**
+
+| 103.3.5234.91185 | 103.2.5234.90977 |
+| :---: | :---: |
+
+| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+|----------|----------------|-----------|
+| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading. Supports 0.25x through 3x (including 2.5x). Target: Opera Browser 103.3.5234.91185 (and close Play/generic builds). Does not change Opera's native download player or Chromium overlay menus; those keep their built-in speed lists unless the page uses HTML5 media. | • Default HTML5 playback speed |
 
 </details>
 
