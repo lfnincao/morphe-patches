@@ -27,6 +27,7 @@ import app.morphe.patches.mxplayer.shared.Constants.SHORTCUT_ADAPTER_ON_CLICK_CL
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.iface.instruction.formats.Instruction35c
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
@@ -154,7 +155,11 @@ val playerDeleteShortcutPatch = bytecodePatch(
             "patch_bindDeleteShortcutCustomizeItem",
             listOf(
                 ImmutableMethodParameter("Lo20\$a;", null, "adapter"),
-                ImmutableMethodParameter("Lo20\$a\$a;", null, "holder"),
+                ImmutableMethodParameter(
+                    "Landroidx/recyclerview/widget/RecyclerView\$z;",
+                    null,
+                    "holder",
+                ),
                 ImmutableMethodParameter("I", null, "position"),
             ),
             "Z",
@@ -168,6 +173,7 @@ val playerDeleteShortcutPatch = bytecodePatch(
             """
                 const/16 v0, $DELETE_SHORTCUT_LIST_INDEX
                 if-eq p2, v0, :morphe_bind_not_delete
+                check-cast p1, Lo20${'$'}a${'$'}a;
                 iget-object v0, p1, Lo20${'$'}a${'$'}a;->I:Landroidx/appcompat/widget/AppCompatCheckBox;
                 invoke-virtual {v0}, Landroid/view/View;->getContext()Landroid/content/Context;
                 move-result-object v1
@@ -242,12 +248,39 @@ val playerDeleteShortcutPatch = bytecodePatch(
             addInstructionsWithLabels(
                 0,
                 """
-                invoke-static {p0, p1, p2}, $ACTIVITY_SCREEN_CLASS->patch_bindDeleteShortcutCustomizeItem(Lo20${'$'}a;Lo20${'$'}a${'$'}a;I)Z
+                invoke-static {p0, p1, p2}, $ACTIVITY_SCREEN_CLASS->patch_bindDeleteShortcutCustomizeItem(Lo20${'$'}a;Landroidx/recyclerview/widget/RecyclerView${'$'}z;I)Z
                 move-result v0
                 if-eqz v0, :morphe_bind_continue
                 return-void
                 """.trimIndent(),
                 ExternalLabel("morphe_bind_continue", continueInstruction),
+            )
+        }
+
+        MenuMoreShortcutsPanelFingerprint.method.cloneParameters().apply {
+            val insns = implementation!!.instructions
+            val listIndex = insns.indexOfFirst { insn ->
+                insn.opcode == Opcode.CONST &&
+                    insn is com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction &&
+                    insn.wideLiteral == 0x7f03001bL
+            }
+            check(listIndex >= 0) { "list_shortcuts resource id not in Lo20 shortcuts panel method" }
+            val tail = insns.subList(listIndex, insns.size)
+            val toggleRel = tail.indexOfFirst { it.opcode == Opcode.SGET_BOOLEAN }
+            check(toggleRel >= 0) { "LV90.T gate not found after list_shortcuts in Lo20" }
+            val toggleIndex = listIndex + toggleRel
+            val visWindow = insns.subList(toggleIndex, minOf(toggleIndex + 15, insns.size))
+            val visIndex = visWindow.indexOfFirst { it.opcode == Opcode.INVOKE_VIRTUAL }
+            check(visIndex >= 0) { "setVisibility not found after LV90.T in Lo20" }
+            val absoluteVis = toggleIndex + visIndex
+            val visibilityInvoke = insns[absoluteVis] as Instruction35c
+            val viewRegister = visibilityInvoke.registerC
+            addInstructions(
+                absoluteVis + 1,
+                """
+                const/4 v1, 0x0
+                invoke-virtual {v$viewRegister, v1}, Landroid/view/View;->setVisibility(I)V
+                """.trimIndent(),
             )
         }
 

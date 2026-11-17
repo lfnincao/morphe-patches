@@ -66,6 +66,23 @@ internal object ActivityScreenBuildShortcutsFingerprint : Fingerprint(
     ),
 )
 
+// Lo20.onViewCreated (customize dialog) — loads list_shortcuts into RecyclerView q.
+internal object MenuMoreShortcutsPanelFingerprint : Fingerprint(
+    definingClass = "Lo20;",
+    returnType = "V",
+    filters = listOf(
+        literal(0x7f03001b),
+        fieldAccess(
+            name = "q",
+            type = "Landroidx/recyclerview/widget/RecyclerView;",
+            definingClass = "Lo20;",
+            opcode = Opcode.IGET_OBJECT,
+            location = MatchAfterWithin(40),
+        ),
+        opcode(Opcode.SGET_BOOLEAN, location = MatchAfterWithin(120)),
+    ),
+)
+
 internal object ShortcutAdapterOnClickFingerprint : Fingerprint(
     definingClass = "LSp0\$g\$a;",
     name = "onClick",

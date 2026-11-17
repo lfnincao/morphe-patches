@@ -11,7 +11,16 @@ import kotlin.io.path.createTempDirectory
  */
 internal fun verifyMxPlayerPatchedApk(apkFile: File, packageName: String = "com.mxtech.videoplayer.pro") {
     verifyMxPlayerPatchedApkDex(apkFile)
-    val artLog = verifyMxPlayerArtOnDevice(apkFile, packageName)
+    val artLog =
+        if (hasConnectedAndroidDevice()) {
+            verifyMxPlayerArtOnDevice(apkFile, packageName)
+        } else {
+            """
+            === device ART verify (skipped) ===
+            No adb device connected; SDK dex verification completed only.
+            Run verifyMxPlayerArtOnDevice locally with an API 35 emulator for menu/customize path coverage.
+            """.trimIndent()
+        }
     val logFile = File("/opt/cursor/artifacts/mxplayer-art-verify.log")
     logFile.parentFile?.mkdirs()
     logFile.writeText(artLog)
@@ -25,6 +34,26 @@ internal fun verifyMxPlayerPatchedApk(apkFile: File, packageName: String = "com.
     require(!artLog.contains("rejected class", ignoreCase = true)) {
         "ART verification log contains rejected class; see $logFile"
     }
+    require(!artLog.contains("verification error", ignoreCase = true)) {
+        "ART verification log contains verification error; see $logFile"
+    }
+    require(!artLog.contains("failed to verify", ignoreCase = true)) {
+        "ART verification log contains failed to verify; see $logFile"
+    }
+}
+
+private fun hasConnectedAndroidDevice(): Boolean {
+    val sdk = resolveAndroidSdk()
+    val adb = File(sdk, "platform-tools/adb")
+    if (!adb.isFile) return false
+    val process = ProcessBuilder(adb.absolutePath, "devices")
+        .redirectErrorStream(true)
+        .start()
+    val output = process.inputStream.bufferedReader().readText()
+    process.waitFor()
+    return output.lineSequence()
+        .drop(1)
+        .any { line -> line.trim().endsWith("device") }
 }
 
 internal fun resolveAndroidSdk(): File =
@@ -131,6 +160,10 @@ internal fun verifyMxPlayerArtOnDevice(apkFile: File, packageName: String): Stri
     "$packageName/com.mxtech.videoplayer.ActivityScreen",
   )
     Thread.sleep(8000L)
+    runAdb("shell", "input", "tap", "1000", "80")
+    Thread.sleep(1500L)
+    runAdb("shell", "input", "tap", "900", "400")
+    Thread.sleep(2000L)
     val logcat =
         try {
             runAdb(
@@ -159,12 +192,16 @@ internal fun verifyMxPlayerArtOnDevice(apkFile: File, packageName: String): Stri
         appendLine()
         appendLine("=== logcat (ART verifier failures only) ===")
         var hits = 0
+        val watchClasses =
+            listOf("o20\$a", "o20", "n20", "sp0", "activityscreen", "lo20\$a", "lo20", "ln20", "lsp0")
         logcat.lineSequence()
             .filter { line ->
                 val lower = line.lowercase()
+                val classHit = watchClasses.any { lower.contains(it) }
                 lower.contains("verifyerror") || lower.contains("rejected class") ||
                     lower.contains("failed to verify") || lower.contains("hard failure") ||
-                    lower.contains("hard fail")
+                    lower.contains("hard fail") || lower.contains("verification error") ||
+                    lower.contains("rejecting") || (classHit && lower.contains("verif"))
             }
             .forEach {
                 appendLine(it)
