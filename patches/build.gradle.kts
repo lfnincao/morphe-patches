@@ -159,6 +159,19 @@ tasks {
         }
     }
 
+    register<JavaExec>("validateOperaPlaybackSpeedDex") {
+        description = "SDK-verify getPlaybackSpeed() in a patched Opera APK"
+        group = "verification"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("app.morphe.patches.opera.video.speed.OperaPlaybackSpeedDexVerifyKt")
+        doFirst {
+            val apk = providers.gradleProperty("operaVerifyApk").orNull
+                ?: throw GradleException("validateOperaPlaybackSpeedDex requires -PoperaVerifyApk=/path/patched.apk")
+            setArgs(listOf(apk))
+        }
+    }
+
     register<JavaExec>("validateOperaPlaybackSpeed") {
         description = "Applies Opera playback-speed (and optional clone) patches for device verification"
         group = "verification"
