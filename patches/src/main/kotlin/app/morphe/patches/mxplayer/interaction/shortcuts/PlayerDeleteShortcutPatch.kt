@@ -5,6 +5,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.cloneParameters
+import app.morphe.patcher.util.proxy.mutableTypes.MutableField.Companion.toMutable
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patches.mxplayer.misc.extension.sharedExtensionPatch
 import app.morphe.patches.mxplayer.shared.Constants
@@ -74,30 +75,33 @@ val playerDeleteShortcutPatch = bytecodePatch(
     execute {
         val bitHex = "0x%x".format(DELETE_SHORTCUT_BIT)
 
-        CustomizeItemsToggleFingerprint.method.cloneParameters(8).addInstructions(
-            0,
-            """
-                iget v5, p0, Ln20;->d:I
-                const/16 v6, $DELETE_SHORTCUT_LIST_INDEX
-                if-ne v5, v6, :morphe_delete_toggle_continue
+        CustomizeItemsToggleFingerprint.method.cloneParameters().apply {
+            addInstructions(
+                0,
+                """
+                iget v0, p0, Ln20;->d:I
+                const/16 v1, $DELETE_SHORTCUT_LIST_INDEX
+                if-ne v0, v1, :morphe_delete_toggle_continue
                 invoke-virtual {p1}, Landroid/widget/CompoundButton;->isChecked()Z
-                move-result v5
-                iget-object v6, p0, Ln20;->k:Lo20${'$'}a;
-                if-eqz v5, :morphe_delete_toggle_on
-                const v5, $bitHex
-                invoke-static {v6, v5}, Lo20${'$'}a;->r(Lo20${'$'}a;I)V
+                move-result v0
+                iget-object v1, p0, Ln20;->k:Lo20${'$'}a;
+                if-eqz v0, :morphe_delete_toggle_on
+                const v0, $bitHex
+                invoke-static {v1, v0}, Lo20${'$'}a;->r(Lo20${'$'}a;I)V
                 goto/16 :goto_0
                 :morphe_delete_toggle_on
-                const v5, $bitHex
-                invoke-static {v6, v5}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
+                const v0, $bitHex
+                invoke-static {v1, v0}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
                 goto/16 :goto_0
                 :morphe_delete_toggle_continue
-            """.trimIndent(),
-        )
+                """.trimIndent(),
+            )
+        }
 
-        CustomizeItemsOnBindFingerprint.method.cloneParameters(10).addInstructions(
-            0,
-            """
+        CustomizeItemsOnBindFingerprint.method.cloneParameters().apply {
+            addInstructions(
+                0,
+                """
                 const/16 v0, $DELETE_SHORTCUT_LIST_INDEX
                 if-ne p2, v0, :morphe_bind_continue
                 iget-object v0, p1, Lo20${'$'}a${'$'}a;->I:Landroidx/appcompat/widget/AppCompatCheckBox;
@@ -122,8 +126,9 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
                 return-void
                 :morphe_bind_continue
-            """.trimIndent(),
-        )
+                """.trimIndent(),
+            )
+        }
 
         val activityScreenClass = mutableClassDefBy(ACTIVITY_SCREEN_CLASS)
         activityScreenClass.fields.add(
@@ -135,7 +140,7 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 null,
                 null,
                 null,
-            ),
+            ).toMutable(),
         )
 
         val deleteInvoker = ImmutableMethod(
@@ -158,12 +163,11 @@ val playerDeleteShortcutPatch = bytecodePatch(
         )
         activityScreenClass.methods.add(deleteInvoker)
 
-        val buildShortcuts = ActivityScreenBuildShortcutsFingerprint.method
-        buildShortcuts.cloneParameters(12)
-        val insertIndex = ActivityScreenBuildShortcutsFingerprint.instructionMatches.last().index
-        buildShortcuts.addInstructions(
-            insertIndex,
-            """
+        ActivityScreenBuildShortcutsFingerprint.method.cloneParameters().apply {
+            val insertIndex = ActivityScreenBuildShortcutsFingerprint.instructionMatches.last().index
+            addInstructions(
+                insertIndex,
+                """
                 sget v6, LV90;->e1:I
                 const v7, $bitHex
                 and-int/2addr v7, v6
@@ -198,12 +202,14 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 const/4 v7, 0x0
                 iput-object v7, p0, $ACTIVITY_SCREEN_CLASS->$DELETE_PP0_FIELD_NAME:LPp0;
                 :morphe_delete_shortcut_done
-            """.trimIndent(),
-        )
+                """.trimIndent(),
+            )
+        }
 
-        ShortcutAdapterOnClickFingerprint.method.cloneParameters(4).addInstructions(
-            0,
-            """
+        ShortcutAdapterOnClickFingerprint.method.cloneParameters().apply {
+            addInstructions(
+                0,
+                """
                 const/16 v0, $DELETE_SHORTCUT_VIEW_TYPE
                 iget-object v1, p0, $SHORTCUT_ADAPTER_ON_CLICK_CLASS;->d:LSp0${'$'}g;
                 iget-object v2, v1, LSp0${'$'}g;->I:LPp0;
@@ -215,19 +221,20 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 invoke-virtual {v0}, $ACTIVITY_SCREEN_CLASS;->patch_deletePlayingFile()V
                 return-void
                 :morphe_onclick_continue
-            """.trimIndent(),
-        )
+                """.trimIndent(),
+            )
+        }
 
-        val createVh = ShortcutAdapterCreateViewHolderFingerprint.method
-        createVh.cloneParameters(4)
-        createVh.addInstructions(
-            0,
-            """
+        ShortcutAdapterCreateViewHolderFingerprint.method.cloneParameters().apply {
+            addInstructions(
+                0,
+                """
                 const/16 v0, $DELETE_SHORTCUT_VIEW_TYPE
                 if-ne p1, v0, :morphe_vh_continue
                 const/4 p1, 0x0
                 :morphe_vh_continue
-            """.trimIndent(),
-        )
+                """.trimIndent(),
+            )
+        }
     }
 }

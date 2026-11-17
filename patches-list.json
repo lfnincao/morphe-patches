@@ -10945,6 +10945,38 @@
       "options": []
     },
     {
+      "name": "Player delete shortcut",
+      "description": "Adds a Delete item to the player's Customize Items list. Tapping it runs the same delete flow as Menu → Delete (confirmation dialog, then next file or exit). Targets MX Player Pro 1.93.4 (versionCode 2001002584).",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.mxtech.videoplayer.pro",
+          "name": "MX Player Pro",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": null,
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "1.93.4",
+              "versionCodes": {
+                "ARM64_V8A": 2001002584,
+                "ARMEABI_V7A": 2001002584,
+                "X86_64": 2001002584,
+                "X86": 2001002584
+              },
+              "isExperimental": false,
+              "minSdk": 24,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Player icon style",
       "description": "Adds an option to change the style of the player button icons.",
       "default": true,
