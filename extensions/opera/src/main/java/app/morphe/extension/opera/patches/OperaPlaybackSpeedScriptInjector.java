@@ -1,32 +1,25 @@
 /*
  * Copyright 2026 Morphe.
  *
- * Executes page scripts via Chromium's {@link RenderFrameHost#d} path with a non-null
- * {@link org.chromium.base.Callback}. Passing null crashes JNI in {@code M5dgGNo$}.
+ * Injects document scripts via {@link WebContents#R0} ({@code WebContentsImpl} /
+ * native {@code MseJ7A4a}), not {@link org.chromium.content_public.browser.RenderFrameHost#d}
+ * which is WebAuth performGetAssertionWebAuthSecurityChecks.
  */
 
 package app.morphe.extension.opera.patches;
 
-import org.chromium.base.Callback;
-import org.chromium.content_public.browser.RenderFrameHost;
 import org.chromium.content_public.browser.WebContents;
-import org.chromium.url.Origin;
 
 import app.morphe.extension.shared.Logger;
 
 public final class OperaPlaybackSpeedScriptInjector {
-    private static final Callback<String> NO_OP_CALLBACK = new Callback<String>() {
-        @Override
-        public void onResult(String result) {
-            // ignored
-        }
-    };
+    private static final String VERIFY_LOG_TAG = "MorpheOperaPlaybackSpeed";
 
     private OperaPlaybackSpeedScriptInjector() {
     }
 
     /**
-     * Runs {@code script} on the tab's primary {@link RenderFrameHost} after load completes.
+     * Runs {@code script} on the tab's {@link WebContents} after load completes.
      */
     public static void evaluate(WebContents webContents, String script) {
         if (webContents == null || script == null || script.isEmpty()) {
@@ -36,14 +29,14 @@ public final class OperaPlaybackSpeedScriptInjector {
             if (webContents.isDestroyed()) {
                 return;
             }
-            RenderFrameHost frame = webContents.F();
-            if (frame == null) {
-                return;
-            }
-            Origin origin = frame.c();
-            frame.d(script, origin, NO_OP_CALLBACK);
+            Logger.printInfo(() -> VERIFY_LOG_TAG + ": evaluating playback speed script (" + script.length() + " chars)");
+            webContents.R0(script);
         } catch (Throwable throwable) {
-            Logger.printException(() -> "Opera playback speed script evaluation failed", throwable);
+            try {
+                Logger.printException(() -> VERIFY_LOG_TAG + ": evaluate failed", throwable);
+            } catch (Throwable suppressed) {
+                // JNI may rethrow through JniAndroid.handleException; do not propagate.
+            }
         }
     }
 }

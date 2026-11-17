@@ -17,6 +17,10 @@ private const val EXTENSION_TYPE =
     "Lapp/morphe/extension/opera/patches/UniversalVideoPlaybackSpeedPatch;"
 private const val INJECTOR_TYPE =
     "Lapp/morphe/extension/opera/patches/OperaPlaybackSpeedScriptInjector;"
+private const val RENDER_FRAME_HOST_TYPE =
+    "Lorg/chromium/content_public/browser/RenderFrameHost;"
+private const val WEB_AUTH_RESULT_TYPE =
+    "Lorg/chromium/content_public/browser/RenderFrameHost${'$'}WebAuthSecurityChecksResults;"
 private const val OPERA_APPLICATION_TYPE = "Lcom/opera/android/OperaApplication;"
 private const val SHARED_UTILS_TYPE = "Lapp/morphe/extension/shared/Utils;"
 private const val BASE_SETTINGS_TYPE = "Lapp/morphe/extension/shared/settings/BaseSettings;"
@@ -64,6 +68,7 @@ fun main(args: Array<String>) {
     check(found) { "Extension class not in patched APK" }
 
     verifyExtensionMethodExists(apk, INJECTOR_TYPE, "evaluate")
+    verifyInjectorDoesNotCallWebAuth(apk)
     listOf(
         "patch_executePlaybackSpeedScript" to "Lcom/opera/android/browser/chromium/OperaWebContentsDelegate;",
     ).forEach { (name, type) ->
@@ -154,6 +159,38 @@ private fun verifyExtensionNeverReferencesSettings(apk: File) {
             }
     }
     println("Static check passed: playback speed extension does not reference settings.")
+}
+
+private fun verifyInjectorDoesNotCallWebAuth(apk: File) {
+    ZipFile(apk).use { zip ->
+        zip.entries().asSequence()
+            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
+            .forEach { entry ->
+                val dex = DexBackedDexFile.fromInputStream(
+                    Opcodes.getDefault(),
+                    zip.getInputStream(entry).readBytes().inputStream(),
+                )
+                val injector = dex.classes.firstOrNull { it.type == INJECTOR_TYPE } ?: return@forEach
+                injector.methods.forEach { method ->
+                    method.implementation?.instructions?.forEach { instruction ->
+                        val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                        val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                        val typeRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.TypeReference
+                        if (methodRef != null) {
+                            check(methodRef.definingClass != RENDER_FRAME_HOST_TYPE) {
+                                "Injector must not call RenderFrameHost " +
+                                    "(${methodRef.definingClass}->${methodRef.name})"
+                            }
+                        }
+                        val touched = typeRef?.type ?: methodRef?.definingClass
+                        check(touched != WEB_AUTH_RESULT_TYPE) {
+                            "Injector references WebAuthSecurityChecksResults"
+                        }
+                    }
+                }
+            }
+    }
+    println("Static check passed: injector does not reference WebAuth RenderFrameHost APIs.")
 }
 
 private fun verifyExtensionMethodExists(apk: File, type: String, name: String) {

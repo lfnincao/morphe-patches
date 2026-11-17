@@ -58,6 +58,9 @@ public class UniversalVideoPlaybackSpeedPatch {
         }
         // Keep the script compact; it runs on every navigation.
         return "(function(){"
+                + "try{console.log('morphe-playback-speed-applied',"
+                + rate
+                + ");}catch(e){}"
                 + "var r="
                 + rate
                 + ";"
