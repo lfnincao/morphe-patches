@@ -157,6 +157,7 @@ tasks {
             val extra = buildList {
                 if (providers.gradleProperty("mxPlayerClone").orNull == "true") add("--clone")
                 if (providers.gradleProperty("mxPlayerStock").orNull == "true") add("--stock")
+                if (providers.gradleProperty("mxPlayerResignOnly").orNull == "true") add("--resign-only")
             }
             setArgs(listOf(input, output) + extra)
         }

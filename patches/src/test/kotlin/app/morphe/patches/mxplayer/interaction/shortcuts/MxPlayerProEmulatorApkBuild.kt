@@ -1,7 +1,7 @@
 /*
  * Patches MX Player Pro for emulator install tests (delete shortcut, optional clone).
  *
- * Usage: MxPlayerProEmulatorApkBuildKt <input-apkm-or-apk> <output-signed-apk> [--clone] [--stock]
+ * Usage: MxPlayerProEmulatorApkBuildKt <input-apkm-or-apk> <output-signed-apk> [--clone] [--stock] [--resign-only]
  */
 package app.morphe.patches.mxplayer.interaction.shortcuts
 
@@ -12,6 +12,7 @@ import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.patcher.logging.NoOpLogger
 import app.morphe.patches.all.misc.clone.cloneAppPatch
+import app.morphe.patches.mxplayer.misc.fix.mxPlayerPatchedInstallPatch
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.file.Files
@@ -23,6 +24,7 @@ fun main(arguments: Array<String>) {
     }
     val clone = arguments.any { it == "--clone" }
     val stockOnly = arguments.any { it == "--stock" }
+    val resignOnly = arguments.any { it == "--resign-only" }
     val inputArg = File(arguments[0]).canonicalFile
     val outputApk = File(arguments[1]).canonicalFile
     outputApk.parentFile.mkdirs()
@@ -39,9 +41,13 @@ fun main(arguments: Array<String>) {
     if (stockOnly) {
         apkFile.copyTo(unsigned, overwrite = true)
     } else {
-        val patches = buildSet {
-            add(playerDeleteShortcutPatch)
-            if (clone) add(cloneAppPatch)
+        val patches = when {
+            resignOnly -> setOf(mxPlayerPatchedInstallPatch)
+            else -> buildSet {
+                add(mxPlayerPatchedInstallPatch)
+                add(playerDeleteShortcutPatch)
+                if (clone) add(cloneAppPatch)
+            }
         }
 
     Patcher(
