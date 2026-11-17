@@ -16,6 +16,7 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
+import java.util.Locale
 
 private const val EXTENSION_CLASS =
     "Lapp/morphe/extension/opera/patches/UniversalVideoPlaybackSpeedPatch;"
@@ -34,7 +35,9 @@ val operaUniversalVideoPlaybackSpeedPatch = patch(
         "every page by injecting a script when a tab finishes loading. Supports 0.25x through " +
         "3x (including 2.5x). Target: Opera Browser 103.3.5234.91185 (and close Play/generic " +
         "builds). Does not change Opera's native download player or Chromium overlay menus; " +
-        "those keep their built-in speed lists unless the page uses HTML5 media.",
+        "those keep their built-in speed lists unless the page uses HTML5 media. " +
+        "Not compatible with the Clone app / package-rename patch: Chromium and Opera's native " +
+        "layer bind to the original package name and cloned installs typically crash on launch.",
 ) {
     val playbackSpeedOption = stringOption(
         key = "playbackSpeed",
@@ -167,12 +170,9 @@ private fun chromiumContentFieldFromLoadingStateChanged(
 }
 
 private fun patchExtensionPlaybackSpeed(speed: Float) {
-    val bits = speed.toBits()
-    val smaliConst = if (bits ushr 16 == 0) {
-        "const v0, 0x${Integer.toHexString(bits)}"
-    } else {
-        "const/high16 v0, 0x${Integer.toHexString(bits ushr 16)}"
-    }
+    // const/high16 must use a literal whose low 16 bits are zero (e.g. 1.0f or 0x3f800000).
+    // Writing only the high half (0x3f80) fails dex assembly and leaves return v0 on an undefined register.
+    val smaliConst = floatLiteralSmali(speed)
 
     mutableClassDefBy(EXTENSION_CLASS).apply {
         methods.removeAll { it.name == "getPlaybackSpeed" }
@@ -187,5 +187,17 @@ private fun patchExtensionPlaybackSpeed(speed: Float) {
             """,
             accessFlags = AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
         )
+    }
+}
+
+/** Smali that loads [speed] into v0 for a float return. */
+private fun floatLiteralSmali(speed: Float, register: String = "v0"): String {
+    val bits = speed.toBits()
+    return if (bits and 0xffff == 0) {
+        // Decimal float literals are accepted by const/high16 (see CustomPlaybackSpeedPatch).
+        val literal = speed.toString().let { if (it.contains('.')) it else "$it.0" }
+        "const/high16 $register, ${literal}f"
+    } else {
+        "const $register, 0x${String.format(Locale.US, "%08x", bits)}"
     }
 }
