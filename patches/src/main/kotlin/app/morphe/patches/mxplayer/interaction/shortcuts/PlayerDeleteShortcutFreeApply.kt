@@ -44,14 +44,7 @@ internal fun applyFreeDeleteShortcutPatches() {
             """.trimIndent(),
         )
     }
-    FreeActivityScreenBuildShortcutsFingerprint.method.cloneParameters().apply {
-        addInstructions(
-            indexOfLastReturnVoid(),
-            """
-            invoke-static {p0}, $ext->syncToolbarShortcut(Ljava/lang/Object;)V
-            """.trimIndent(),
-        )
-    }
+    FreeActivityScreenSortShortcutsFingerprint.method.cloneParameters().patchRebuildDeleteShortcutBeforeSort(ext)
     FreeShortcutAdapterOnClickFingerprint.method.cloneParameters().apply {
         val continueInstruction = getInstruction(0)
         addInstructionsWithLabels(
@@ -162,6 +155,20 @@ private fun MutableMethod.patchFreeCustomizeToggleDeleteRow(ext: String) {
         """.trimIndent(),
         ExternalLabel("morphe_free_toggle_continue", getInstruction(afterString)),
         ExternalLabel("morphe_free_toggle_epilogue", getInstruction(epilogueIndex)),
+    )
+}
+
+private fun MutableMethod.patchRebuildDeleteShortcutBeforeSort(ext: String) {
+    val sortIndex = implementation!!.instructions.indexOfFirst { insn ->
+        insn is ReferenceInstruction &&
+            insn.reference.toString().contains("Ljava/util/Collections;->sort")
+    }
+    check(sortIndex >= 0) { "Collections.sort not found in ActivityScreen.Ya" }
+    addInstructions(
+        sortIndex,
+        """
+        invoke-static {p0}, $ext->rebuildDeleteShortcutInYa(Ljava/lang/Object;)V
+        """.trimIndent(),
     )
 }
 

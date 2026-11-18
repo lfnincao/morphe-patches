@@ -45,6 +45,22 @@ internal object FreeCustomizeItemsToggleFingerprint : Fingerprint(
     ),
 )
 
+/** [ActivityScreen.Ya] just before [Collections.sort] on toolbar [b0]. */
+internal object FreeActivityScreenSortShortcutsFingerprint : Fingerprint(
+    definingClass = ACTIVITY_SCREEN_CLASS,
+    name = "Ya",
+    returnType = "V",
+    filters = listOf(
+        fieldAccess(
+            name = "b0",
+            type = "Ljava/util/ArrayList;",
+            definingClass = ACTIVITY_SCREEN_CLASS,
+            opcode = Opcode.IGET_OBJECT,
+        ),
+        opcode(Opcode.INVOKE_STATIC),
+    ),
+)
+
 /** [ActivityScreen.Ya] toolbar rebuild; flags via [Lb6f;.f1]. */
 internal object FreeActivityScreenBuildShortcutsFingerprint : Fingerprint(
     definingClass = ACTIVITY_SCREEN_CLASS,
