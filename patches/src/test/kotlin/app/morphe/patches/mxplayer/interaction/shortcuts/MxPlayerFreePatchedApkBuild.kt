@@ -47,7 +47,11 @@ fun main(arguments: Array<String>) {
             }
         }
         val patched = patcher.get()
-        output?.let { patched.applyTo(it) }
+        output?.let { out ->
+            patched.applyTo(out)
+            println(verifyMxPlayerFreeCustomizeMenu(out))
+            println(verifyMxPlayerExtensionInvokes(out))
+        }
         println("MX Player free patch succeeded (input=$apkFile)")
     }
 }

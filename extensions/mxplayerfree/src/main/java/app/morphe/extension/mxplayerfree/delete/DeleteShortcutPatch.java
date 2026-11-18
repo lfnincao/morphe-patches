@@ -1,113 +1,109 @@
 package app.morphe.extension.mxplayerfree.delete;
 
-import android.content.Context;
-import android.view.View;
+import android.app.Activity;
+import android.content.SharedPreferences;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 
-/** Delete shortcut hooks for MX Player free 3.5.3 (com.mxtech.videoplayer.ad). */
+/**
+ * Delete action for MX Player free 3.5.3 Customize items ({@code Luad} /
+ * {@code MenuHelper.b()}).
+ */
 public final class DeleteShortcutPatch {
-    public static final int DELETE_SHORTCUT_BIT = 0x10000;
-    /** Distinct from stock toolbar types (11=customize, 14–17=actions) on free 3.5.3. */
-    public static final int DELETE_SHORTCUT_VIEW_TYPE = 18;
+    /** Stable {@code Lcbd$b.a} id (unused in stock 3.5.3). */
+    public static final int DELETE_MENU_TYPE = 22;
+    public static final String DELETE_MENU_PREF_KEY = "key_show_delete_file";
 
-    private static final String CACHE_FIELD = "patchDeleteShortcutB0j";
     private static final String ACTIVITY_SCREEN_CLASS = "com.mxtech.videoplayer.ActivityScreen";
-    private static final String SHORTCUTS_LIST_FIELD = "b0";
+    private static final String MENU_ITEM_CLASS = "cbd$b";
+    private static final String MENU_SECTION_CLASS = "cbd$a";
 
     private DeleteShortcutPatch() {}
 
-    /** Reconcile checkbox with flag bit after stock row bind (label + listener). */
-    public static void overlayDeleteRowChecked(Object adapter, Object viewHolder, int position) {
+    /** Appends Delete to the six-item customize picker list ({@code Luad$a} uses {@code cbd.b()}). */
+    public static void appendDeleteCustomizeCandidate(Object menuHelper, ArrayList<Object> list) {
         try {
-            Field listField = adapter.getClass().getField("i");
-            @SuppressWarnings("unchecked")
-            ArrayList<String> keys = (ArrayList<String>) listField.get(adapter);
-            if (position < 0 || position >= keys.size()) {
+            list.add(createMenuItem(menuHelper, false));
+        } catch (ReflectiveOperationException ignored) {
+            // no-op
+        }
+    }
+
+    /** Registers portrait/landscape slot maps after stock {@code MenuHelper.d()}. */
+    public static void registerDeleteMenuEntry(Object menuHelper) {
+        try {
+            Class<?> cbd = menuHelper.getClass();
+            Object portrait = cbd.getField("h").get(menuHelper);
+            Object landscape = cbd.getField("i").get(menuHelper);
+            if (sectionHasType(portrait, DELETE_MENU_TYPE) || sectionHasType(landscape, DELETE_MENU_TYPE)) {
                 return;
             }
-            if (!DELETE_SHORTCUT_KEY.equals(keys.get(position))) {
-                return;
-            }
-            int flags = adapter.getClass().getField("j").getInt(adapter);
-            Object checkbox = viewHolder.getClass().getField("b").get(viewHolder);
-            if (checkbox instanceof android.widget.CompoundButton) {
-                ((android.widget.CompoundButton) checkbox).setChecked((flags & DELETE_SHORTCUT_BIT) != 0);
-            }
+            SharedPreferences prefs = prefs();
+            int portraitSlot = prefs.getInt(DELETE_MENU_PREF_KEY, -1);
+            int landscapeSlot = prefs.getInt(DELETE_MENU_PREF_KEY, -1);
+            Object portraitItem = createMenuItem(menuHelper, true);
+            Object landscapeItem = createMenuItem(menuHelper, true);
+            appendToSection(portrait, portraitItem, portraitSlot);
+            appendToSection(landscape, landscapeItem, landscapeSlot);
         } catch (ReflectiveOperationException ignored) {
             // no-op
         }
     }
 
-    private static final String DELETE_SHORTCUT_KEY = "delete_file";
-
-    public static void toggleDeleteShortcut(Object adapter, boolean checked) {
+    /** Row click in Luad customize list ({@code Lsbd;}). */
+    public static boolean onCustomizeRowClick(Object clickListener) {
         try {
-            Field flagsField = adapter.getClass().getField("j");
-            int flags = flagsField.getInt(adapter);
-            if (checked) {
-                flags |= DELETE_SHORTCUT_BIT;
-            } else {
-                flags &= ~DELETE_SHORTCUT_BIT;
+            Object item = field(clickListener, "c");
+            if (item.getClass().getField("a").getInt(item) != DELETE_MENU_TYPE) {
+                return false;
             }
-            flagsField.setInt(adapter, flags);
-            persistShortcutsFlag3(adapter, flags);
+            Object rowAdapter = field(clickListener, "b");
+            Object menuMore = field(rowAdapter, "p");
+            Object screen = resolveActivityScreen(menuMore);
+            if (screen == null) {
+                return false;
+            }
+            deletePlayingFile(screen);
+            return true;
         } catch (ReflectiveOperationException ignored) {
-            // no-op
+            return false;
         }
     }
 
-    public static int remapShortcutViewType(int viewType) {
-        return viewType == DELETE_SHORTCUT_VIEW_TYPE ? 0 : viewType;
-    }
-
-    public static void ensureShortcutsPanelVisible(Object menuMoreFragment) {
+    /** Intercepts {@code Ljy1;->a(I)} when the player customize control fires delete. */
+    public static boolean onCustomizeMenuAction(Object jy1, int menuType) {
+        if (menuType != DELETE_MENU_TYPE) {
+            return false;
+        }
         try {
-            Field recyclerField = menuMoreFragment.getClass().getField("O");
-            Object recycler = recyclerField.get(menuMoreFragment);
-            if (recycler instanceof View) {
-                ((View) recycler).setVisibility(View.VISIBLE);
+            Object screen = resolveActivityScreen(jy1);
+            if (screen == null) {
+                return false;
             }
+            deletePlayingFile(screen);
+            return true;
         } catch (ReflectiveOperationException ignored) {
-            // no-op
+            return false;
         }
     }
 
-  /**
-   * Hooked inside {@code ActivityScreen.Ya()} before {@code Collections.sort} so delete uses the
-   * same {@code Xa} placement path as stock shortcuts instead of a post-build list append.
-   */
-    public static void rebuildDeleteShortcutInYa(Object screen) {
-        try {
-            Class<?> flagsClass = Class.forName("b6f");
-            int packed = flagsClass.getField("f1").getInt(null);
-            if ((packed & DELETE_SHORTCUT_BIT) == 0) {
-                removeCachedToolbarShortcut(screen);
-                return;
+    private static Object resolveActivityScreen(Object jy1) throws ReflectiveOperationException {
+        for (Class<?> type = jy1.getClass(); type != null; type = type.getSuperclass()) {
+            try {
+                Field screenField = type.getField("L");
+                Object screen = screenField.get(jy1);
+                if (screen != null) {
+                    return screen;
+                }
+            } catch (NoSuchFieldException ignored) {
+                // walk superclass
             }
-            Class<?> activityScreen = Class.forName(ACTIVITY_SCREEN_CLASS);
-            Object shortcut = getCachedToolbarShortcut(screen);
-            if (shortcut == null) {
-                shortcut = createToolbarShortcut(screen);
-                setCachedToolbarShortcut(screen, shortcut);
-            }
-            Field listField = activityScreen.getField(SHORTCUTS_LIST_FIELD);
-            @SuppressWarnings("unchecked")
-            ArrayList<Object> shortcuts = (ArrayList<Object>) listField.get(screen);
-            if (shortcuts.contains(shortcut)) {
-                shortcuts.remove(shortcut);
-            }
-            Method place = activityScreen.getMethod("Xa", Class.forName("b0j"), boolean.class, boolean.class);
-            place.invoke(screen, shortcut, Boolean.FALSE, Boolean.FALSE);
-            if (!shortcuts.contains(shortcut)) {
-                shortcuts.add(shortcut);
-            }
-        } catch (ReflectiveOperationException ignored) {
-            // no-op
         }
+        return null;
     }
 
     public static void deletePlayingFile(Object screen) {
@@ -121,102 +117,58 @@ public final class DeleteShortcutPatch {
         }
     }
 
-    public static boolean onToolbarShortcutClick(Object clickListener) {
-        try {
-            Object clickGroup = listenerField(clickListener, "b");
-            Object shortcut = field(clickGroup, "b");
-            if (shortcut == null) {
-                return false;
+    private static boolean sectionHasType(Object section, int type) throws ReflectiveOperationException {
+        @SuppressWarnings("unchecked")
+        ArrayList<Object> list = (ArrayList<Object>) field(section, "a");
+        for (Object entry : list) {
+            if (entry.getClass().getField("a").getInt(entry) == type) {
+                return true;
             }
-            int viewType = shortcut.getClass().getField("b").getInt(shortcut);
-            if (viewType != DELETE_SHORTCUT_VIEW_TYPE) {
-                return false;
+        }
+        return false;
+    }
+
+    private static void appendToSection(Object section, Object item, int slot) throws ReflectiveOperationException {
+        @SuppressWarnings("unchecked")
+        ArrayList<Object> list = (ArrayList<Object>) field(section, "a");
+        @SuppressWarnings("unchecked")
+        HashMap<Integer, Object> map = (HashMap<Integer, Object>) field(section, "b");
+        list.add(item);
+        map.put(slot, item);
+    }
+
+    private static Object createMenuItem(Object menuHelper, boolean includeMoreIcon)
+        throws ReflectiveOperationException {
+        Activity activity = (Activity) field(menuHelper, "a");
+        int icon = activity.getResources().getIdentifier("ic_more_delete_white", "drawable", activity.getPackageName());
+        if (icon == 0) {
+            icon = activity.getResources().getIdentifier("ic_more_delete", "drawable", activity.getPackageName());
+        }
+        if (icon == 0) {
+            icon = activity.getResources().getIdentifier("mxskin__smb_delete_ic__light", "drawable", activity.getPackageName());
+        }
+        int labelRes = activity.getResources().getIdentifier("delete_file_item", "string", activity.getPackageName());
+        if (labelRes == 0) {
+            labelRes = activity.getResources().getIdentifier("menu_delete", "string", activity.getPackageName());
+        }
+        String label = labelRes != 0 ? activity.getString(labelRes) : "Delete";
+        Class<?> itemClass = Class.forName(MENU_ITEM_CLASS);
+        if (includeMoreIcon) {
+            int iconMore = activity.getResources().getIdentifier("ic_more_delete", "drawable", activity.getPackageName());
+            if (iconMore == 0) {
+                iconMore = icon;
             }
-            Object widgetAdapter = field(clickGroup, "g");
-            Object screen = field(widgetAdapter, "j");
-            if (screen == null) {
-                return false;
-            }
-            deletePlayingFile(screen);
-            return true;
-        } catch (ReflectiveOperationException ignored) {
-            return false;
+            Constructor<?> ctor = itemClass.getConstructor(int.class, int.class, int.class, String.class);
+            return ctor.newInstance(DELETE_MENU_TYPE, icon, iconMore, label);
         }
+        Constructor<?> ctor = itemClass.getConstructor(int.class, int.class, String.class);
+        return ctor.newInstance(DELETE_MENU_TYPE, icon, label);
     }
 
-    private static Object createToolbarShortcut(Object screen) throws ReflectiveOperationException {
-        Class<?> model = Class.forName("b0j");
-        Constructor<?> ctor = model.getConstructor(
-            int.class,
-            int.class,
-            String.class,
-            boolean.class,
-            boolean.class,
-            int.class
-        );
-        Context context = (Context) screen;
-        int labelId = context.getResources().getIdentifier("menu_delete", "string", context.getPackageName());
-        String label = labelId != 0 ? context.getString(labelId) : "Delete";
-        int iconId = context.getResources().getIdentifier("mxskin__smb_delete_ic__light", "drawable", context.getPackageName());
-        if (iconId == 0) {
-            iconId = context.getResources().getIdentifier("mxskin__smb_delete_ic__dark", "drawable", context.getPackageName());
-        }
-        if (iconId == 0) {
-            iconId = context.getResources().getIdentifier("ic_delete", "drawable", context.getPackageName());
-        }
-        return ctor.newInstance(DELETE_SHORTCUT_VIEW_TYPE, 0, label, false, false, iconId);
-    }
-
-    private static Object getCachedToolbarShortcut(Object screen) throws ReflectiveOperationException {
-        Field field = Class.forName(ACTIVITY_SCREEN_CLASS).getDeclaredField(CACHE_FIELD);
-        field.setAccessible(true);
-        return field.get(screen);
-    }
-
-    private static void setCachedToolbarShortcut(Object screen, Object shortcut) throws ReflectiveOperationException {
-        Field field = Class.forName(ACTIVITY_SCREEN_CLASS).getDeclaredField(CACHE_FIELD);
-        field.setAccessible(true);
-        field.set(screen, shortcut);
-    }
-
-    private static void removeCachedToolbarShortcut(Object screen) {
-        try {
-            Object shortcut = getCachedToolbarShortcut(screen);
-            if (shortcut == null) {
-                return;
-            }
-            Field listField = Class.forName(ACTIVITY_SCREEN_CLASS).getField(SHORTCUTS_LIST_FIELD);
-            @SuppressWarnings("unchecked")
-            ArrayList<Object> shortcuts = (ArrayList<Object>) listField.get(screen);
-            shortcuts.remove(shortcut);
-            setCachedToolbarShortcut(screen, null);
-        } catch (ReflectiveOperationException ignored) {
-            // no-op
-        }
-    }
-
-    private static int effectiveShortcutsFlag3() throws ReflectiveOperationException {
-        Class<?> flagsClass = Class.forName("b6f");
-        Method f = flagsClass.getMethod("F");
-        return ((Integer) f.invoke(null)).intValue();
-    }
-
-    private static void persistShortcutsFlag3(Object adapter, int flags) throws ReflectiveOperationException {
-        Class<?> application = Class.forName("zjc");
-        Field prefsHolder = application.getField("o");
-        Object holder = prefsHolder.get(null);
-        Field editorField = holder.getClass().getField("b");
-        Object preferences = editorField.get(holder);
-        Method edit = preferences.getClass().getMethod("edit");
-        Object editor = edit.invoke(preferences);
-        Method putInt = editor.getClass().getMethod("putInt", String.class, int.class);
-        putInt.invoke(editor, "shortcuts_flag.3", flags);
-        Method commit = editor.getClass().getMethod("commit");
-        commit.invoke(editor);
-    }
-
-    private static Object listenerField(Object listener, String name) throws ReflectiveOperationException {
-        return listener.getClass().getField(name).get(listener);
+    private static SharedPreferences prefs() throws ReflectiveOperationException {
+        Class<?> zjc = Class.forName("zjc");
+        Method b = Class.forName("igg").getMethod("b");
+        return (SharedPreferences) b.invoke(null);
     }
 
     private static Object field(Object target, String name) throws ReflectiveOperationException {
