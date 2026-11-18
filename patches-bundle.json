@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-11-18T06:12:03",
-  "description": "## [2.5.1](https://github.com/lfnincao/morphe-patches/compare/v2.5.0...v2.5.1) (2026-11-18)\n\n### 🐛 Bug Fixes\n\n* **mxplayer:** guard delete toolbar click and shortcut flag merges ([afb2a59](https://github.com/lfnincao/morphe-patches/commit/afb2a59b1a2139b05cda3a179f6994a57c8e2ee7))\n* **opera:** stop WebContents crash from wrong Mhlly_d7 JNI ([738cf2d](https://github.com/lfnincao/morphe-patches/commit/738cf2d51ef665c135bc12babc77410ab156f930))\n* **release:** document MX emulator and Opera static verification ([d58ae1a](https://github.com/lfnincao/morphe-patches/commit/d58ae1a89ce16fda79fbebf3d07c7c5c7fff5158))",
-  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.5.1/patches-2.5.1.mpp",
+  "created_at": "2026-11-18T09:26:19",
+  "description": "## [2.6.0](https://github.com/lfnincao/morphe-patches/compare/v2.5.1...v2.6.0) (2026-11-18)\n\n### ✨ New Features\n\n* **mxplayer:** port delete shortcut and ad removal to free 3.5.3 ([1482c7c](https://github.com/lfnincao/morphe-patches/commit/1482c7c9fb5bed262cbd45b9c1815107fa42d574))\n\n### 🐛 Bug Fixes\n\n* **mxplayer:** bind hook after String cast; FTL universal ad removal ([c719141](https://github.com/lfnincao/morphe-patches/commit/c7191415488a813cb2e65f374816879dbfc7a136))\n* **mxplayer:** emulator fixes for free delete shortcut and ads ([059d17c](https://github.com/lfnincao/morphe-patches/commit/059d17c3511d3d8b9e590ad000a5b2101ea77cc7))",
+  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.6.0/patches-2.6.0.mpp",
   "signature_download_url": "",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "public_key": "PPMsWvMqp78cL8h+2UgBGQwsJkuAL/sLWsNr2b5kqmE="
 }

@@ -1,3 +1,14 @@
+## [2.6.0](https://github.com/lfnincao/morphe-patches/compare/v2.5.1...v2.6.0) (2026-11-18)
+
+### ✨ New Features
+
+* **mxplayer:** port delete shortcut and ad removal to free 3.5.3 ([1482c7c](https://github.com/lfnincao/morphe-patches/commit/1482c7c9fb5bed262cbd45b9c1815107fa42d574))
+
+### 🐛 Bug Fixes
+
+* **mxplayer:** bind hook after String cast; FTL universal ad removal ([c719141](https://github.com/lfnincao/morphe-patches/commit/c7191415488a813cb2e65f374816879dbfc7a136))
+* **mxplayer:** emulator fixes for free delete shortcut and ads ([059d17c](https://github.com/lfnincao/morphe-patches/commit/059d17c3511d3d8b9e590ad000a5b2101ea77cc7))
+
 ## [2.5.1](https://github.com/lfnincao/morphe-patches/compare/v2.5.0...v2.5.1) (2026-11-18)
 
 ### ✨ New Features

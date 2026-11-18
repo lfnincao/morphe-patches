@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "patches": [
     {
       "name": "A-B loop",
@@ -8958,6 +8958,61 @@
               "description": null
             }
           ]
+        },
+        {
+          "packageName": "com.mxtech.videoplayer.ad",
+          "name": "MX Player",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": null,
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "3.5.3",
+              "versionCodes": {
+                "ARM64_V8A": 2001003563,
+                "ARMEABI_V7A": 2001003563,
+                "X86_64": 2001003563,
+                "X86": 2001003563
+              },
+              "isExperimental": false,
+              "minSdk": 24,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "MX Player remove ads",
+      "description": "FTL-style SDK/layout ad removal for com.mxtech.videoplayer.ad; dismisses full-screen interstitial.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.mxtech.videoplayer.ad",
+          "name": "MX Player",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": null,
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "3.5.3",
+              "versionCodes": {
+                "ARM64_V8A": 2001003563,
+                "ARMEABI_V7A": 2001003563,
+                "X86_64": 2001003563,
+                "X86": 2001003563
+              },
+              "isExperimental": false,
+              "minSdk": 24,
+              "description": null
+            }
+          ]
         }
       ],
       "options": []
@@ -11144,6 +11199,29 @@
                 "ARMEABI_V7A": 2001002584,
                 "X86_64": 2001002584,
                 "X86": 2001002584
+              },
+              "isExperimental": false,
+              "minSdk": 24,
+              "description": null
+            }
+          ]
+        },
+        {
+          "packageName": "com.mxtech.videoplayer.ad",
+          "name": "MX Player",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": null,
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "3.5.3",
+              "versionCodes": {
+                "ARM64_V8A": 2001003563,
+                "ARMEABI_V7A": 2001003563,
+                "X86_64": 2001003563,
+                "X86": 2001003563
               },
               "isExperimental": false,
               "minSdk": 24,
