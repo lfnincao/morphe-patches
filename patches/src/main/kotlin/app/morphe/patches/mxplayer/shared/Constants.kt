@@ -22,13 +22,17 @@ internal object Constants {
     /** Key in list_shortcuts_eng (localized label comes from list_shortcuts resource entry). */
     internal const val DELETE_SHORTCUT_KEY = "delete_file"
 
-    /** LPp0.b type id for the delete toolbar control (must be < 0x10). */
-    internal const val DELETE_SHORTCUT_VIEW_TYPE = 12
+    /** LPp0.b view type for delete toolbar (11/12 are reserved in M5 shortcut builder). */
+    internal const val DELETE_SHORTCUT_VIEW_TYPE = 14
 
     internal const val ACTIVITY_SCREEN_CLASS = "Lcom/mxtech/videoplayer/ActivityScreen;"
     internal const val DELETE_DIALOG_INNER_CLASS = "Lcom/mxtech/videoplayer/ActivityScreen\$w;"
     internal const val SHORTCUT_ADAPTER_ON_CLICK_CLASS = "LSp0\$g\$a;"
     internal const val DELETE_PP0_FIELD_NAME = "patchDeleteShortcutPp0"
+
+    /** Morphe extension (FTL ModSettings-style hooks). */
+    internal const val DELETE_SHORTCUT_EXTENSION =
+        "Lapp/morphe/extension/mxplayerpro/delete/DeleteShortcutPatch;"
 
     val COMPATIBILITY_MX_PLAYER_PRO = Compatibility(
         packageName = PACKAGE_NAME,

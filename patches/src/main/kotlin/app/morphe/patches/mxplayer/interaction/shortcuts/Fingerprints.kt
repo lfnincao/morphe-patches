@@ -10,6 +10,20 @@ import app.morphe.patcher.string
 import app.morphe.patches.mxplayer.shared.Constants.ACTIVITY_SCREEN_CLASS
 import com.android.tools.smali.dexlib2.Opcode
 
+// FTL-Patches DefaultShortcutsFingerprint (BlazeFTL).
+internal object DefaultShortcutsFingerprint : Fingerprint(
+    returnType = "I",
+    parameters = emptyList(),
+    filters = listOf(
+        string("shortcuts_flag.3"),
+        opcode(Opcode.MOVE_RESULT, location = MatchAfterWithin(5)),
+        string("shortcuts_flag.2", location = MatchAfterWithin(40)),
+        string("shortcuts_flag", location = MatchAfterWithin(40)),
+        opcode(Opcode.MOVE_RESULT, location = MatchAfterWithin(5)),
+        opcode(Opcode.IF_EQZ, location = MatchAfterImmediately()),
+    ),
+)
+
 // MenuMoreFragment customize-items adapter (Lo20$a), Pro 1.93.4 — bind via packed-switch on index.
 internal object CustomizeItemsOnBindFingerprint : Fingerprint(
     definingClass = "Lo20\$a;",
@@ -63,6 +77,23 @@ internal object ActivityScreenBuildShortcutsFingerprint : Fingerprint(
             opcode = Opcode.IGET_OBJECT,
             location = MatchAfterWithin(8),
         ),
+    ),
+)
+
+// Lo20.onViewCreated (customize dialog) — loads list_shortcuts into RecyclerView q.
+internal object MenuMoreShortcutsPanelFingerprint : Fingerprint(
+    definingClass = "Lo20;",
+    returnType = "V",
+    filters = listOf(
+        literal(0x7f03001b),
+        fieldAccess(
+            name = "q",
+            type = "Landroidx/recyclerview/widget/RecyclerView;",
+            definingClass = "Lo20;",
+            opcode = Opcode.IGET_OBJECT,
+            location = MatchAfterWithin(40),
+        ),
+        opcode(Opcode.SGET_BOOLEAN, location = MatchAfterWithin(120)),
     ),
 )
 

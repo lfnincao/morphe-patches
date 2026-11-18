@@ -1,33 +1,20 @@
 package app.morphe.patches.mxplayer.misc.fix
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.string
 
-/** Native guard entry from [com.mxtech.videoplayer.pro.App.f]. */
-internal object MxBhStartupDFingerprint : Fingerprint(
-    definingClass = "Lcom/ddx/axx/axx/axx/BH;",
-    name = "d",
-    returnType = "V",
-    parameters = listOf("Lcom/mxtech/videoplayer/pro/App;"),
+/** [com.ddx.axx.axx.axx.BH.c] emulator / clone-environment probe (non-native). */
+internal object MxBhEmulatorGateCFingerprint : Fingerprint(
+    definingClass = MX_BH_CLASS,
+    name = "c",
+    returnType = "Z",
+    parameters = listOf("Landroid/content/Context;"),
 )
 
-/** Secondary native guard entry from [com.mxtech.videoplayer.pro.App.g] and elsewhere. */
-internal object MxBhStartupBFingerprint : Fingerprint(
-    definingClass = "Lcom/ddx/axx/axx/axx/BH;",
-    name = "b",
+/** `const-string "mx-bh"` in obfuscated Application [LlV.onCreate]. */
+internal object MxLvOnCreateMxBhStringFingerprint : Fingerprint(
+    definingClass = "LlV;",
+    name = "onCreate",
     returnType = "V",
-    parameters = listOf("LlV;", "I"),
-)
-
-/** Startup hook that calls [MxBhStartupDFingerprint] then native BH.w. */
-internal object MxAppStartupFFingerprint : Fingerprint(
-    definingClass = "Lcom/mxtech/videoplayer/pro/App;",
-    name = "f",
-    returnType = "V",
-)
-
-/** Secondary startup hook that calls [MxBhStartupBFingerprint] then native BH.w. */
-internal object MxAppStartupGFingerprint : Fingerprint(
-    definingClass = "Lcom/mxtech/videoplayer/pro/App;",
-    name = "g",
-    returnType = "V",
+    filters = listOf(string("mx-bh")),
 )

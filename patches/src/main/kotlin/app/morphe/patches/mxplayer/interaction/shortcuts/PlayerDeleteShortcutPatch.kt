@@ -1,33 +1,37 @@
 package app.morphe.patches.mxplayer.interaction.shortcuts
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.patch.resourceXml
 import app.morphe.patcher.util.cloneParameters
 import app.morphe.patcher.util.proxy.mutableTypes.MutableField.Companion.toMutable
-import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patches.mxplayer.misc.extension.sharedExtensionPatch
 import app.morphe.patches.mxplayer.misc.fix.mxPlayerPatchedInstallPatch
 import app.morphe.patches.mxplayer.shared.Constants
 import app.morphe.patches.mxplayer.shared.Constants.ACTIVITY_SCREEN_CLASS
 import app.morphe.patches.mxplayer.shared.Constants.COMPATIBILITY_MX_PLAYER_PRO
-import app.morphe.patches.mxplayer.shared.Constants.DELETE_DIALOG_INNER_CLASS
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_PP0_FIELD_NAME
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_BIT
+import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_KEY
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_LIST_INDEX
-import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_VIEW_TYPE
-import app.morphe.patches.mxplayer.shared.Constants.SHORTCUT_ADAPTER_ON_CLICK_CLASS
 import com.android.tools.smali.dexlib2.AccessFlags
-import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 
 /**
- * Adds "Delete" to Customize Items and wires it to [ActivityScreen.w] (stock delete + confirm dialog).
- * Fingerprints and shortcuts_flag.3 handling verified on MX Player Pro 1.93.4 (2001002584).
+ * Delete shortcut for MX Player Pro.
+ *
+ * Technique credit: [FTL-Patches](https://github.com/BlazeFTL/FTL-Patches) (BlazeFTL) —
+ * resource `list_shortcuts*` edits, default shortcut bitmask migration, and thin extension hooks.
+ * Customize rows use stock `Lo20$a.l` label binding; we only branch on index 12 before packed-switch.
  */
 internal val playerDeleteShortcutResourcePatch = resourcePatch(
     name = null,
@@ -36,7 +40,6 @@ internal val playerDeleteShortcutResourcePatch = resourcePatch(
     compatibleWith(COMPATIBILITY_MX_PLAYER_PRO)
 
     execute {
-        // Pro 1.93.4 ships arrays only in resources.arsc (no decoded values/arrays.xml in the APK).
         resourceXml("res/values/arrays.xml").use { arrays ->
             arrays.resource("list_shortcuts_eng").appendChild("item") {
                 text = DELETE_SHORTCUT_KEY
@@ -51,74 +54,21 @@ internal val playerDeleteShortcutResourcePatch = resourcePatch(
 @Suppress("unused")
 val playerDeleteShortcutPatch = bytecodePatch(
     name = "Player delete shortcut",
-    description = "Adds a Delete item to the player's Customize Items list. Tapping it runs the same " +
-        "delete flow as Menu → Delete (confirmation dialog, then next file or exit). " +
-        "Targets MX Player Pro ${Constants.TARGET_VERSION} (versionCode ${Constants.TARGET_VERSION_CODE}).",
+    description = "Adds Delete to Customize items and wires it to stock ActivityScreen delete flow.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_MX_PLAYER_PRO)
-    dependsOn(sharedExtensionPatch, mxPlayerPatchedInstallPatch, playerDeleteShortcutResourcePatch)
+    dependsOn(
+        sharedExtensionPatch,
+        mxPlayerPatchedInstallPatch,
+        playerDeleteShortcutResourcePatch,
+        playerDefaultShortcutsPatch,
+    )
 
     execute {
-        val bitHex = "0x%x".format(DELETE_SHORTCUT_BIT)
+        val ext = DELETE_SHORTCUT_EXTENSION
 
-        CustomizeItemsToggleFingerprint.method.cloneParameters().apply {
-            addInstructions(
-                0,
-                """
-                iget v0, p0, Ln20;->d:I
-                const/16 v1, $DELETE_SHORTCUT_LIST_INDEX
-                if-ne v0, v1, :morphe_delete_toggle_continue
-                invoke-virtual {p1}, Landroid/widget/CompoundButton;->isChecked()Z
-                move-result v0
-                iget-object v1, p0, Ln20;->k:Lo20${'$'}a;
-                if-eqz v0, :morphe_delete_toggle_on
-                const v0, $bitHex
-                invoke-static {v1, v0}, Lo20${'$'}a;->r(Lo20${'$'}a;I)V
-                return-void
-                :morphe_delete_toggle_on
-                const v0, $bitHex
-                invoke-static {v1, v0}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
-                return-void
-                :morphe_delete_toggle_continue
-                """.trimIndent(),
-            )
-        }
-
-        CustomizeItemsOnBindFingerprint.method.cloneParameters().apply {
-            addInstructions(
-                0,
-                """
-                const/16 v0, $DELETE_SHORTCUT_LIST_INDEX
-                if-ne p2, v0, :morphe_bind_continue
-                iget-object v0, p1, Lo20${'$'}a${'$'}a;->I:Landroidx/appcompat/widget/AppCompatCheckBox;
-                invoke-virtual {v0}, Landroid/view/View;->getContext()Landroid/content/Context;
-                move-result-object v1
-                const v2, 0x7f120475
-                invoke-virtual {v1, v2}, Landroid/content/Context;->getString(I)Ljava/lang/String;
-                move-result-object v1
-                invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
-                iget v1, p0, Lo20${'$'}a;->d:I
-                const v2, $bitHex
-                and-int/2addr v1, v2
-                if-eqz v1, :morphe_bind_off
-                const/4 v1, 0x1
-                goto :morphe_bind_set
-                :morphe_bind_off
-                const/4 v1, 0x0
-                :morphe_bind_set
-                invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setChecked(Z)V
-                new-instance v1, Ln20;
-                invoke-direct {v1, p0, p2, p1}, Ln20;-><init>(Lo20${'$'}a;ILo20${'$'}a${'$'}a;)V
-                invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
-                return-void
-                :morphe_bind_continue
-                """.trimIndent(),
-            )
-        }
-
-        val activityScreenClass = mutableClassDefBy(ACTIVITY_SCREEN_CLASS)
-        activityScreenClass.fields.add(
+        mutableClassDefBy(ACTIVITY_SCREEN_CLASS).fields.add(
             ImmutableField(
                 ACTIVITY_SCREEN_CLASS,
                 DELETE_PP0_FIELD_NAME,
@@ -130,98 +80,93 @@ val playerDeleteShortcutPatch = bytecodePatch(
             ).toMutable(),
         )
 
-        val deleteInvoker = ImmutableMethod(
-            ACTIVITY_SCREEN_CLASS,
-            "patch_deletePlayingFile",
-            emptyList(),
-            "V",
-            AccessFlags.PUBLIC.value or AccessFlags.SYNTHETIC.value,
-            null,
-            null,
-            MutableMethodImplementation(2),
-        ).toMutable()
-        deleteInvoker.addInstructions(
-            0,
-            """
-                new-instance v0, ${DELETE_DIALOG_INNER_CLASS}
-                invoke-direct {v0, p0}, ${DELETE_DIALOG_INNER_CLASS}-><init>(${ACTIVITY_SCREEN_CLASS})V
-                return-void
-            """.trimIndent(),
-        )
-        activityScreenClass.methods.add(deleteInvoker)
+        CustomizeItemsOnBindFingerprint.method.cloneParameters().patchCustomizeBindRow12(ext)
+
+        CustomizeItemsToggleFingerprint.method.cloneParameters().patchCustomizeToggleRow12(ext)
+
+        MenuMoreShortcutsPanelFingerprint.method.cloneParameters().apply {
+            addInstructions(
+                indexOfLastReturnVoid(),
+                """
+                invoke-static {p0}, $ext->ensureShortcutsPanelVisible(Ljava/lang/Object;)V
+                """.trimIndent(),
+            )
+        }
 
         ActivityScreenBuildShortcutsFingerprint.method.cloneParameters().apply {
-            val insertIndex = ActivityScreenBuildShortcutsFingerprint.instructionMatches.last().index
             addInstructions(
-                insertIndex,
+                indexOfLastReturnVoid(),
                 """
-                sget v6, LV90;->e1:I
-                const v7, $bitHex
-                and-int/2addr v7, v6
-                if-nez v7, :morphe_delete_shortcut_hide
-                iget-object v7, p0, $ACTIVITY_SCREEN_CLASS->$DELETE_PP0_FIELD_NAME:LPp0;
-                if-nez v7, :morphe_delete_shortcut_add_existing
-                new-instance v0, LPp0;
-                const/16 v5, $DELETE_SHORTCUT_VIEW_TYPE
-                const/4 v6, 0x0
-                const/4 v7, 0x0
-                const/4 v8, 0x0
-                const v9, 0x7f080685
-                const v2, 0x7f120475
-                invoke-virtual {p0, v2}, Landroid/content/Context;->getString(I)Ljava/lang/String;
-                move-result-object v10
-                move-object v4, v0
-                invoke-direct/range { v4 .. v10 }, LPp0;-><init>(IIZZILjava/lang/String;)V
-                iput-object v0, p0, $ACTIVITY_SCREEN_CLASS->$DELETE_PP0_FIELD_NAME:LPp0;
-                :morphe_delete_shortcut_add_existing
-                iget-object v6, p0, ${ACTIVITY_SCREEN_CLASS}->A0:Ljava/util/ArrayList;
-                iget-object v7, p0, $ACTIVITY_SCREEN_CLASS->$DELETE_PP0_FIELD_NAME:LPp0;
-                invoke-virtual {v6, v7}, Ljava/util/ArrayList;->contains(Ljava/lang/Object;)Z
-                move-result v8
-                if-nez v8, :morphe_delete_shortcut_done
-                invoke-virtual {v6, v7}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
-                goto :morphe_delete_shortcut_done
-                :morphe_delete_shortcut_hide
-                iget-object v7, p0, $ACTIVITY_SCREEN_CLASS->$DELETE_PP0_FIELD_NAME:LPp0;
-                if-eqz v7, :morphe_delete_shortcut_done
-                iget-object v6, p0, ${ACTIVITY_SCREEN_CLASS}->A0:Ljava/util/ArrayList;
-                invoke-virtual {v6, v7}, Ljava/util/ArrayList;->remove(Ljava/lang/Object;)Z
-                const/4 v7, 0x0
-                iput-object v7, p0, $ACTIVITY_SCREEN_CLASS->$DELETE_PP0_FIELD_NAME:LPp0;
-                :morphe_delete_shortcut_done
+                invoke-static {p0}, $ext->syncToolbarShortcut(Ljava/lang/Object;)V
                 """.trimIndent(),
             )
         }
 
         ShortcutAdapterOnClickFingerprint.method.cloneParameters().apply {
-            addInstructions(
+            val continueInstruction = getInstruction(0)
+            addInstructionsWithLabels(
                 0,
                 """
-                const/16 v0, $DELETE_SHORTCUT_VIEW_TYPE
-                iget-object v1, p0, ${SHORTCUT_ADAPTER_ON_CLICK_CLASS}->d:LSp0${'$'}g;
-                iget-object v2, v1, LSp0${'$'}g;->I:LPp0;
-                if-eqz v2, :morphe_onclick_continue
-                iget v3, v2, LPp0;->b:I
-                if-ne v3, v0, :morphe_onclick_continue
-                iget-object v0, v1, LSp0${'$'}g;->N:LSp0;
-                iget-object v0, v0, LSp0;->d:Lcom/mxtech/videoplayer/ActivityScreen;
-                invoke-virtual {v0}, ${ACTIVITY_SCREEN_CLASS}->patch_deletePlayingFile()V
+                invoke-static {p0}, $ext->onToolbarShortcutClick(Ljava/lang/Object;)Z
+                move-result v0
+                if-eqz v0, :morphe_onclick_continue
                 return-void
-                :morphe_onclick_continue
                 """.trimIndent(),
-            )
-        }
-
-        ShortcutAdapterCreateViewHolderFingerprint.method.cloneParameters().apply {
-            addInstructions(
-                0,
-                """
-                const/16 v0, $DELETE_SHORTCUT_VIEW_TYPE
-                if-ne p1, v0, :morphe_vh_continue
-                const/4 p1, 0x0
-                :morphe_vh_continue
-                """.trimIndent(),
+                ExternalLabel("morphe_onclick_continue", continueInstruction),
             )
         }
     }
 }
+
+private fun MutableMethod.patchCustomizeBindRow12(ext: String) {
+    val instructions = implementation!!.instructions
+    val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
+    check(packedSwitchIndex >= 0) { "packed-switch not found in Lo20\$a.l" }
+    val epilogueIndex =
+        instructions.indexOfFirst { insn ->
+            insn.opcode == Opcode.NEW_INSTANCE &&
+                insn is ReferenceInstruction &&
+                insn.reference.toString().contains("Ln20;")
+        }
+    check(epilogueIndex > packedSwitchIndex) { "Ln20 epilogue not found in Lo20\$a.l" }
+
+    addInstructionsWithLabels(
+        packedSwitchIndex,
+        """
+            const/16 v3, $DELETE_SHORTCUT_LIST_INDEX
+            if-ne v6, v3, :morphe_bind_pswitch
+            invoke-static {v4, v0}, $ext->bindDeleteRowChecked(Ljava/lang/Object;Ljava/lang/Object;)V
+            goto/16 :morphe_bind_epilogue
+            :morphe_bind_pswitch
+        """.trimIndent(),
+        ExternalLabel("morphe_bind_epilogue", getInstruction(epilogueIndex)),
+    )
+}
+
+private fun MutableMethod.patchCustomizeToggleRow12(ext: String) {
+    val instructions = implementation!!.instructions
+    val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
+    check(packedSwitchIndex >= 0) { "packed-switch not found in n20.onCheckedChanged" }
+    val epilogueIndex =
+        instructions.indexOfFirst { insn ->
+            insn.opcode == Opcode.CONST_STRING &&
+                insn is ReferenceInstruction &&
+                insn.reference.toString().contains("shortcuts_flag.3")
+        }.takeIf { it > packedSwitchIndex }
+            ?: instructions.indexOfLast { it.opcode == Opcode.RETURN_VOID }
+
+    addInstructionsWithLabels(
+        packedSwitchIndex,
+        """
+            const/16 v4, $DELETE_SHORTCUT_LIST_INDEX
+            if-ne v3, v4, :morphe_toggle_pswitch
+            invoke-static {v1}, $ext->onDeleteShortcutToggle(Ljava/lang/Object;)V
+            goto/16 :morphe_toggle_epilogue
+            :morphe_toggle_pswitch
+        """.trimIndent(),
+        ExternalLabel("morphe_toggle_epilogue", getInstruction(epilogueIndex)),
+    )
+}
+
+private fun MutableMethod.indexOfLastReturnVoid(): Int =
+    implementation!!.instructions.indexOfLast { it.opcode == Opcode.RETURN_VOID }

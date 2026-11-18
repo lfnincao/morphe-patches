@@ -3,6 +3,7 @@ import com.android.build.api.dsl.ApplicationExtension
 dependencies {
     compileOnly(libs.morphe.extensions.library)
     compileOnly(libs.annotation)
+    compileOnly("androidx.appcompat:appcompat:1.7.0")
 }
 
 configure<ApplicationExtension> {
