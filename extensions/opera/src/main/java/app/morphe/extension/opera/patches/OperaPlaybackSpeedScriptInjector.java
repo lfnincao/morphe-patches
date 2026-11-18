@@ -1,74 +1,68 @@
 /*
  * Copyright 2026 Morphe.
  *
- * Injects document scripts via Chromium {@code WebContentsAndroid::EvaluateJavaScript}
- * ({@code J.N.Mhlly_d7}), not {@link org.chromium.content_public.browser.WebContents#R0}
- * ({@code addMessageToDevToolsConsole} / {@code MseJ7A4a}) and not
- * {@link org.chromium.content_public.browser.RenderFrameHost#d} (WebAuth).
+ * Injects page script via stock {@code WebContentsImpl} prologue ({@code e()} + {@code b:J})
+ * and {@code J.N.MevqfbP8} — the only JNI in Opera 103.3 arm64 that passes a script string
+ * with that pointer source. {@code J.N.Mhlly_d7} is for {@code CaptureDevicesDialogDelegate}
+ * only and must not be used with {@code WebContentsImpl.b} (native SIGSEGV).
  */
 
 package app.morphe.extension.opera.patches;
 
-import java.lang.reflect.Field;
-
-import org.chromium.content_public.browser.JavaScriptCallback;
+import org.chromium.content.browser.webcontents.WebContentsImpl;
 import org.chromium.content_public.browser.WebContents;
 
 import J.N;
+import app.morphe.extension.opera.settings.OperaPlaybackSpeedPreferences;
 import app.morphe.extension.shared.Logger;
 
 public final class OperaPlaybackSpeedScriptInjector {
     private static final String VERIFY_LOG_TAG = "MorpheOperaPlaybackSpeed";
-    private static final String[] NATIVE_PTR_FIELDS = {"b", "a", "c", "d"};
 
     private OperaPlaybackSpeedScriptInjector() {
     }
 
-    /**
-     * Runs {@code script} on the tab's {@link WebContents} after load completes.
-     */
     public static void evaluate(WebContents webContents, String script) {
         if (webContents == null || script == null || script.isEmpty()) {
+            return;
+        }
+        if (OperaPlaybackSpeedPreferences.isScriptInjectionDisabled()) {
             return;
         }
         try {
             if (webContents.isDestroyed()) {
                 return;
             }
-            long nativePtr = nativeWebContentsPointer(webContents);
-            if (nativePtr == 0L) {
-                Logger.printInfo(() -> VERIFY_LOG_TAG + ": missing native WebContents pointer");
+            if (!(webContents instanceof WebContentsImpl)) {
+                Logger.printInfo(() -> VERIFY_LOG_TAG + ": WebContents is not WebContentsImpl");
+                disableInjectionSafely();
                 return;
             }
-            Logger.printInfo(() -> VERIFY_LOG_TAG + ": evaluating playback speed script (" + script.length() + " chars)");
-            JavaScriptCallback callback = () -> Logger.printInfo(() -> VERIFY_LOG_TAG + ": JS evaluate callback");
-            N.Mhlly_d7(nativePtr, script, callback, false);
+            WebContentsImpl impl = (WebContentsImpl) webContents;
+            impl.e();
+            long nativePtr = impl.getNativePointer();
+            if (nativePtr == 0L) {
+                Logger.printInfo(() -> VERIFY_LOG_TAG + ": native WebContents pointer is zero");
+                disableInjectionSafely();
+                return;
+            }
+            N.MevqfbP8(nativePtr, script);
+            Logger.printInfo(() -> VERIFY_LOG_TAG + ": script dispatched (" + script.length() + " chars)");
         } catch (Throwable throwable) {
+            disableInjectionSafely();
             try {
-                Logger.printException(() -> VERIFY_LOG_TAG + ": evaluate failed", throwable);
+                Logger.printException(() -> VERIFY_LOG_TAG + ": evaluate failed — kill-switch set", throwable);
             } catch (Throwable suppressed) {
                 // JNI may rethrow through JniAndroid.handleException; do not propagate.
             }
         }
     }
 
-    private static long nativeWebContentsPointer(WebContents webContents) {
-        Class<?> type = webContents.getClass();
-        for (String name : NATIVE_PTR_FIELDS) {
-            try {
-                Field field = type.getDeclaredField(name);
-                if (field.getType() != long.class && field.getType() != Long.TYPE) {
-                    continue;
-                }
-                field.setAccessible(true);
-                long value = field.getLong(webContents);
-                if (value != 0L) {
-                    return value;
-                }
-            } catch (ReflectiveOperationException ignored) {
-                // try next Chromium obfuscated field name
-            }
+    private static void disableInjectionSafely() {
+        try {
+            OperaPlaybackSpeedPreferences.setScriptInjectionDisabled(true);
+        } catch (Throwable ignored) {
+            // Best effort: never throw from injector after a failure.
         }
-        return 0L;
     }
 }

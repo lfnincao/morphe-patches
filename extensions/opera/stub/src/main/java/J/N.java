@@ -10,9 +10,8 @@ public final class N {
     }
 
     /**
-     * {@code WebContentsAndroid::EvaluateJavaScript} — runs script in the page main world.
-     *
-     * @param startRenderer when false, matches legacy ContentViewCore evaluateJavaScript.
+     * Stock Opera/Chromium JNI used with {@code WebContentsImpl.e()} + {@code WebContentsImpl.b}
+     * ({@code iget-wide}). Only stock call site: selection process-text after the same prologue.
      */
-    public static native void Mhlly_d7(long webContentsPtr, Object script, Object callback, boolean startRenderer);
+    public static native void MevqfbP8(long webContentsNativePtr, Object script);
 }

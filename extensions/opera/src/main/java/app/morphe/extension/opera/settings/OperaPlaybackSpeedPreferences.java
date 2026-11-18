@@ -12,6 +12,8 @@ import app.morphe.extension.opera.OperaProcessGuard;
 public final class OperaPlaybackSpeedPreferences {
     public static final String PREFS_NAME = "morphe_opera_playback_speed";
     public static final String KEY_SPEED = "default_html5_playback_speed";
+    /** When true, {@code OperaPlaybackSpeedScriptInjector} stops calling native JS (crash loop guard). */
+    public static final String KEY_SCRIPT_INJECTION_DISABLED = "script_injection_disabled";
     private static final float MIN = 0.25f;
     private static final float MAX = 3f;
 
@@ -64,5 +66,25 @@ public final class OperaPlaybackSpeedPreferences {
             return ((int) rate) + "x";
         }
         return rate + "x";
+    }
+
+    public static boolean isScriptInjectionDisabled() {
+        Context context = OperaProcessGuard.getApplicationContext();
+        if (context == null) {
+            return false;
+        }
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean(KEY_SCRIPT_INJECTION_DISABLED, false);
+    }
+
+    public static void setScriptInjectionDisabled(boolean disabled) {
+        Context context = OperaProcessGuard.getApplicationContext();
+        if (context == null) {
+            return;
+        }
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_SCRIPT_INJECTION_DISABLED, disabled)
+                .apply();
     }
 }
