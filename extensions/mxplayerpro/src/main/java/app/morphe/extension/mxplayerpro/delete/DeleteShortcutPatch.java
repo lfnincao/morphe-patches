@@ -34,25 +34,6 @@ public final class DeleteShortcutPatch {
         }
     }
 
-    /** Persist shortcuts_flag.3 when delete row is toggled (index 12 only). */
-    public static void onDeleteShortcutToggle(Object listener) {
-        try {
-            Class<?> n20 = listener.getClass();
-            int listIndex = n20.getField("d").getInt(listener);
-            if (listIndex != DELETE_SHORTCUT_LIST_INDEX) {
-                return;
-            }
-            Object adapter = n20.getField("k").get(listener);
-            Object viewHolder = n20.getField("e").get(listener);
-            Object checkbox = viewHolder.getClass().getField("I").get(viewHolder);
-            boolean checked = ((android.widget.CompoundButton) checkbox).isChecked();
-            int merged = mergeShortcutsFlag3DeleteBit(checked);
-            adapter.getClass().getField("d").setInt(adapter, merged);
-        } catch (ReflectiveOperationException ignored) {
-            // no-op
-        }
-    }
-
     /** Maps delete view type to a Sp0 view-holder bucket Sp0.n already implements. */
     public static int remapShortcutViewType(int viewType) {
         return viewType == DELETE_SHORTCUT_VIEW_TYPE ? 0 : viewType;
@@ -194,32 +175,4 @@ public final class DeleteShortcutPatch {
         return ((Integer) c.invoke(null)).intValue();
     }
 
-    private static int mergeShortcutsFlag3DeleteBit(boolean enableDelete) throws ReflectiveOperationException {
-        Class<?> v90 = Class.forName("V90");
-        int flags = effectiveShortcutsFlag3();
-        int merged =
-            enableDelete ? (flags | DELETE_SHORTCUT_BIT) : (flags & ~DELETE_SHORTCUT_BIT);
-
-        Class<?> m90Holder = Class.forName("lV");
-        Object m90 = m90Holder.getField("A").get(null);
-        Object prefs = m90.getClass().getField("d").get(m90);
-        Method edit = prefs.getClass().getMethod("edit");
-        String key = "shortcuts_flag.3";
-        Object editor = edit.invoke(prefs);
-        Method putInt =
-            editor.getClass().getMethod("putInt", String.class, int.class);
-        Method commit = editor.getClass().getMethod("commit");
-        putInt.invoke(editor, key, merged);
-        commit.invoke(editor);
-
-        Field e1 = v90.getField("e1");
-        int toolbarFlags = e1.getInt(null);
-        int toolbarMerged =
-            enableDelete
-                ? (toolbarFlags | DELETE_SHORTCUT_BIT)
-                : (toolbarFlags & ~DELETE_SHORTCUT_BIT);
-        e1.setInt(null, toolbarMerged);
-
-        return merged;
-    }
 }

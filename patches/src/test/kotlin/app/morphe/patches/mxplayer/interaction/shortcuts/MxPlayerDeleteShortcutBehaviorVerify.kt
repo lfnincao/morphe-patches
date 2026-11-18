@@ -76,78 +76,23 @@ internal fun verifyMxPlayerDeleteShortcutBehavior(apkFile: File): String {
         val toggle =
             findMethod(dexFiles, "Ln20;", "onCheckedChanged")
                 ?: error("n20.onCheckedChanged missing")
-        val toggleDeleteOnly =
-            toggle.any {
+        val noExtensionToggle =
+            toggle.none {
                 it is ReferenceInstruction &&
                     it.reference.toString().contains("onDeleteShortcutToggle")
             }
         appendLine(
-            if (toggleDeleteOnly) "OK  n20.onCheckedChanged calls onDeleteShortcutToggle for delete row"
-            else "MISSING  delete toggle hook",
+            if (noExtensionToggle) "OK  n20.onCheckedChanged persists delete via stock Lo20\$a.s/r"
+            else "MISSING  onDeleteShortcutToggle still bypasses stock epilogue",
         )
-
-        val toggleHookIndex =
-            toggle.indexOfFirst {
-                it is ReferenceInstruction &&
-                    it.reference.toString().contains("onDeleteShortcutToggle")
-            }
-        val returnAfterToggleHook =
-            toggle.getOrNull(toggleHookIndex + 1)?.opcode == Opcode.RETURN_VOID
-        appendLine(
-            if (returnAfterToggleHook) {
-                "OK  onDeleteShortcutToggle is followed by return-void (no stock epilogue reuse)"
-            } else {
-                "MISSING  onDeleteShortcutToggle must return-void before shortcuts_flag.3 putInt"
-            },
-        )
-        val gotoAfterToggleHook =
-            toggle.getOrNull(toggleHookIndex + 1).let { insn ->
-                insn != null &&
-                    (insn.opcode == Opcode.GOTO ||
-                        insn.opcode == Opcode.GOTO_16 ||
-                        insn.opcode == Opcode.GOTO_32)
-            }
-        appendLine(
-            if (!gotoAfterToggleHook) "OK  delete toggle hook does not goto stock epilogue"
-            else "MISSING  delete toggle hook must not goto shortcuts_flag.3 epilogue",
-        )
-
-        val toggleMethod =
-            extClass.methods.firstOrNull { it.name == "onDeleteShortcutToggle" }
-                ?: error("onDeleteShortcutToggle missing")
-        val toggleCallsMerge =
-            toggleMethod.implementation!!.instructions.any { insn ->
-                insn is ReferenceInstruction &&
-                    insn.reference.toString().contains("mergeShortcutsFlag3DeleteBit")
-            }
-        appendLine(
-            if (toggleCallsMerge) "OK  onDeleteShortcutToggle merges shortcuts_flag.3 via mergeShortcutsFlag3DeleteBit"
-            else "MISSING  toggle does not use bit-mask merge helper",
-        )
-
-        val mergeMethod =
-            extClass.methods.firstOrNull { it.name == "mergeShortcutsFlag3DeleteBit" }
-                ?: error("mergeShortcutsFlag3DeleteBit missing")
-        val mergeUsesOrAnd =
-            mergeMethod.implementation!!.instructions.any { insn ->
-                (insn.opcode == Opcode.OR_INT_LIT16 || insn.opcode == Opcode.AND_INT_LIT16) &&
+        val toggleHasDeleteBit =
+            toggle.any { insn ->
+                insn.opcode == Opcode.CONST_16 &&
                     (insn as NarrowLiteralInstruction).narrowLiteral == DELETE_SHORTCUT_BIT
             }
         appendLine(
-            if (mergeUsesOrAnd) "OK  mergeShortcutsFlag3DeleteBit uses or/and-lit16 on 0x2000"
-            else "MISSING  merge helper does not or/and 0x2000 in dex",
-        )
-        val mergeCallsEffective =
-            mergeMethod.implementation!!.instructions.any { insn ->
-                insn is ReferenceInstruction &&
-                    insn.reference.toString().contains("effectiveShortcutsFlag3")
-            }
-        appendLine(
-            if (mergeCallsEffective) {
-                "OK  mergeShortcutsFlag3DeleteBit reads effective flags via effectiveShortcutsFlag3 (V90.C())"
-            } else {
-                "MISSING  merge helper must call effectiveShortcutsFlag3 not raw getInt default 0"
-            },
+            if (toggleHasDeleteBit) "OK  delete toggle uses const 0x2000 for Lo20\$a.s"
+            else "MISSING  delete toggle missing 0x2000 enable literal",
         )
 
         val bindMethod =
@@ -171,6 +116,16 @@ internal fun verifyMxPlayerDeleteShortcutBehavior(apkFile: File): String {
         appendLine(
             if (normalizeAbsent) "OK  normalizeCustomizeShortcutFlags removed (stock V90.C() only)"
             else "MISSING  normalizeCustomizeShortcutFlags still present",
+        )
+        val reflectionToggleAbsent =
+            extClass.methods.none { it.name == "onDeleteShortcutToggle" } &&
+                extClass.methods.none { it.name == "mergeShortcutsFlag3DeleteBit" }
+        appendLine(
+            if (reflectionToggleAbsent) {
+                "OK  reflection toggle helpers removed from extension dex"
+            } else {
+                "MISSING  extension must not persist shortcuts via reflection toggle"
+            },
         )
     }
     val failed = lines.lines().any { it.startsWith("MISSING  ") }

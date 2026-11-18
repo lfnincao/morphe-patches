@@ -4,7 +4,6 @@ import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_LIST_INDEX
 import com.android.tools.smali.dexlib2.Opcodes
 import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import java.io.File
@@ -67,13 +66,13 @@ internal fun verifyMxPlayerCustomizeAdapter(apkFile: File): String {
             else "MISSING  onCustomizeToggle still intercepts every toggle",
         )
 
-        verifyCustomizeRowInjectGates(bindInsns, "bindDeleteRowChecked").forEach { (ok, line) ->
+        verifyCustomizeBindInjectGates(bindInsns).forEach { (ok, line) ->
             appendLine(if (ok) "OK  Lo20\$a.l $line" else "MISSING  Lo20\$a.l $line")
         }
 
         val toggleInsns = toggle?.implementation?.instructions?.toList().orEmpty()
         if (toggleInsns.isNotEmpty()) {
-            verifyCustomizeRowInjectGates(toggleInsns, "onDeleteShortcutToggle").forEach { (ok, line) ->
+            verifyCustomizeToggleInjectGates(toggleInsns).forEach { (ok, line) ->
                 appendLine(if (ok) "OK  n20.onCheckedChanged $line" else "MISSING  n20.onCheckedChanged $line")
             }
         }
@@ -82,69 +81,6 @@ internal fun verifyMxPlayerCustomizeAdapter(apkFile: File): String {
     lines += if (failed) "FAILED\n" else "PASSED\n"
     require(lines.contains("PASSED")) { "Customize adapter verification failed:\n$lines" }
     return lines
-}
-
-/**
- * Injected prologue may only branch with if-ne to the stock packed-switch (next instruction).
- * Delete row handler must return-void; no goto into stock epilogues.
- */
-internal fun verifyCustomizeRowInjectGates(
-    insns: List<Instruction>,
-    extensionHookName: String,
-): List<Pair<Boolean, String>> {
-    val packedSwitchIndex = insns.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
-    if (packedSwitchIndex < 0) {
-        return listOf(false to "packed-switch missing")
-    }
-    val hookIndex =
-        insns.indexOfFirst {
-            it is ReferenceInstruction && it.reference.toString().contains(extensionHookName)
-        }
-    if (hookIndex < 0) {
-        return listOf(false to "$extensionHookName hook missing")
-    }
-    val returnAfterHook = insns.getOrNull(hookIndex + 1)?.opcode == Opcode.RETURN_VOID
-    val gotoAfterHook =
-        insns.getOrNull(hookIndex + 1)?.opcode.let { op ->
-            op == Opcode.GOTO || op == Opcode.GOTO_16 || op == Opcode.GOTO_32
-        }
-    val injectStart =
-        insns.subList(0, packedSwitchIndex).indexOfLast { insn ->
-            insn.opcode == Opcode.CONST_16 &&
-                (insn as NarrowLiteralInstruction).narrowLiteral == DELETE_SHORTCUT_LIST_INDEX
-        }
-    val injectBlock =
-        if (injectStart >= 0) insns.subList(injectStart, packedSwitchIndex) else emptyList()
-    val illegalGotoInInject =
-        injectBlock.any { insn ->
-            insn.opcode == Opcode.GOTO ||
-                insn.opcode == Opcode.GOTO_16 ||
-                insn.opcode == Opcode.GOTO_32
-        }
-    val branchInsns =
-        injectBlock.filter { insn ->
-            insn.opcode == Opcode.IF_EQ ||
-                insn.opcode == Opcode.IF_NE ||
-                insn.opcode == Opcode.IF_EQZ ||
-                insn.opcode == Opcode.IF_NEZ ||
-                insn.opcode == Opcode.IF_LT ||
-                insn.opcode == Opcode.IF_GE ||
-                insn.opcode == Opcode.IF_GT ||
-                insn.opcode == Opcode.IF_LE ||
-                insn.opcode == Opcode.IF_LTZ ||
-                insn.opcode == Opcode.IF_GEZ ||
-                insn.opcode == Opcode.IF_GTZ ||
-                insn.opcode == Opcode.IF_LEZ
-        }
-    val onlyIfNeBranch =
-        branchInsns.isEmpty() || branchInsns.all { it.opcode == Opcode.IF_NE }
-    val packedSwitchImmediate = packedSwitchIndex >= hookIndex
-    return listOf(
-        (returnAfterHook && !gotoAfterHook) to "delete hook returns without goto epilogue",
-        !illegalGotoInInject to "inject prologue has no goto",
-        onlyIfNeBranch to "inject branches use if-ne only (fall through to packed-switch)",
-        packedSwitchImmediate to "packed-switch follows inject block",
-    )
 }
 
 private fun readLo20AdapterDex(apk: File): ByteArray {

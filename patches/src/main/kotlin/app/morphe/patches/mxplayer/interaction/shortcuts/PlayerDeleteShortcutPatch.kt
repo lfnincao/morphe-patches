@@ -83,7 +83,7 @@ val playerDeleteShortcutPatch = bytecodePatch(
 
         CustomizeItemsOnBindFingerprint.method.cloneParameters().patchCustomizeBindRow12(ext)
 
-        CustomizeItemsToggleFingerprint.method.cloneParameters().patchCustomizeToggleRow12(ext)
+        CustomizeItemsToggleFingerprint.method.cloneParameters().patchCustomizeToggleRow12()
 
         MenuMoreShortcutsPanelFingerprint.method.cloneParameters().apply {
             addInstructions(
@@ -146,20 +146,37 @@ private fun MutableMethod.patchCustomizeBindRow12(ext: String) {
     )
 }
 
-private fun MutableMethod.patchCustomizeToggleRow12(ext: String) {
+private fun MutableMethod.patchCustomizeToggleRow12() {
     val instructions = implementation!!.instructions
     val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
     check(packedSwitchIndex >= 0) { "packed-switch not found in n20.onCheckedChanged" }
+    val epilogueIndex =
+        instructions.indexOfFirst { insn ->
+            insn.opcode == Opcode.CONST_STRING &&
+                insn is ReferenceInstruction &&
+                insn.reference.toString().contains("shortcuts_flag.3")
+        }
+    check(epilogueIndex > packedSwitchIndex) { "shortcuts_flag.3 epilogue not found in n20.onCheckedChanged" }
 
     addInstructionsWithLabels(
         packedSwitchIndex,
         """
             const/16 v4, $DELETE_SHORTCUT_LIST_INDEX
             if-ne v3, v4, :morphe_toggle_pswitch
-            invoke-static {v1}, $ext->onDeleteShortcutToggle(Ljava/lang/Object;)V
-            return-void
+            iget-object v2, v2, Lo20${'$'}a${'$'}a;->I:Landroidx/appcompat/widget/AppCompatCheckBox;
+            invoke-virtual {v2}, Landroid/widget/CompoundButton;->isChecked()Z
+            move-result v2
+            if-eqz v2, :morphe_delete_off
+            const/16 v2, ${Constants.DELETE_SHORTCUT_BIT}
+            invoke-static {v0, v2}, Lo20${'$'}a;->s(I)V
+            goto/16 :morphe_toggle_epilogue
+            :morphe_delete_off
+            const/16 v2, ${Constants.DELETE_SHORTCUT_CLEAR_MASK}
+            invoke-static {v0, v2}, Lo20${'$'}a;->r(I)V
+            goto/16 :morphe_toggle_epilogue
         """.trimIndent(),
         ExternalLabel("morphe_toggle_pswitch", getInstruction(packedSwitchIndex)),
+        ExternalLabel("morphe_toggle_epilogue", getInstruction(epilogueIndex)),
     )
 }
 
