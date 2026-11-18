@@ -20,14 +20,3 @@ internal val operaWebContentsLoadingStateChangedFingerprint = Fingerprint(
         ),
     ),
 )
-
-/** Inflates Opera Settings → Media ({@code fragment_media_settings}). */
-internal val operaMediaSettingsInflateFingerprint = Fingerprint(
-    definingClass = "Ldid;",
-    name = "h",
-    returnType = "Ljava/lang/Object;",
-    parameters = listOf(
-        "Landroid/view/LayoutInflater;",
-        "Landroid/view/ViewGroup;",
-    ),
-)

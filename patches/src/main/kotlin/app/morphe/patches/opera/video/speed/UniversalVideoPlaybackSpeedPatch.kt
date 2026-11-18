@@ -11,6 +11,8 @@ import app.morphe.patches.opera.misc.extension.hooks.OperaApplicationOnCreateFin
 import app.morphe.patches.opera.misc.extension.operaExtensionDexPatch
 import app.morphe.patches.opera.shared.COMPATIBILITY_OPERA
 import app.morphe.patches.opera.shared.COMPATIBILITY_OPERA_DIRECT
+import app.morphe.patches.opera.startup.operaHideBrokenInstallationDialogPatch
+import app.morphe.patches.opera.startup.operaIgnoreBootFailuresPatch
 import app.morphe.patches.shared.misc.bridge.addBridge
 import app.morphe.util.setExtensionIsPatchIncluded
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -27,8 +29,6 @@ private const val EXTENSION_CLASS =
     "Lapp/morphe/extension/opera/patches/UniversalVideoPlaybackSpeedPatch;"
 private const val SCRIPT_INJECTOR_CLASS =
     "Lapp/morphe/extension/opera/patches/OperaPlaybackSpeedScriptInjector;"
-private const val MEDIA_SETTINGS_HOOK_CLASS =
-    "Lapp/morphe/extension/opera/settings/OperaPlaybackSpeedMediaSettingsHook;"
 private const val OPERA_PROCESS_GUARD_CLASS = "Lapp/morphe/extension/opera/OperaProcessGuard;"
 private const val SHARED_UTILS_CLASS = "Lapp/morphe/extension/shared/Utils;"
 
@@ -42,11 +42,12 @@ private const val WEB_CONTENTS_CLASS = "Lorg/chromium/content_public/browser/Web
 val operaUniversalVideoPlaybackSpeedPatch = patch(
     name = "Universal video playback speed",
     description = "Applies a configurable default playback speed to HTML5 video and audio on " +
-        "every page by injecting a script when a tab finishes loading. Supports 0.25x through " +
-        "3x (including 2.5x). Adds a Default playback speed entry under Opera Settings → Media " +
-        "(SharedPreferences; patch option sets the initial default). Target: Opera Browser " +
-        "103.3.5234.91185 (and close Play/generic builds). Does not change Opera's native download " +
-        "player or Chromium overlay menus. Not compatible with the Clone app / package-rename patch.",
+        "every page by injecting a script when a tab finishes loading (Chromium " +
+        "EvaluateJavaScript / J.N.Mhlly_d7). Supports 0.25x through 3x (including 2.5x). Adds a " +
+        "Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; " +
+        "SharedPreferences; patch option sets the initial default). Includes Vogelkop-MorphePatches " +
+        "startup helpers for emulators. Target: Opera Browser 103.3.5234.91185. Not compatible with " +
+        "the Clone app / package-rename patch.",
 ) {
     val playbackSpeedOption = stringOption(
         key = "playbackSpeed",
@@ -68,7 +69,12 @@ val operaUniversalVideoPlaybackSpeedPatch = patch(
 
     compatibleWith(COMPATIBILITY_OPERA, COMPATIBILITY_OPERA_DIRECT)
 
-    dependsOn(operaExtensionDexPatch)
+    dependsOn(
+        operaExtensionDexPatch,
+        operaPlaybackSpeedSettingsResourcePatch,
+        operaHideBrokenInstallationDialogPatch,
+        operaIgnoreBootFailuresPatch,
+    )
 
     execute {
         val speed = playbackSpeedOption.value!!.toFloat()
@@ -83,27 +89,6 @@ val operaUniversalVideoPlaybackSpeedPatch = patch(
             0,
             """
                 invoke-static {p0, p1}, $EXTENSION_CLASS->onLoadingStateChanged(Ljava/lang/Object;Z)V
-            """,
-        )
-
-        val mediaMatch = operaMediaSettingsInflateFingerprint.match()
-        val mediaMethod = mediaMatch.method
-        val addViewIndex = mediaMethod.implementation
-            ?.instructions
-            ?.indexOfFirst { instruction ->
-                val reference = instruction as? ReferenceInstruction
-                val methodRef = reference?.reference as? MethodReference
-                methodRef?.definingClass == "Landroid/view/ViewGroup;" && methodRef.name == "addView"
-            }
-            ?: error("Media settings inflate has no ViewGroup.addView call")
-        val addView = mediaMethod.implementation!!.instructions[addViewIndex]
-            as com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-        val addViewInsn = addView as com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
-        val parentRegister = "v${addViewInsn.registerC}"
-        mediaMethod.addInstruction(
-            addViewIndex + 1,
-            """
-                invoke-static {$parentRegister}, $MEDIA_SETTINGS_HOOK_CLASS->onMediaSettingsScreen(Landroid/view/ViewGroup;)V
             """,
         )
 

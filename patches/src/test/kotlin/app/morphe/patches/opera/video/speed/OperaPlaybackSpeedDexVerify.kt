@@ -28,8 +28,8 @@ private const val OPERA_APPLICATION_TYPE = "Lcom/opera/android/OperaApplication;
 private const val SHARED_UTILS_TYPE = "Lapp/morphe/extension/shared/Utils;"
 private const val OPERA_PROCESS_GUARD_TYPE = "Lapp/morphe/extension/opera/OperaProcessGuard;"
 private const val PLAYBACK_PREFS_TYPE = "Lapp/morphe/extension/opera/settings/OperaPlaybackSpeedPreferences;"
-private const val MEDIA_SETTINGS_HOOK_TYPE =
-    "Lapp/morphe/extension/opera/settings/OperaPlaybackSpeedMediaSettingsHook;"
+private const val MEDIA_SETTINGS_ROW_TYPE =
+    "Lapp/morphe/extension/opera/settings/OperaPlaybackSpeedSettingsRow;"
 
 fun main(args: Array<String>) {
     require(args.size == 1) { "Usage: OperaPlaybackSpeedDexVerifyKt <patched.apk>" }
@@ -66,7 +66,7 @@ fun main(args: Array<String>) {
     }
 
     verifyOperaApplicationUsesProcessGuard(apk)
-    verifyMediaSettingsHookPresent(apk)
+    verifyMediaSettingsRowPresent(apk)
 
     val sdk = System.getenv("ANDROID_HOME") ?: error("ANDROID_HOME required")
     val verifier = SdkDexVerifier(File(sdk))
@@ -162,34 +162,17 @@ private fun verifyOperaApplicationUsesProcessGuard(apk: File) {
     println("Static check passed: OperaApplication.onCreate uses OperaProcessGuard.")
 }
 
-private fun verifyMediaSettingsHookPresent(apk: File) {
-    val found = ZipFile(apk).use { zip ->
-        zip.entries().asSequence()
-            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
-            .any { entry ->
-                val dex = DexBackedDexFile.fromInputStream(
-                    Opcodes.getDefault(),
-                    zip.getInputStream(entry).readBytes().inputStream(),
-                )
-                dex.classes.any { classDef ->
-                    classDef.type == "Ldid;" &&
-                        classDef.methods.any { method ->
-                            method.name == "h" &&
-                                method.implementation?.instructions?.any { instruction ->
-                                    val ref = instruction as?
-                                        com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-                                    val methodRef = ref?.reference as?
-                                        com.android.tools.smali.dexlib2.iface.reference.MethodReference
-                                    methodRef?.definingClass == MEDIA_SETTINGS_HOOK_TYPE &&
-                                        methodRef.name == "onMediaSettingsScreen"
-                                } == true
-                        }
-                }
-            }
+private fun verifyMediaSettingsRowPresent(apk: File) {
+    verifyExtensionMethodExists(apk, MEDIA_SETTINGS_ROW_TYPE, "<init>")
+    val layoutHasRow = ZipFile(apk).use { zip ->
+        val entry = zip.getEntry("res/layout/fragment_media_settings.xml") ?: return@use false
+        val xml = zip.getInputStream(entry).readBytes().decodeToString()
+        xml.contains(OPERA_PLAYBACK_SPEED_SETTINGS_ROW)
     }
-    check(found) { "Media settings inflater must call OperaPlaybackSpeedMediaSettingsHook" }
-    verifyExtensionMethodExists(apk, MEDIA_SETTINGS_HOOK_TYPE, "onMediaSettingsScreen")
-    println("Static check passed: Media settings UI hook installed.")
+    check(layoutHasRow) {
+        "res/layout/fragment_media_settings.xml must declare $OPERA_PLAYBACK_SPEED_SETTINGS_ROW"
+    }
+    println("Static check passed: Media settings row (FTL-style layout) installed.")
 }
 
 private fun verifyInjectorDoesNotCallWebAuth(apk: File) {

@@ -19,7 +19,7 @@ import app.morphe.extension.shared.Logger;
 
 public final class OperaPlaybackSpeedScriptInjector {
     private static final String VERIFY_LOG_TAG = "MorpheOperaPlaybackSpeed";
-    private static final String NATIVE_PTR_FIELD = "b";
+    private static final String[] NATIVE_PTR_FIELDS = {"b", "a", "c", "d"};
 
     private OperaPlaybackSpeedScriptInjector() {
     }
@@ -52,9 +52,23 @@ public final class OperaPlaybackSpeedScriptInjector {
         }
     }
 
-    private static long nativeWebContentsPointer(WebContents webContents) throws ReflectiveOperationException {
-        Field field = webContents.getClass().getDeclaredField(NATIVE_PTR_FIELD);
-        field.setAccessible(true);
-        return field.getLong(webContents);
+    private static long nativeWebContentsPointer(WebContents webContents) {
+        Class<?> type = webContents.getClass();
+        for (String name : NATIVE_PTR_FIELDS) {
+            try {
+                Field field = type.getDeclaredField(name);
+                if (field.getType() != long.class && field.getType() != Long.TYPE) {
+                    continue;
+                }
+                field.setAccessible(true);
+                long value = field.getLong(webContents);
+                if (value != 0L) {
+                    return value;
+                }
+            } catch (ReflectiveOperationException ignored) {
+                // try next Chromium obfuscated field name
+            }
+        }
+        return 0L;
     }
 }

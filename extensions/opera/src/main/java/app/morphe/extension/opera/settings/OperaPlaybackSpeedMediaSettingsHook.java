@@ -1,7 +1,9 @@
 /*
  * Copyright 2026 Morphe.
  *
- * Adds a Morphe "Default playback speed" row to Opera's Media settings screen.
+ * Morphe "Default playback speed" UI (0.25x–3x, SharedPreferences). Row placement uses
+ * FTL-Patches-style custom view in {@code fragment_media_settings.xml}; see
+ * {@link OperaPlaybackSpeedSettingsRow}.
  */
 
 package app.morphe.extension.opera.settings;
@@ -11,8 +13,6 @@ import android.content.Context;
 import android.graphics.Typeface;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -26,26 +26,12 @@ public final class OperaPlaybackSpeedMediaSettingsHook {
     private OperaPlaybackSpeedMediaSettingsHook() {
     }
 
-    public static void onMediaSettingsScreen(ViewGroup container) {
-        if (container == null || container.getChildCount() == 0) {
+    /** Builds the row label inside {@link OperaPlaybackSpeedSettingsRow}. */
+    public static void inflateDefaultPlaybackSpeedRow(LinearLayout parent) {
+        if (parent == null || parent.getChildCount() > 0) {
             return;
         }
-        View content = container.getChildAt(container.getChildCount() - 1);
-        if (!(content instanceof LinearLayout)) {
-            return;
-        }
-        LinearLayout list = (LinearLayout) content;
-        if (list.findViewWithTag("morphe_opera_playback_speed_row") != null) {
-            return;
-        }
-        Context context = list.getContext();
-        TextView row = buildRow(context, list);
-        list.addView(row, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-    }
-
-    private static TextView buildRow(Context context, LinearLayout list) {
+        Context context = parent.getContext();
         float patchDefault = UniversalVideoPlaybackSpeedPatch.getPatchDefaultPlaybackSpeed();
         float current = OperaPlaybackSpeedPreferences.getStoredSpeed(patchDefault);
 
@@ -58,17 +44,15 @@ public final class OperaPlaybackSpeedMediaSettingsHook {
         row.setTypeface(Typeface.DEFAULT_BOLD);
         row.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
         updateRowText(row, current);
-        row.setClickable(true);
-        row.setFocusable(true);
-        TypedValue out = new TypedValue();
-        if (context.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, out, true)) {
-            row.setBackgroundResource(out.resourceId);
-        }
-        row.setOnClickListener(v -> showSpeedPicker(context, list, row));
-        return row;
+        parent.addView(row, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
     }
 
-    private static void showSpeedPicker(Context context, LinearLayout list, TextView row) {
+    public static void showDefaultPlaybackSpeedPicker(Context context, TextView row) {
+        if (context == null || row == null) {
+            return;
+        }
         float patchDefault = UniversalVideoPlaybackSpeedPatch.getPatchDefaultPlaybackSpeed();
         float current = OperaPlaybackSpeedPreferences.getStoredSpeed(patchDefault);
         String[] labels = new String[SPEED_OPTIONS.length];
