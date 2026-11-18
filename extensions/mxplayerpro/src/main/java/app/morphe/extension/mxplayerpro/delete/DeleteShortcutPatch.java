@@ -14,7 +14,7 @@ import java.util.ArrayList;
 public final class DeleteShortcutPatch {
     public static final int DELETE_SHORTCUT_BIT = 0x2000;
     public static final int DELETE_SHORTCUT_LIST_INDEX = 12;
-    public static final int DELETE_SHORTCUT_VIEW_TYPE = 14;
+    public static final int DELETE_SHORTCUT_VIEW_TYPE = 16;
 
     private static final int STRING_MENU_DELETE = 0x7f120475;
     private static final int DRAWABLE_DELETE = 0x7f080685;
@@ -45,13 +45,33 @@ public final class DeleteShortcutPatch {
             Object viewHolder = n20.getField("e").get(listener);
             Object checkbox = viewHolder.getClass().getField("I").get(viewHolder);
             boolean checked = ((android.widget.CompoundButton) checkbox).isChecked();
-            Class<?> adapterClass = adapter.getClass();
-            Method mutate =
-                adapterClass.getMethod(checked ? "s" : "r", adapterClass, int.class);
-            int arg = checked ? DELETE_SHORTCUT_BIT : -(DELETE_SHORTCUT_BIT + 1);
-            mutate.invoke(null, adapter, arg);
+            int merged = mergeShortcutsFlag3DeleteBit(checked);
+            adapter.getClass().getField("d").setInt(adapter, merged);
         } catch (ReflectiveOperationException ignored) {
             // no-op
+        }
+    }
+
+    /** Maps delete view type to a Sp0 view-holder bucket Sp0.n already implements. */
+    public static int remapShortcutViewType(int viewType) {
+        return viewType == DELETE_SHORTCUT_VIEW_TYPE ? 0 : viewType;
+    }
+
+    /** Adapter field {@code d} after stock {@code V90.C()} — prefer stored {@code shortcuts_flag.3} when set. */
+    public static int normalizeCustomizeShortcutFlags(int stockValue) {
+        try {
+            Class<?> v90 = Class.forName("V90");
+            Object m90 = Class.forName("lV").getField("A").get(null);
+            Object prefs = m90.getClass().getField("d").get(m90);
+            Method contains = prefs.getClass().getMethod("contains", String.class);
+            Method getInt = prefs.getClass().getMethod("getInt", String.class, int.class);
+            String key = "shortcuts_flag.3";
+            if (Boolean.TRUE.equals(contains.invoke(prefs, key))) {
+                return ((Integer) getInt.invoke(prefs, key, stockValue)).intValue();
+            }
+            return stockValue;
+        } catch (ReflectiveOperationException ignored) {
+            return stockValue;
         }
     }
 
@@ -116,6 +136,13 @@ public final class DeleteShortcutPatch {
             }
             Object sp0 = field(sp0g, "N");
             Object screen = field(sp0, "d");
+            if (screen == null) {
+                return false;
+            }
+            Object cachedDelete = getCachedPp0(screen);
+            if (cachedDelete == null || cachedDelete != pp0) {
+                return false;
+            }
             deletePlayingFile(screen);
             return true;
         } catch (ReflectiveOperationException ignored) {
@@ -172,5 +199,24 @@ public final class DeleteShortcutPatch {
 
     private static int pp0FieldInt(Object pp0, String name) throws ReflectiveOperationException {
         return pp0.getClass().getField(name).getInt(pp0);
+    }
+
+    private static int mergeShortcutsFlag3DeleteBit(boolean enableDelete) throws ReflectiveOperationException {
+        Class<?> m90Holder = Class.forName("lV");
+        Object m90 = m90Holder.getField("A").get(null);
+        Object prefs = m90.getClass().getField("d").get(m90);
+        Method getInt = prefs.getClass().getMethod("getInt", String.class, int.class);
+        Method edit = prefs.getClass().getMethod("edit");
+        String key = "shortcuts_flag.3";
+        int flags = ((Integer) getInt.invoke(prefs, key, 0)).intValue();
+        int merged =
+            enableDelete ? (flags | DELETE_SHORTCUT_BIT) : (flags & ~DELETE_SHORTCUT_BIT);
+        Object editor = edit.invoke(prefs);
+        Method putInt =
+            editor.getClass().getMethod("putInt", String.class, int.class);
+        Method commit = editor.getClass().getMethod("commit");
+        putInt.invoke(editor, key, merged);
+        commit.invoke(editor);
+        return merged;
     }
 }

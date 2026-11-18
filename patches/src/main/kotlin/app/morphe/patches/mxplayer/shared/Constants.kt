@@ -22,8 +22,8 @@ internal object Constants {
     /** Key in list_shortcuts_eng (localized label comes from list_shortcuts resource entry). */
     internal const val DELETE_SHORTCUT_KEY = "delete_file"
 
-    /** LPp0.b view type for delete toolbar (11/12 are reserved in M5 shortcut builder). */
-    internal const val DELETE_SHORTCUT_VIEW_TYPE = 14
+    /** LPp0.b view type for delete toolbar (14=customize, 15=screenshot in Pro 1.93.4). */
+    internal const val DELETE_SHORTCUT_VIEW_TYPE = 16
 
     internal const val ACTIVITY_SCREEN_CLASS = "Lcom/mxtech/videoplayer/ActivityScreen;"
     internal const val DELETE_DIALOG_INNER_CLASS = "Lcom/mxtech/videoplayer/ActivityScreen\$w;"

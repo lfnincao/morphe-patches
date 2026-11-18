@@ -19,6 +19,8 @@ internal fun verifyMxPlayerPatchedApk(
     println(arrayReport)
   val adapterReport = verifyMxPlayerCustomizeAdapter(apkFile)
   println(adapterReport)
+    val behaviorReport = verifyMxPlayerDeleteShortcutBehavior(apkFile)
+    println(behaviorReport)
     val invokeReport = verifyMxPlayerExtensionInvokes(apkFile)
   println(invokeReport)
     val invokeLog = File("/opt/cursor/artifacts/mxplayer-extension-invoke-verify.log")

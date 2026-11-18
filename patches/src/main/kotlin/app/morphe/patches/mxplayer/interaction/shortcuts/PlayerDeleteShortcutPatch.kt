@@ -23,7 +23,9 @@ import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_KEY
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_LIST_INDEX
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
 
 /**
@@ -85,6 +87,21 @@ val playerDeleteShortcutPatch = bytecodePatch(
         CustomizeItemsToggleFingerprint.method.cloneParameters().patchCustomizeToggleRow12(ext)
 
         MenuMoreShortcutsPanelFingerprint.method.cloneParameters().apply {
+            val insns = implementation!!.instructions
+            val cCallIndex = insns.indexOfFirst(::referencesV90ShortcutFlags)
+            check(cCallIndex >= 0) { "V90.C() call not found in Lo20 shortcuts panel" }
+            val moveResultIndex = cCallIndex + 1
+            val flagsRegister =
+                insns.getOrNull(moveResultIndex)?.let { insn ->
+                    (insn as? OneRegisterInstruction)?.registerA
+                } ?: error("move-result after V90.C() not found in Lo20")
+            addInstructions(
+                moveResultIndex + 1,
+                """
+                invoke-static {v$flagsRegister}, $ext->normalizeCustomizeShortcutFlags(I)I
+                move-result v$flagsRegister
+                """.trimIndent(),
+            )
             addInstructions(
                 indexOfLastReturnVoid(),
                 """
@@ -113,6 +130,16 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 return-void
                 """.trimIndent(),
                 ExternalLabel("morphe_onclick_continue", continueInstruction),
+            )
+        }
+
+        ShortcutAdapterCreateViewHolderFingerprint.method.cloneParameters().apply {
+            addInstructions(
+                0,
+                """
+                invoke-static {p1}, $ext->remapShortcutViewType(I)I
+                move-result p1
+                """.trimIndent(),
             )
         }
     }
@@ -170,3 +197,10 @@ private fun MutableMethod.patchCustomizeToggleRow12(ext: String) {
 
 private fun MutableMethod.indexOfLastReturnVoid(): Int =
     implementation!!.instructions.indexOfLast { it.opcode == Opcode.RETURN_VOID }
+
+private fun referencesV90ShortcutFlags(insn: com.android.tools.smali.dexlib2.iface.instruction.Instruction): Boolean {
+    if (insn !is ReferenceInstruction) return false
+    val ref = insn.reference
+    if (ref !is MethodReference) return false
+    return ref.definingClass == "LV90;" && ref.name == "C"
+}
