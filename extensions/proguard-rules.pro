@@ -7,6 +7,9 @@
 -keepclassmembers class app.morphe.extension.mxplayerpro.delete.DeleteShortcutPatch {
     public static <methods>;
 }
+-keepclassmembers class app.morphe.extension.mxplayerfree.delete.DeleteShortcutPatch {
+    public static <methods>;
+}
 -keep class com.google.** {
   *;
 }

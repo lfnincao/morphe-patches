@@ -4,17 +4,31 @@ import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
 
 /**
- * MX Player Pro player/UI targets verified on user-supplied Pro 1.93.4 (versionCode 2001002584).
- * Customize-items UI: [Lo20$a] / [Ln20]; toolbar rebuild [ActivityScreen.M5]; shortcuts [LSp0] / [LPp0].
+ * MX Player Pro ([Constants.PACKAGE_NAME_PRO]) and free ad flavor ([Constants.PACKAGE_NAME_FREE])
+ * targets. Pro: 1.93.4; free Play 3.5.3 (versionCode 2001003563).
  */
 internal object Constants {
-    internal const val PACKAGE_NAME = "com.mxtech.videoplayer.pro"
-    internal const val TARGET_VERSION = "1.93.4"
-    internal const val TARGET_VERSION_CODE = 2001002584
+    internal const val PACKAGE_NAME_PRO = "com.mxtech.videoplayer.pro"
+    internal const val PACKAGE_NAME_FREE = "com.mxtech.videoplayer.ad"
+    /** @deprecated use [PACKAGE_NAME_PRO] */
+    internal const val PACKAGE_NAME = PACKAGE_NAME_PRO
+
+    internal const val TARGET_VERSION_PRO = "1.93.4"
+    internal const val TARGET_VERSION_CODE_PRO = 2001002584
+
+    internal const val TARGET_VERSION_FREE = "3.5.3"
+    internal const val TARGET_VERSION_CODE_FREE = 2001003563
+
     internal const val MIN_SDK = 24
 
-    /** Bit in shortcuts_flag.3 for delete (0x1000 is screenshot; next flag in Pro 1.93.4). */
-    internal const val DELETE_SHORTCUT_BIT = 0x2000
+    /** Pro: bit in shortcuts_flag.3 for delete (screenshot is 0x1000). */
+    internal const val DELETE_SHORTCUT_BIT_PRO = 0x2000
+
+    /** Free 3.5.3: mirror uses 0x2000; delete uses the next free bit. */
+    internal const val DELETE_SHORTCUT_BIT_FREE = 0x10000
+
+    /** @deprecated use [DELETE_SHORTCUT_BIT_PRO] or package-specific bit */
+    internal const val DELETE_SHORTCUT_BIT = DELETE_SHORTCUT_BIT_PRO
 
     /** 16-bit mask argument for {@code Lo20$a.r} when clearing delete (same pattern as stock ~0x8 = -9). */
     internal const val DELETE_SHORTCUT_CLEAR_MASK = -8193 // 0xdfff
@@ -37,16 +51,39 @@ internal object Constants {
     internal const val DELETE_PP0_FIELD_NAME = "patchDeleteShortcutPp0"
 
     /** Morphe extension (FTL ModSettings-style hooks). */
-    internal const val DELETE_SHORTCUT_EXTENSION =
+    internal const val DELETE_SHORTCUT_EXTENSION_PRO =
         "Lapp/morphe/extension/mxplayerpro/delete/DeleteShortcutPatch;"
 
+    internal const val DELETE_SHORTCUT_EXTENSION_FREE =
+        "Lapp/morphe/extension/mxplayerfree/delete/DeleteShortcutPatch;"
+
+    /** @deprecated use [DELETE_SHORTCUT_EXTENSION_PRO] */
+    internal const val DELETE_SHORTCUT_EXTENSION = DELETE_SHORTCUT_EXTENSION_PRO
+
+    internal const val FREE_DELETE_DIALOG_INNER_CLASS = "Lcom/mxtech/videoplayer/ActivityScreen\$y;"
+    internal const val FREE_SHORTCUTS_LIST_FIELD = "b0"
+    internal const val FREE_TOOLBAR_MODEL_CLASS = "Lb0j;"
+    internal const val FREE_FLAGS_PROVIDER_CLASS = "Lb6f;"
+
     val COMPATIBILITY_MX_PLAYER_PRO = Compatibility(
-        packageName = PACKAGE_NAME,
+        packageName = PACKAGE_NAME_PRO,
         name = "MX Player Pro",
         targets = listOf(
             AppTarget(
-                version = TARGET_VERSION,
-                versionCode = TARGET_VERSION_CODE,
+                version = TARGET_VERSION_PRO,
+                versionCode = TARGET_VERSION_CODE_PRO,
+                minSdk = MIN_SDK,
+            ),
+        ),
+    )
+
+    val COMPATIBILITY_MX_PLAYER_FREE = Compatibility(
+        packageName = PACKAGE_NAME_FREE,
+        name = "MX Player",
+        targets = listOf(
+            AppTarget(
+                version = TARGET_VERSION_FREE,
+                versionCode = TARGET_VERSION_CODE_FREE,
                 minSdk = MIN_SDK,
             ),
         ),
