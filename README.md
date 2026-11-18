@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v2.4.3](https://github.com/lfnincao/morphe-patches/releases/tag/v2.4.3)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;216 patches total
+> **[v2.5.0](https://github.com/lfnincao/morphe-patches/releases/tag/v2.5.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;218 patches total
 <details>
 <summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;56 patches</summary>
 <br>
@@ -287,6 +287,23 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 </details>
 
 <details>
+<summary>📦 Opera Browser&nbsp;&nbsp;•&nbsp;&nbsp;3 patches</summary>
+<br>
+
+**🎯 Supported versions:**
+
+| 103.3.5234.91185 | 103.2.5234.90977 |
+| :---: | :---: |
+
+| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+|----------|----------------|-----------|
+| [Hide broken installation dialog](#hide-broken-installation-dialog) | Prevents Opera's "Your app installation appears to be broken" dialog from blocking startup. Fingerprints from Vogelkop-MorphePatches (crash-recovery nag, not a signature check). Recommended alongside playback-speed patches on emulators and patched installs. |  |
+| [Ignore browser boot failures](#ignore-browser-boot-failures) | Rewrites MainLibraryBoot failure announcements into success so the welcome flow can continue when Chromium boot fails (e.g. ARM build on x86 emulator). Fingerprints from Vogelkop-MorphePatches. |  |
+| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (Chromium EvaluateJavaScript / J.N.Mhlly_d7). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; patch option sets the initial default). Includes Vogelkop-MorphePatches startup helpers for emulators. Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch. | • Default HTML5 playback speed |
+
+</details>
+
+<details>
 <summary>📦 MX Player Pro&nbsp;&nbsp;•&nbsp;&nbsp;2 patches</summary>
 <br>
 
@@ -297,23 +314,8 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
-| [MX Player patched install support](#mx-player-patched-install-support) | Restores launch on re-signed builds by spoofing the original package signature for Java-side checks and skipping libmx-bh native install verification (BH.d / BH.b). |  |
-| [Player delete shortcut](#player-delete-shortcut) | Adds a Delete item to the player's Customize Items list. Tapping it runs the same delete flow as Menu → Delete (confirmation dialog, then next file or exit). Targets MX Player Pro 1.93.4 (versionCode 2001002584). |  |
-
-</details>
-
-<details>
-<summary>📦 Opera Browser&nbsp;&nbsp;•&nbsp;&nbsp;1 patch</summary>
-<br>
-
-**🎯 Supported versions:**
-
-| 103.3.5234.91185 | 103.2.5234.90977 |
-| :---: | :---: |
-
-| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
-|----------|----------------|-----------|
-| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading. Supports 0.25x through 3x (including 2.5x). Target: Opera Browser 103.3.5234.91185 (and close Play/generic builds). Does not change Opera's native download player or Chromium overlay menus; those keep their built-in speed lists unless the page uses HTML5 media. Not compatible with the Clone app / package-rename patch: Chromium and Opera's native layer bind to the original package name and cloned installs typically crash on launch. | • Default HTML5 playback speed |
+| [MX Player patched install support](#mx-player-patched-install-support) | Keeps MX Player Pro launchable on Morphe re-signed builds by stubbing com.ddx.axx.axx.axx BH/AS/AG natives and replacing libmx-bh.so with a no-op stub (libmxvp still links), plus spoofing the original package signature when patching from a stock APK. |  |
+| [Player delete shortcut](#player-delete-shortcut) | Adds Delete to Customize items and wires it to stock ActivityScreen delete flow. |  |
 
 </details>
 

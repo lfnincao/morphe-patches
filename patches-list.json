@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "2.4.2",
+  "version": "2.5.0",
   "patches": [
     {
       "name": "A-B loop",
@@ -7049,6 +7049,79 @@
       "options": []
     },
     {
+      "name": "Hide broken installation dialog",
+      "description": "Prevents Opera's \"Your app installation appears to be broken\" dialog from blocking startup. Fingerprints from Vogelkop-MorphePatches (crash-recovery nag, not a signature check). Recommended alongside playback-speed patches on emulators and patched installs.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        },
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Hide buttons",
       "description": "Adds options to hide the cast, history, notification, search, voice search, sound search, and Library New buttons.",
       "default": true,
@@ -8498,6 +8571,79 @@
       "options": []
     },
     {
+      "name": "Ignore browser boot failures",
+      "description": "Rewrites MainLibraryBoot failure announcements into success so the welcome flow can continue when Chromium boot fails (e.g. ARM build on x86 emulator). Fingerprints from Vogelkop-MorphePatches.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        },
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Jam queue sharing",
       "description": "Shares the host queue and playback controls through an authenticated Jam bridge. Root installation is not supported.",
       "default": true,
@@ -8786,7 +8932,7 @@
     },
     {
       "name": "MX Player patched install support",
-      "description": "Keeps MX Player Pro launchable on Morphe re-signed builds by not loading libmx-bh at all (stub com.ddx.axx.axx.axx BH/AS/AG natives and drop the library), plus spoofing the original package signature when patching from a stock APK.",
+      "description": "Keeps MX Player Pro launchable on Morphe re-signed builds by stubbing com.ddx.axx.axx.axx BH/AS/AG natives and replacing libmx-bh.so with a no-op stub (libmxvp still links), plus spoofing the original package signature when patching from a stock APK.",
       "default": true,
       "category": null,
       "compatiblePackages": [
@@ -10978,7 +11124,7 @@
     },
     {
       "name": "Player delete shortcut",
-      "description": "Adds a Delete item to the player's Customize Items list. Tapping it runs the same delete flow as Menu → Delete (confirmation dialog, then next file or exit). Targets MX Player Pro 1.93.4 (versionCode 2001002584).",
+      "description": "Adds Delete to Customize items and wires it to stock ActivityScreen delete flow.",
       "default": true,
       "category": null,
       "compatiblePackages": [
@@ -15252,7 +15398,7 @@
     },
     {
       "name": "Universal video playback speed",
-      "description": "Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading. Supports 0.25x through 3x (including 2.5x). Target: Opera Browser 103.3.5234.91185 (and close Play/generic builds). Does not change Opera's native download player or Chromium overlay menus; those keep their built-in speed lists unless the page uses HTML5 media. Not compatible with the Clone app / package-rename patch: Chromium and Opera's native layer bind to the original package name and cloned installs typically crash on launch.",
+      "description": "Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (Chromium EvaluateJavaScript / J.N.Mhlly_d7). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; patch option sets the initial default). Includes Vogelkop-MorphePatches startup helpers for emulators. Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch.",
       "default": true,
       "category": null,
       "compatiblePackages": [

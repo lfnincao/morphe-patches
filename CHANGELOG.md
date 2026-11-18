@@ -1,3 +1,27 @@
+## [2.5.0](https://github.com/lfnincao/morphe-patches/compare/v2.4.3...v2.5.0) (2026-11-18)
+
+### ✨ New Features
+
+* **mxplayer:** FTL-style Delete shortcut via mxplayerpro extension ([f8b1e4e](https://github.com/lfnincao/morphe-patches/commit/f8b1e4ed96f95817a114fa09e937f27190e4271f))
+* **opera:** Vogelkop startup patches and FTL-style playback speed settings ([b437458](https://github.com/lfnincao/morphe-patches/commit/b437458562c07ede4f2e9a05856600577d740728))
+
+### 🐛 Bug Fixes
+
+* **mxplayer:** ART-safe Delete customize bind/toggle hooks ([75fe3b1](https://github.com/lfnincao/morphe-patches/commit/75fe3b1e6fb56b68a8575fcae2cea42595b14c86))
+* **mxplayer:** disable libmx-bh load and stub BH natives ([42581a7](https://github.com/lfnincao/morphe-patches/commit/42581a7ba7965d0e1830d1a9fc5759ca919be730))
+* **mxplayer:** match syncToolbarShortcut descriptor; invoke verify gate ([fb29a77](https://github.com/lfnincao/morphe-patches/commit/fb29a779be68f2ce1596ea910a395f1b4d93b463))
+* **mxplayer:** NOP extra loadLibrary(mx-bh) in LlV.onCreate ([27f5008](https://github.com/lfnincao/morphe-patches/commit/27f5008ff82e395bf82ca08ada63001317f1f461))
+* **mxplayer:** RecyclerView$z bind verify + show shortcuts panel ([33a7e77](https://github.com/lfnincao/morphe-patches/commit/33a7e77d80205ed8641ed6268cb1f2958319dd08))
+* **mxplayer:** remap Sp0 view type via invoke-static helper ([2603ac7](https://github.com/lfnincao/morphe-patches/commit/2603ac7b7c1c02311a253d73f1d78e7fcb9cd974))
+* **mxplayer:** repair delete shortcut bytecode for ART verify ([a91440c](https://github.com/lfnincao/morphe-patches/commit/a91440c693352b3b3537dd501ea581498dbfd145))
+* **mxplayer:** replace libmx-bh with NDK stub for mxvp link ([e52d46b](https://github.com/lfnincao/morphe-patches/commit/e52d46b8b5f3ad8873383d378317dd7f2c64f60c))
+* **mxplayer:** restore customize shortcut labels for delete row ([79a0513](https://github.com/lfnincao/morphe-patches/commit/79a05131b4a0cd83f30e532c5ada1ef3302bb397))
+* **mxplayer:** Sp0.n view-type remap and ART verify harness ([8e9af83](https://github.com/lfnincao/morphe-patches/commit/8e9af83d242e2e19191d85739d2a5ce6500a613c))
+* **opera:** evaluate JS via Mhlly_d7 and runtime playback speed setting ([afaaa09](https://github.com/lfnincao/morphe-patches/commit/afaaa09ec76b39c969bf5155dc98b15c9b83faa5))
+* **opera:** inject playback speed via WebContents.R0 not WebAuth ([d289e87](https://github.com/lfnincao/morphe-patches/commit/d289e879d3174198f157550b61df47f75fda7797))
+* **opera:** skip Morphe init in isolated renderer processes ([bf68ba5](https://github.com/lfnincao/morphe-patches/commit/bf68ba596f6ca8bbef3d677eb793fdec0e95479f))
+* **opera:** use non-null Callback for playback speed JS injection ([ceb8139](https://github.com/lfnincao/morphe-patches/commit/ceb813939f9cbce9c5aa27f328eceaf7140d1f7f))
+
 ## [2.4.3](https://github.com/lfnincao/morphe-patches/compare/v2.4.2...v2.4.3) (2026-11-17)
 
 ### 🐛 Bug Fixes
