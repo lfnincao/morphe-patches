@@ -59,14 +59,29 @@ fun verifyMxPlayerFreeCustomizeMenu(apkFile: File): String {
         val jy1 = findMethod(dexFiles, "Ljy1;", "a") { it.size == 1 && it[0] == "I" }
         val sbd = findMethod(dexFiles, "Lsbd;", "onClick")
         val jy1ByteOk = verifyHookedBooleanCall(jy1, "onCustomizeMenuAction")
-        val sbdByteOk = verifyHookedBooleanCall(sbd, "onCustomizeRowClick")
+        val sbdStealsDelete = sbd?.take(16)?.any {
+            it is ReferenceInstruction && it.reference.toString().contains("onCustomizeRowClick")
+        } == true
         appendLine(
             if (jy1ByteOk) "OK  Ljy1.a(I) invokes onCustomizeMenuAction with valid move-result"
             else "MISSING  Ljy1.a(I) must invoke-static onCustomizeMenuAction before move-result",
         )
         appendLine(
-            if (sbdByteOk) "OK  Lsbd.onClick invokes onCustomizeRowClick with valid move-result"
-            else "MISSING  Lsbd.onClick must invoke-static onCustomizeRowClick before move-result",
+            if (!sbdStealsDelete) "OK  Lsbd.onClick does not hijack customize picker (toggle stays stock)"
+            else "MISSING  remove onCustomizeRowClick from Luad row clicks",
+        )
+        val deleteFlow =
+            dexFiles.flatMap { it.classes }
+                .firstOrNull { it.type == DELETE_SHORTCUT_EXTENSION_FREE }
+                ?.methods
+                ?.firstOrNull { it.name == "deletePlayingFile" }
+        val usesYDialog = deleteFlow?.implementation?.instructions?.any {
+            it is ReferenceInstruction &&
+                it.reference.toString().contains("ActivityScreen\$y")
+        } == true
+        appendLine(
+            if (usesYDialog) "OK  deletePlayingFile constructs ActivityScreen\$y"
+            else "MISSING  deletePlayingFile must call ActivityScreen\$y",
         )
 
         val ext = dexFiles.flatMap { it.classes }.firstOrNull {

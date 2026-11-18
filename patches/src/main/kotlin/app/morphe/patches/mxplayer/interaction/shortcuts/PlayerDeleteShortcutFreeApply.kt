@@ -57,18 +57,4 @@ internal fun applyFreeDeleteShortcutPatches() {
         )
     }
 
-    FreeSbdMenuClickFingerprint.method.cloneParameters().apply {
-        val insns = implementation!!.instructions
-        val continueAt = insns[0]
-        addInstructionsWithLabels(
-            0,
-            """
-            invoke-static {p0}, $ext->onCustomizeRowClick(Ljava/lang/Object;)Z
-            move-result v15
-            if-eqz v15, :morphe_sbd_continue
-            return-void
-            """.trimIndent(),
-            ExternalLabel("morphe_sbd_continue", continueAt),
-        )
-    }
 }

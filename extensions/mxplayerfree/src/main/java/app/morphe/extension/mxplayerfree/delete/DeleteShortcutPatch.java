@@ -54,24 +54,11 @@ public final class DeleteShortcutPatch {
         }
     }
 
-    /** Row click in Luad customize list ({@code Lsbd;}). */
+    /**
+     * Luad customize rows toggle enabled slots; never delete media from the settings picker.
+     */
     public static boolean onCustomizeRowClick(Object clickListener) {
-        try {
-            Object item = field(clickListener, "c");
-            if (item.getClass().getField("a").getInt(item) != DELETE_MENU_TYPE) {
-                return false;
-            }
-            Object rowAdapter = field(clickListener, "b");
-            Object menuMore = field(rowAdapter, "p");
-            Object screen = resolveActivityScreen(menuMore);
-            if (screen == null) {
-                return false;
-            }
-            deletePlayingFile(screen);
-            return true;
-        } catch (ReflectiveOperationException ignored) {
-            return false;
-        }
+        return false;
     }
 
     /** Intercepts {@code Ljy1;->a(I)} when the player customize control fires delete. */
@@ -80,7 +67,7 @@ public final class DeleteShortcutPatch {
             return false;
         }
         try {
-            Object screen = resolveActivityScreen(jy1);
+            Object screen = resolveActivityScreenFromMenuBridge(jy1);
             if (screen == null) {
                 return false;
             }
@@ -91,19 +78,13 @@ public final class DeleteShortcutPatch {
         }
     }
 
-    private static Object resolveActivityScreen(Object jy1) throws ReflectiveOperationException {
-        for (Class<?> type = jy1.getClass(); type != null; type = type.getSuperclass()) {
-            try {
-                Field screenField = type.getField("L");
-                Object screen = screenField.get(jy1);
-                if (screen != null) {
-                    return screen;
-                }
-            } catch (NoSuchFieldException ignored) {
-                // walk superclass
-            }
-        }
-        return null;
+    /**
+     * {@code Ljy1;} holds menu UI in synthetic field {@code b} ({@code Lrbd;}/{@code Ly9d;});
+     * {@link #ACTIVITY_SCREEN_CLASS} is on {@code Ly9d;.L}, not on {@code Ljy1;} itself.
+     */
+    private static Object resolveActivityScreenFromMenuBridge(Object bridge) throws ReflectiveOperationException {
+        Object menu = field(bridge, "b");
+        return menu.getClass().getField("L").get(menu);
     }
 
     public static void deletePlayingFile(Object screen) {
@@ -113,7 +94,7 @@ public final class DeleteShortcutPatch {
             Constructor<?> ctor = inner.getConstructor(activityScreen);
             ctor.newInstance(screen);
         } catch (ReflectiveOperationException ignored) {
-            // no-op
+            // no-op when player is not on ActivityScreen
         }
     }
 
