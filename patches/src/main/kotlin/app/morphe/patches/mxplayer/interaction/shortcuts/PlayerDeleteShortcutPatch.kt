@@ -133,6 +133,15 @@ private fun MutableMethod.patchCustomizeBindRow12(ext: String) {
     val instructions = implementation!!.instructions
     val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
     check(packedSwitchIndex >= 0) { "packed-switch not found in Lo20\$a.l" }
+    val listenerTailIndex =
+        instructions.indexOfFirst { insn ->
+            insn.opcode == Opcode.NEW_INSTANCE &&
+                insn is ReferenceInstruction &&
+                insn.reference.toString().contains("Ln20;")
+        }
+    check(listenerTailIndex > packedSwitchIndex) {
+        "Ln20 listener tail not found in Lo20\$a.l"
+    }
 
     addInstructionsWithLabels(
         packedSwitchIndex,
@@ -140,9 +149,10 @@ private fun MutableMethod.patchCustomizeBindRow12(ext: String) {
             const/16 v3, $DELETE_SHORTCUT_LIST_INDEX
             if-ne v6, v3, :morphe_bind_pswitch
             invoke-static {v4, v0}, $ext->bindDeleteRowChecked(Ljava/lang/Object;Ljava/lang/Object;)V
-            return-void
+            goto/16 :morphe_bind_listener_tail
         """.trimIndent(),
         ExternalLabel("morphe_bind_pswitch", getInstruction(packedSwitchIndex)),
+        ExternalLabel("morphe_bind_listener_tail", getInstruction(listenerTailIndex)),
     )
 }
 

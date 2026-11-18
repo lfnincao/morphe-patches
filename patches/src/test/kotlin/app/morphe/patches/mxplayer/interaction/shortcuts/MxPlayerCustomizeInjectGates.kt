@@ -21,13 +21,51 @@ internal fun verifyCustomizeBindInjectGates(insns: List<Instruction>): List<Pair
             it is ReferenceInstruction && it.reference.toString().contains("bindDeleteRowChecked")
         }
     if (hookIndex < 0) return listOf(false to "bindDeleteRowChecked hook missing")
-    val returnAfterHook = insns.getOrNull(hookIndex + 1)?.opcode == Opcode.RETURN_VOID
     val injectBlock = injectBlockBeforePackedSwitch(insns, packedSwitchIndex)
+    val gotoAfterHook =
+        insns.getOrNull(hookIndex + 1).let { insn ->
+            insn != null &&
+                (insn.opcode == Opcode.GOTO ||
+                    insn.opcode == Opcode.GOTO_16 ||
+                    insn.opcode == Opcode.GOTO_32)
+        }
+    val noReturnInInject = injectBlock.none { it.opcode == Opcode.RETURN_VOID }
+    val listenerTailIndex =
+        insns.indexOfFirst { insn ->
+            insn.opcode == Opcode.NEW_INSTANCE &&
+                insn is ReferenceInstruction &&
+                insn.reference.toString().contains("Ln20;")
+        }
+    val bindGotoTargetsListenerTail =
+        listenerTailIndex >= 0 &&
+            gotoTargetIndices(insns, hookIndex, hookIndex + 2).all { it == listenerTailIndex }
+    val stockCaseGotoTargetsListenerTail =
+        if (listenerTailIndex < 0) {
+            false
+        } else {
+            val stockBounds = bindStockCaseBounds(insns, packedSwitchIndex) ?: return listOf(false to "stock bind case bounds missing")
+            val stockGotos = gotoTargetIndices(insns, stockBounds.first, stockBounds.second)
+            stockGotos.isNotEmpty() && stockGotos.all { it == listenerTailIndex }
+        }
+    val deleteStockSameGotoTarget = bindGotoTargetsListenerTail && stockCaseGotoTargetsListenerTail
     return listOf(
-        returnAfterHook to "delete bind hook returns after extension (non-delete use packed-switch)",
-        !injectBlockHasGoto(injectBlock) to "inject prologue has no goto",
-        injectBranchesAreIfNeOnly(injectBlock) to "inject branches use if-ne only",
+        gotoAfterHook to "delete bind uses goto after bindDeleteRowChecked (not return-void)",
+        noReturnInInject to "bind inject block has no return-void",
+        injectBranchesAreIfNeOnly(injectBlock) to "non-delete bind branches use if-ne only (packed-switch)",
+        deleteStockSameGotoTarget to "delete bind goto targets same Ln20 tail as stock cases",
     )
+}
+
+private fun bindStockCaseBounds(insns: List<Instruction>, packedSwitchIndex: Int): Pair<Int, Int>? {
+    val firstCaseAfterSwitch = packedSwitchIndex + 1
+    val tail = insns.subList(firstCaseAfterSwitch, insns.size)
+    val firstGoto = tail.indexOfFirst { insn ->
+        insn.opcode == Opcode.GOTO || insn.opcode == Opcode.GOTO_16 || insn.opcode == Opcode.GOTO_32
+    }
+    if (firstGoto < 0) return null
+    val start = firstCaseAfterSwitch
+    val end = firstCaseAfterSwitch + firstGoto + 1
+    return start to end
 }
 
 /**
