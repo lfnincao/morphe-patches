@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v2.7.0](https://github.com/lfnincao/morphe-patches/releases/tag/v2.7.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;226 patches total
+> **[v2.7.1](https://github.com/lfnincao/morphe-patches/releases/tag/v2.7.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;226 patches total
 <details>
 <summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;56 patches</summary>
 <br>
@@ -304,7 +304,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 | [Ignore browser boot failures](#ignore-browser-boot-failures) | Rewrites MainLibraryBoot failure announcements into success so the welcome flow can continue when Chromium boot fails (e.g. ARM build on x86 emulator). Fingerprints from Vogelkop-MorphePatches. |  |
 | [Remove ad & tracking permissions](#remove-ad-tracking-permissions) | Drops ad-profiling and tracking permissions from the manifest: Privacy Sandbox (ACCESS_ADSERVICES_*), Google Advertising ID, Play install-referrer attribution, basic phone state and Huawei store junk. |  |
 | [Remove sponsored Speed Dial](#remove-sponsored-speed-dial) | Stops sponsored/partner tiles from appearing on the start page by making Opera's suggested-sites database queries return no rows. Regular Speed Dial entries and bookmarks are not affected. |  |
-| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (Vogelkop-style OperaWebContentsDelegate.loadingStateChanged hook + stock WebContents.R0). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; Morphe option sets the initial default). Bundles ported Vogelkop-MorphePatches Opera base (ads, adblock, analytics, manifest, startup). Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch. | • Default HTML5 playback speed |
+| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (Vogelkop-style OperaWebContentsDelegate.loadingStateChanged hook + stock WebContentsImpl.e/MevqfbP8). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; Morphe option sets the initial default). Bundles ported Vogelkop-MorphePatches Opera base (ads, adblock, analytics, manifest, startup). Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch. | • Default HTML5 playback speed |
 
 </details>
 
@@ -320,7 +320,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
 | [MX Player patched install support](#mx-player-patched-install-support) | Keeps MX Player Pro launchable on Morphe re-signed builds by stubbing com.ddx.axx.axx.axx BH/AS/AG natives and replacing libmx-bh.so with a no-op stub (libmxvp still links), plus spoofing the original package signature when patching from a stock APK. |  |
-| [Player delete shortcut](#player-delete-shortcut) | Adds Delete to Customize items and wires it to stock ActivityScreen delete flow. |  |
+| [Player delete shortcut](#player-delete-shortcut) | Adds Delete to Customize items (free: Luad/MenuHelper; pro: shortcut list) and wires it to stock ActivityScreen delete flow. |  |
 
 </details>
 
@@ -337,7 +337,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 |----------|----------------|-----------|
 | [MX Player patched install support](#mx-player-patched-install-support) | Keeps MX Player Pro launchable on Morphe re-signed builds by stubbing com.ddx.axx.axx.axx BH/AS/AG natives and replacing libmx-bh.so with a no-op stub (libmxvp still links), plus spoofing the original package signature when patching from a stock APK. |  |
 | [MX Player remove ads](#mx-player-remove-ads) | FTL-style SDK/layout ad removal for com.mxtech.videoplayer.ad; dismisses full-screen interstitial. |  |
-| [Player delete shortcut](#player-delete-shortcut) | Adds Delete to Customize items and wires it to stock ActivityScreen delete flow. |  |
+| [Player delete shortcut](#player-delete-shortcut) | Adds Delete to Customize items (free: Luad/MenuHelper; pro: shortcut list) and wires it to stock ActivityScreen delete flow. |  |
 
 </details>
 

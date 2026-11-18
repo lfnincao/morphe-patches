@@ -1,3 +1,10 @@
+## [2.7.1](https://github.com/lfnincao/morphe-patches/compare/v2.7.0...v2.7.1) (2026-11-18)
+
+### 🐛 Bug Fixes
+
+* **mxplayer-free:** add Delete row to MenuHelper Customize items list (3.5.3) ([16936cb](https://github.com/lfnincao/morphe-patches/commit/16936cb44f500b60dbd68d20f209ffba3c05406a))
+* **opera:** evaluate playback-speed JS via MevqfbP8 not R0 ([a615555](https://github.com/lfnincao/morphe-patches/commit/a615555fae779c46ddbac0fa9569ec816d312bf8))
+
 ## [2.7.0](https://github.com/lfnincao/morphe-patches/compare/v2.6.0...v2.7.0) (2026-11-18)
 
 ### ✨ New Features

@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-11-18T20:06:05",
-  "description": "## [2.7.0](https://github.com/lfnincao/morphe-patches/compare/v2.6.0...v2.7.0) (2026-11-18)\n\n### ✨ New Features\n\n* **opera:** port Vogelkop patch base + universal playback speed and default-speed setting ([da2b7ac](https://github.com/lfnincao/morphe-patches/commit/da2b7ac9e769db9cc4ee46c168f133ed7ef524bb))\n\n### 🐛 Bug Fixes\n\n* **mxplayer:** place free delete in Customize shortcuts list (v2.6.1) ([06ebd01](https://github.com/lfnincao/morphe-patches/commit/06ebd017498090af6bd92db779575eae069c80e4))",
-  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.7.0/patches-2.7.0.mpp",
+  "created_at": "2026-11-18T21:14:07",
+  "description": "## [2.7.1](https://github.com/lfnincao/morphe-patches/compare/v2.7.0...v2.7.1) (2026-11-18)\n\n### 🐛 Bug Fixes\n\n* **mxplayer-free:** add Delete row to MenuHelper Customize items list (3.5.3) ([16936cb](https://github.com/lfnincao/morphe-patches/commit/16936cb44f500b60dbd68d20f209ffba3c05406a))\n* **opera:** evaluate playback-speed JS via MevqfbP8 not R0 ([a615555](https://github.com/lfnincao/morphe-patches/commit/a615555fae779c46ddbac0fa9569ec816d312bf8))",
+  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.7.1/patches-2.7.1.mpp",
   "signature_download_url": "",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "public_key": "PPMsWvMqp78cL8h+2UgBGQwsJkuAL/sLWsNr2b5kqmE="
 }
