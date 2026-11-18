@@ -152,11 +152,14 @@ private fun MutableMethod.patchCustomizeToggleRow12() {
     check(packedSwitchIndex >= 0) { "packed-switch not found in n20.onCheckedChanged" }
     val epilogueIndex =
         instructions.indexOfFirst { insn ->
-            insn.opcode == Opcode.CONST_STRING &&
+            insn.opcode == Opcode.SGET_OBJECT &&
                 insn is ReferenceInstruction &&
-                insn.reference.toString().contains("shortcuts_flag.3")
+                insn.reference.toString().contains("LlV;") &&
+                insn.reference.toString().contains("->A:")
         }
-    check(epilogueIndex > packedSwitchIndex) { "shortcuts_flag.3 epilogue not found in n20.onCheckedChanged" }
+    check(epilogueIndex > packedSwitchIndex) {
+        "LlV.A sget epilogue (same as Loop goto target) not found in n20.onCheckedChanged"
+    }
 
     addInstructionsWithLabels(
         packedSwitchIndex,
@@ -169,11 +172,11 @@ private fun MutableMethod.patchCustomizeToggleRow12() {
             if-eqz v2, :morphe_delete_off
             const/16 v2, ${Constants.DELETE_SHORTCUT_BIT}
             invoke-static {v0, v2}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
-            goto/16 :morphe_toggle_epilogue
+            goto :morphe_toggle_epilogue
             :morphe_delete_off
             const/16 v2, ${Constants.DELETE_SHORTCUT_CLEAR_MASK}
             invoke-static {v0, v2}, Lo20${'$'}a;->r(Lo20${'$'}a;I)V
-            goto/16 :morphe_toggle_epilogue
+            goto :morphe_toggle_epilogue
         """.trimIndent(),
         ExternalLabel("morphe_toggle_pswitch", getInstruction(packedSwitchIndex)),
         ExternalLabel("morphe_toggle_epilogue", getInstruction(epilogueIndex)),

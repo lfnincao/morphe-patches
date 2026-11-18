@@ -8,6 +8,7 @@ import app.morphe.patches.mxplayer.shared.Constants.LO20_ADAPTER_CLASS
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
@@ -58,6 +59,7 @@ internal fun verifyCustomizeToggleInjectGates(insns: List<Instruction>): List<Pa
                 insn.reference.toString().contains("shortcuts_flag.3")
         }
     val deleteMatchesLoopShape = deleteToggleMatchesLoopShape(insns, packedSwitchIndex)
+    val gotoTargetsMatchLoop = deleteAndLoopShareEpilogueGotoTarget(insns, packedSwitchIndex)
     val injectBlock = injectBlockBeforePackedSwitch(insns, packedSwitchIndex)
     val noReturnInInject =
         injectBlock.none { it.opcode == Opcode.RETURN_VOID }
@@ -67,23 +69,37 @@ internal fun verifyCustomizeToggleInjectGates(insns: List<Instruction>): List<Pa
         (deleteSetLiteral && deleteClearLiteral) to "delete toggle uses 0x2000 and clear mask literals",
         epiloguePersist to "onCheckedChanged retains shortcuts_flag.3 epilogue",
         noReturnInInject to "delete toggle prologue does not return-void before epilogue",
-        deleteMatchesLoopShape to "delete toggle case mirrors Loop (0x8) instruction shape",
+        deleteMatchesLoopShape to "delete toggle case mirrors Loop (0x8) except enable/clear literals",
+        gotoTargetsMatchLoop to "delete goto targets match Loop goto target (LlV.A sget)",
     )
 }
 
 private fun deleteToggleMatchesLoopShape(insns: List<Instruction>, packedSwitchIndex: Int): Boolean {
-    val inject = injectBlockBeforePackedSwitch(insns, packedSwitchIndex)
-    val deleteStart =
-        inject.indexOfFirst { insn ->
-            insn is ReferenceInstruction &&
-                insn.reference.toString().contains("Lo20\$a\$a;") &&
-                insn.reference.toString().contains("->I:")
-        }
-    if (deleteStart < 0) return false
-    val deleteSlice = inject.subList(deleteStart, inject.size).map { instructionShapeToken(it) }
-    val loopSlice = toggleCaseSlice(insns, 0x8) ?: return false
+    val deleteBounds = toggleCaseBounds(insns, DELETE_SHORTCUT_BIT) ?: return false
+    val deleteSlice = toggleCaseInstructionSlice(insns, deleteBounds.first, deleteBounds.second)
+    val loopBounds = toggleCaseBounds(insns, 0x8) ?: return false
+    val loopSlice = toggleCaseInstructionSlice(insns, loopBounds.first, loopBounds.second)
     if (deleteSlice.size != loopSlice.size) return false
-    return deleteSlice.zip(loopSlice).all { (a, b) -> a == b }
+    return deleteSlice.zip(loopSlice).all { (a, b) -> shapesMatchAllowingToggleLiterals(a, b) }
+}
+
+private fun deleteAndLoopShareEpilogueGotoTarget(insns: List<Instruction>, packedSwitchIndex: Int): Boolean {
+    val epilogueIndex =
+        insns.indexOfFirst { insn ->
+            insn.opcode == Opcode.SGET_OBJECT &&
+                insn is ReferenceInstruction &&
+                insn.reference.toString().contains("LlV;") &&
+                insn.reference.toString().contains("->A:")
+        }
+    if (epilogueIndex < 0) return false
+    val deleteBounds = toggleCaseBounds(insns, DELETE_SHORTCUT_BIT) ?: return false
+    val loopBounds = toggleCaseBounds(insns, 0x8) ?: return false
+    val deleteGotos = gotoTargetIndices(insns, deleteBounds.first, deleteBounds.second)
+    val loopGotos = gotoTargetIndices(insns, loopBounds.first, loopBounds.second)
+    if (deleteGotos.isEmpty() || loopGotos.isEmpty()) return false
+    return deleteGotos.all { it == epilogueIndex } &&
+        loopGotos.all { it == epilogueIndex } &&
+        deleteGotos.toSet() == loopGotos.toSet()
 }
 
 private fun normalizeBranchOpcode(opcode: Opcode): Opcode =
@@ -92,7 +108,7 @@ private fun normalizeBranchOpcode(opcode: Opcode): Opcode =
         else -> opcode
     }
 
-private fun toggleCaseSlice(insns: List<Instruction>, enableLiteral: Int): List<String>? {
+private fun toggleCaseBounds(insns: List<Instruction>, enableLiteral: Int): Pair<Int, Int>? {
     val enableIndex =
         insns.indexOfFirst { insn ->
             insn.opcode == Opcode.CONST_16 &&
@@ -106,17 +122,65 @@ private fun toggleCaseSlice(insns: List<Instruction>, enableLiteral: Int): List<
                 insn.reference.toString().contains("->I:")
         }
     if (start < 0) return null
-    val tailStart = insns.subList(enableIndex, insns.size)
-    val secondGoto =
-        tailStart.withIndex().indexOfFirst { (idx, insn) ->
-            idx > 2 &&
-                (insn.opcode == Opcode.GOTO ||
-                    insn.opcode == Opcode.GOTO_16 ||
-                    insn.opcode == Opcode.GOTO_32)
+    val caseTail = insns.subList(enableIndex, insns.size)
+    val firstGotoRel =
+        caseTail.indexOfFirst { insn ->
+            insn.opcode == Opcode.GOTO ||
+                insn.opcode == Opcode.GOTO_16 ||
+                insn.opcode == Opcode.GOTO_32
         }
-    if (secondGoto < 0) return null
-    val end = enableIndex + secondGoto + 1
-    return insns.subList(start, end).map { instructionShapeToken(it) }
+    if (firstGotoRel < 0) return null
+    val afterFirstGoto = caseTail.subList(firstGotoRel + 1, caseTail.size)
+    val secondGotoRel =
+        afterFirstGoto.indexOfFirst { insn ->
+            insn.opcode == Opcode.GOTO ||
+                insn.opcode == Opcode.GOTO_16 ||
+                insn.opcode == Opcode.GOTO_32
+        }
+    if (secondGotoRel < 0) return null
+    val end = enableIndex + firstGotoRel + 1 + secondGotoRel + 1
+    return start to end
+}
+
+private fun toggleCaseInstructionSlice(insns: List<Instruction>, start: Int, end: Int): List<String> =
+    insns.subList(start, end).map { instructionShapeToken(it) }
+
+private fun gotoTargetIndices(insns: List<Instruction>, start: Int, end: Int): List<Int> {
+    val offsetToIndex = instructionOffsetMap(insns)
+    val results = mutableListOf<Int>()
+    insns.subList(start, end).forEachIndexed { rel, insn ->
+        if (
+            insn.opcode != Opcode.GOTO &&
+            insn.opcode != Opcode.GOTO_16 &&
+            insn.opcode != Opcode.GOTO_32
+        ) {
+            return@forEachIndexed
+        }
+        val gotoIndex = start + rel
+        var codeOffset = 0
+        for (i in 0 until gotoIndex) {
+            codeOffset += insns[i].codeUnits
+        }
+        val targetCodeOffset = codeOffset + (insn as OffsetInstruction).codeOffset
+        val targetIndex = offsetToIndex[targetCodeOffset] ?: return emptyList()
+        results += targetIndex
+    }
+    return results
+}
+
+private fun instructionOffsetMap(insns: List<Instruction>): Map<Int, Int> {
+    val map = mutableMapOf<Int, Int>()
+    var codeOffset = 0
+    insns.forEachIndexed { index, insn ->
+        map[codeOffset] = index
+        codeOffset += insn.codeUnits
+    }
+    return map
+}
+
+private fun shapesMatchAllowingToggleLiterals(deleteToken: String, loopToken: String): Boolean {
+    if (deleteToken == "CONST_16" && loopToken == "CONST_16") return true
+    return deleteToken == loopToken
 }
 
 private fun invokeMatches(insns: List<Instruction>, methodName: String): Boolean =
@@ -129,10 +193,16 @@ private fun invokeMatches(insns: List<Instruction>, methodName: String): Boolean
     }
 
 private fun instructionShapeToken(insn: Instruction): String {
+    if (insn.opcode == Opcode.CONST_16) {
+        return "CONST_16"
+    }
     if (insn is ReferenceInstruction && insn.reference is MethodReference) {
         val ref = insn.reference as MethodReference
         val descriptor = "(${ref.parameterTypes.joinToString("") { it }})${ref.returnType}"
         return "${normalizeBranchOpcode(insn.opcode)}:${ref.definingClass}->${ref.name}$descriptor"
+    }
+    if (insn is ReferenceInstruction) {
+        return "${normalizeBranchOpcode(insn.opcode)}:${insn.reference}"
     }
     return normalizeBranchOpcode(insn.opcode).toString()
 }
