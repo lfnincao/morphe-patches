@@ -1,15 +1,16 @@
 package app.morphe.patches.mxplayer.interaction.shortcuts
 
+import app.morphe.patcher.dex.SdkDexVerifier
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_MENU_PREF_KEY_FREE
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_MENU_TYPE_FREE
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION_FREE
 import com.android.tools.smali.dexlib2.Opcodes
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
-import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import java.io.File
 import java.util.zip.ZipFile
+import kotlin.io.path.createTempDirectory
 
 /**
  * Proves the patched APK wires Delete into MenuHelper customize lists (not only extension dex).
@@ -57,15 +58,15 @@ fun verifyMxPlayerFreeCustomizeMenu(apkFile: File): String {
 
         val jy1 = findMethod(dexFiles, "Ljy1;", "a") { it.size == 1 && it[0] == "I" }
         val sbd = findMethod(dexFiles, "Lsbd;", "onClick")
-        val jy1Hook = jy1?.take(8)?.any {
-            it is ReferenceInstruction && it.reference.toString().contains("onCustomizeMenuAction")
-        } == true
-        val sbdHook = sbd?.take(8)?.any {
-            it is ReferenceInstruction && it.reference.toString().contains("onCustomizeRowClick")
-        } == true
+        val jy1ByteOk = verifyHookedBooleanCall(jy1, "onCustomizeMenuAction")
+        val sbdByteOk = verifyHookedBooleanCall(sbd, "onCustomizeRowClick")
         appendLine(
-            if (jy1Hook || sbdHook) "OK  delete click wired (jy1=$jy1Hook sbd=$sbdHook)"
-            else "MISSING  Ljy1.a(I) and Lsbd.onClick intercepts",
+            if (jy1ByteOk) "OK  Ljy1.a(I) invokes onCustomizeMenuAction with valid move-result"
+            else "MISSING  Ljy1.a(I) must invoke-static onCustomizeMenuAction before move-result",
+        )
+        appendLine(
+            if (sbdByteOk) "OK  Lsbd.onClick invokes onCustomizeRowClick with valid move-result"
+            else "MISSING  Lsbd.onClick must invoke-static onCustomizeRowClick before move-result",
         )
 
         val ext = dexFiles.flatMap { it.classes }.firstOrNull {
@@ -86,6 +87,46 @@ fun verifyMxPlayerFreeCustomizeMenu(apkFile: File): String {
     val result = lines + if (failed) "FAILED\n" else "PASSED\n"
     require(result.contains("PASSED")) { result }
     return result
+}
+
+/** Runs SDK dex verifier on every DEX in the patched free APK (including high classes*.dex). */
+fun verifyMxPlayerFreePatchedApkDex(apkFile: File): String {
+    val sdk = resolveAndroidSdk()
+    val dexDir = createTempDirectory("mx-free-dex-verify").toFile()
+    ZipFile(apkFile).use { zip ->
+        zip.stream()
+            .filter { !it.isDirectory && it.name.matches(Regex("classes\\d*\\.dex")) }
+            .forEach { entry ->
+                val out = File(dexDir, entry.name)
+                zip.getInputStream(entry).use { input -> out.outputStream().use { input.copyTo(it) } }
+            }
+    }
+    val dexFiles = dexDir.listFiles()?.filter { it.name.matches(Regex("classes\\d*\\.dex")) }.orEmpty()
+    require(dexFiles.isNotEmpty()) { "No DEX in $apkFile" }
+  val verifier = SdkDexVerifier(sdk)
+    dexFiles.sortedBy { it.name }.forEach { verifier.verifyDexFile(it) }
+    return "OK  SDK/ART DEX verification passed for ${dexFiles.size} file(s)\n"
+}
+
+/**
+ * Ensures a hooked handler uses `invoke-static … Z` immediately before the matching `move-result`,
+ * not a leading orphan `move-result` (ART VerifyError on launch).
+ */
+private fun verifyHookedBooleanCall(
+    insns: List<com.android.tools.smali.dexlib2.iface.instruction.Instruction>?,
+    extensionMethodSuffix: String,
+): Boolean {
+    if (insns.isNullOrEmpty()) return false
+    if (insns.first().opcode == Opcode.MOVE_RESULT) {
+        return false
+    }
+    val window = insns.take(16)
+    val moveIdx = window.indexOfFirst { it.opcode == Opcode.MOVE_RESULT }
+    if (moveIdx <= 0) return false
+    val invoke = window[moveIdx - 1]
+    if (invoke.opcode != Opcode.INVOKE_STATIC) return false
+    return invoke is ReferenceInstruction &&
+        invoke.reference.toString().contains(extensionMethodSuffix)
 }
 
 private const val ACTIVITY_SCREEN = "Lcom/mxtech/videoplayer/ActivityScreen;"

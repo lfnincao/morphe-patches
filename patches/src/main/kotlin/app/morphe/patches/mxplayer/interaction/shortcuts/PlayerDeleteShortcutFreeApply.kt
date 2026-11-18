@@ -2,11 +2,11 @@ package app.morphe.patches.mxplayer.interaction.shortcuts
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
-import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.util.cloneParameters
-import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION_FREE
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 
 /**
  * Free 3.5.3 delete integrates with the Customize items screen ({@code Luad} + {@code Lcbd;->b()}),
@@ -36,30 +36,39 @@ internal fun applyFreeDeleteShortcutPatches() {
     }
 
     FreeJy1MenuActionFingerprint.method.cloneParameters().apply {
-        val continueAt = getInstruction(0)
+        val insns = implementation!!.instructions
+        // jy1.a(I) copies params from high registers before dispatch; p0/p1 are not valid at entry.
+        val hookIndex = insns.indexOfFirst { insn ->
+            insn.opcode == Opcode.IGET_OBJECT &&
+                insn is ReferenceInstruction &&
+                insn.reference.toString().contains("Ljy1;->b:")
+        }
+        check(hookIndex >= 2) { "jy1.a(I) prologue iget-object Ljy1;.b not found" }
+        val continueAt = insns[hookIndex]
         addInstructionsWithLabels(
-            0,
+            hookIndex,
             """
-            invoke-static {p0, p1}, $ext->onCustomizeMenuAction(Ljava/lang/Object;I)Z
-            move-result v0
-            if-eqz v0, :morphe_jy1_continue
+            invoke-static {v1, v0}, $ext->onCustomizeMenuAction(Ljava/lang/Object;I)Z
+            move-result v15
+            if-eqz v15, :morphe_jy1_continue
             return-void
             """.trimIndent(),
-            app.morphe.patcher.util.smali.ExternalLabel("morphe_jy1_continue", continueAt),
+            ExternalLabel("morphe_jy1_continue", continueAt),
         )
     }
 
     FreeSbdMenuClickFingerprint.method.cloneParameters().apply {
-        val continueAt = getInstruction(0)
+        val insns = implementation!!.instructions
+        val continueAt = insns[0]
         addInstructionsWithLabels(
             0,
             """
             invoke-static {p0}, $ext->onCustomizeRowClick(Ljava/lang/Object;)Z
-            move-result v0
-            if-eqz v0, :morphe_sbd_continue
+            move-result v15
+            if-eqz v15, :morphe_sbd_continue
             return-void
             """.trimIndent(),
-            app.morphe.patcher.util.smali.ExternalLabel("morphe_sbd_continue", continueAt),
+            ExternalLabel("morphe_sbd_continue", continueAt),
         )
     }
 }
