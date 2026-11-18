@@ -22,11 +22,16 @@ internal fun verifyMxPlayerPatchedApk(
     val behaviorReport = verifyMxPlayerDeleteShortcutBehavior(apkFile)
     println(behaviorReport)
     val invokeReport = verifyMxPlayerExtensionInvokes(apkFile)
-  println(invokeReport)
+    println(invokeReport)
+    val appInvokeReport = verifyMxPlayerAppInvokes(apkFile)
+    println(appInvokeReport)
     val invokeLog = File("/opt/cursor/artifacts/mxplayer-extension-invoke-verify.log")
     invokeLog.parentFile?.mkdirs()
-    invokeLog.writeText(invokeReport)
+    invokeLog.writeText("$invokeReport\n$appInvokeReport")
     println("Wrote extension invoke verify log to $invokeLog")
+    val appInvokeLog = File("/opt/cursor/artifacts/mxplayer-app-invoke-verify.log")
+    appInvokeLog.writeText(appInvokeReport)
+    println("Wrote app invoke verify log to $appInvokeLog")
     val artLog =
         if (hasConnectedAndroidDevice()) {
             verifyMxPlayerArtOnDevice(apkFile, packageName)

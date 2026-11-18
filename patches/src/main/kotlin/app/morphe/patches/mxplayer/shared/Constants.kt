@@ -19,6 +19,9 @@ internal object Constants {
     /** 16-bit mask argument for {@code Lo20$a.r} when clearing delete (same pattern as stock ~0x8 = -9). */
     internal const val DELETE_SHORTCUT_CLEAR_MASK = -8193 // 0xdfff
 
+    internal const val LO20_ADAPTER_CLASS = "Lo20\$a;"
+    internal const val LO20_ADAPTER_BITWISE_DESCRIPTOR = "(Lo20\$a;I)V"
+
     /** Index in list_shortcuts / list_shortcuts_eng after the stock twelve items. */
     internal const val DELETE_SHORTCUT_LIST_INDEX = 12
 

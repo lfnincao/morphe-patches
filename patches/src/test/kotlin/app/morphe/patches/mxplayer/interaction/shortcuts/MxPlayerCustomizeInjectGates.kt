@@ -3,10 +3,13 @@ package app.morphe.patches.mxplayer.interaction.shortcuts
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_BIT
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_CLEAR_MASK
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_LIST_INDEX
+import app.morphe.patches.mxplayer.shared.Constants.LO20_ADAPTER_BITWISE_DESCRIPTOR
+import app.morphe.patches.mxplayer.shared.Constants.LO20_ADAPTER_CLASS
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 /** Bind prologue: delete row uses extension; other rows fall through to packed-switch. */
 internal fun verifyCustomizeBindInjectGates(insns: List<Instruction>): List<Pair<Boolean, String>> {
@@ -36,20 +39,8 @@ internal fun verifyCustomizeToggleInjectGates(insns: List<Instruction>): List<Pa
         insns.any {
             it is ReferenceInstruction && it.reference.toString().contains("onDeleteShortcutToggle")
         }
-    val usesStockSet =
-        insns.any { insn ->
-            insn is ReferenceInstruction &&
-                insn.reference.toString().let { ref ->
-                    ref.contains("Lo20\$a;") && ref.contains("->s")
-                }
-        }
-    val usesStockClear =
-        insns.any { insn ->
-            insn is ReferenceInstruction &&
-                insn.reference.toString().let { ref ->
-                    ref.contains("Lo20\$a;") && ref.contains("->r")
-                }
-        }
+    val usesStockSet = invokeMatches(insns, "s")
+    val usesStockClear = invokeMatches(insns, "r")
     val deleteSetLiteral =
         insns.any { insn ->
             insn.opcode == Opcode.CONST_16 &&
@@ -89,8 +80,7 @@ private fun deleteToggleMatchesLoopShape(insns: List<Instruction>, packedSwitchI
                 insn.reference.toString().contains("->I:")
         }
     if (deleteStart < 0) return false
-    val deleteSlice =
-        inject.subList(deleteStart, inject.size).map { normalizeBranchOpcode(it.opcode) }
+    val deleteSlice = inject.subList(deleteStart, inject.size).map { instructionShapeToken(it) }
     val loopSlice = toggleCaseSlice(insns, 0x8) ?: return false
     if (deleteSlice.size != loopSlice.size) return false
     return deleteSlice.zip(loopSlice).all { (a, b) -> a == b }
@@ -102,7 +92,7 @@ private fun normalizeBranchOpcode(opcode: Opcode): Opcode =
         else -> opcode
     }
 
-private fun toggleCaseSlice(insns: List<Instruction>, enableLiteral: Int): List<Opcode>? {
+private fun toggleCaseSlice(insns: List<Instruction>, enableLiteral: Int): List<String>? {
     val enableIndex =
         insns.indexOfFirst { insn ->
             insn.opcode == Opcode.CONST_16 &&
@@ -126,7 +116,25 @@ private fun toggleCaseSlice(insns: List<Instruction>, enableLiteral: Int): List<
         }
     if (secondGoto < 0) return null
     val end = enableIndex + secondGoto + 1
-    return insns.subList(start, end).map { it.opcode }
+    return insns.subList(start, end).map { instructionShapeToken(it) }
+}
+
+private fun invokeMatches(insns: List<Instruction>, methodName: String): Boolean =
+    insns.any { insn ->
+        if (insn !is ReferenceInstruction || insn.reference !is MethodReference) return@any false
+        val ref = insn.reference as MethodReference
+        ref.definingClass == LO20_ADAPTER_CLASS &&
+            ref.name == methodName &&
+            "(${ref.parameterTypes.joinToString("") { it }})${ref.returnType}" == LO20_ADAPTER_BITWISE_DESCRIPTOR
+    }
+
+private fun instructionShapeToken(insn: Instruction): String {
+    if (insn is ReferenceInstruction && insn.reference is MethodReference) {
+        val ref = insn.reference as MethodReference
+        val descriptor = "(${ref.parameterTypes.joinToString("") { it }})${ref.returnType}"
+        return "${normalizeBranchOpcode(insn.opcode)}:${ref.definingClass}->${ref.name}$descriptor"
+    }
+    return normalizeBranchOpcode(insn.opcode).toString()
 }
 
 private fun injectBlockBeforePackedSwitch(insns: List<Instruction>, packedSwitchIndex: Int): List<Instruction> {

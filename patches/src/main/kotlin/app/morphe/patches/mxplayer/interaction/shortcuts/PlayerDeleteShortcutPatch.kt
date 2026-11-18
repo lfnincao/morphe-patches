@@ -168,11 +168,11 @@ private fun MutableMethod.patchCustomizeToggleRow12() {
             move-result v2
             if-eqz v2, :morphe_delete_off
             const/16 v2, ${Constants.DELETE_SHORTCUT_BIT}
-            invoke-static {v0, v2}, Lo20${'$'}a;->s(I)V
+            invoke-static {v0, v2}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
             goto/16 :morphe_toggle_epilogue
             :morphe_delete_off
             const/16 v2, ${Constants.DELETE_SHORTCUT_CLEAR_MASK}
-            invoke-static {v0, v2}, Lo20${'$'}a;->r(I)V
+            invoke-static {v0, v2}, Lo20${'$'}a;->r(Lo20${'$'}a;I)V
             goto/16 :morphe_toggle_epilogue
         """.trimIndent(),
         ExternalLabel("morphe_toggle_pswitch", getInstruction(packedSwitchIndex)),
