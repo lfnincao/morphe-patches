@@ -1,18 +1,20 @@
 /*
  * Copyright 2026 Morphe.
  *
- * Injects page script via stock {@code WebContentsImpl} prologue ({@code e()} + {@code b:J})
- * and {@code J.N.MevqfbP8} — the only JNI in Opera 103.3 arm64 that passes a script string
- * with that pointer source. {@code J.N.Mhlly_d7} is for {@code CaptureDevicesDialogDelegate}
- * only and must not be used with {@code WebContentsImpl.b} (native SIGSEGV).
+ * Uses stock {@link WebContents#R0} ({@code WebContentsImpl.e()} + native {@code b}
+ * + {@code J.N.MseJ7A4a}) — the only public Java entry on Opera 103.3 for passing a
+ * script string with the WebContents native pointer. Vogelkop-MorphePatches does not
+ * ship a playback-speed patch; this hook follows their structural
+ * {@code OperaWebContentsDelegate.loadingStateChanged} fingerprint pattern.
+ *
+ * Does not call raw {@code J.N.Mhlly_d7} (CaptureDevicesDialogDelegate only; wrong
+ * pointer → SIGSEGV) or {@code RenderFrameHost#d} (WebAuth).
  */
 
 package app.morphe.extension.opera.patches;
 
-import org.chromium.content.browser.webcontents.WebContentsImpl;
 import org.chromium.content_public.browser.WebContents;
 
-import J.N;
 import app.morphe.extension.opera.settings.OperaPlaybackSpeedPreferences;
 import app.morphe.extension.shared.Logger;
 
@@ -33,21 +35,8 @@ public final class OperaPlaybackSpeedScriptInjector {
             if (webContents.isDestroyed()) {
                 return;
             }
-            if (!(webContents instanceof WebContentsImpl)) {
-                Logger.printInfo(() -> VERIFY_LOG_TAG + ": WebContents is not WebContentsImpl");
-                disableInjectionSafely();
-                return;
-            }
-            WebContentsImpl impl = (WebContentsImpl) webContents;
-            impl.e();
-            long nativePtr = impl.getNativePointer();
-            if (nativePtr == 0L) {
-                Logger.printInfo(() -> VERIFY_LOG_TAG + ": native WebContents pointer is zero");
-                disableInjectionSafely();
-                return;
-            }
-            N.MevqfbP8(nativePtr, script);
-            Logger.printInfo(() -> VERIFY_LOG_TAG + ": script dispatched (" + script.length() + " chars)");
+            Logger.printInfo(() -> VERIFY_LOG_TAG + ": dispatching script (" + script.length() + " chars)");
+            webContents.R0(script);
         } catch (Throwable throwable) {
             disableInjectionSafely();
             try {
