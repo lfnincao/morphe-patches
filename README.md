@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v2.5.0](https://github.com/lfnincao/morphe-patches/releases/tag/v2.5.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;218 patches total
+> **[v2.5.1](https://github.com/lfnincao/morphe-patches/releases/tag/v2.5.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;218 patches total
 <details>
 <summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;56 patches</summary>
 <br>
@@ -299,7 +299,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 |----------|----------------|-----------|
 | [Hide broken installation dialog](#hide-broken-installation-dialog) | Prevents Opera's "Your app installation appears to be broken" dialog from blocking startup. Fingerprints from Vogelkop-MorphePatches (crash-recovery nag, not a signature check). Recommended alongside playback-speed patches on emulators and patched installs. |  |
 | [Ignore browser boot failures](#ignore-browser-boot-failures) | Rewrites MainLibraryBoot failure announcements into success so the welcome flow can continue when Chromium boot fails (e.g. ARM build on x86 emulator). Fingerprints from Vogelkop-MorphePatches. |  |
-| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (Chromium EvaluateJavaScript / J.N.Mhlly_d7). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; patch option sets the initial default). Includes Vogelkop-MorphePatches startup helpers for emulators. Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch. | • Default HTML5 playback speed |
+| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (stock WebContentsImpl.e + b / J.N.MevqfbP8). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; patch option sets the initial default). Includes Vogelkop-MorphePatches startup helpers for emulators. Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch. | • Default HTML5 playback speed |
 
 </details>
 

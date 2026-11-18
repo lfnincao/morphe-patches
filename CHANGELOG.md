@@ -1,3 +1,11 @@
+## [2.5.1](https://github.com/lfnincao/morphe-patches/compare/v2.5.0...v2.5.1) (2026-11-18)
+
+### 🐛 Bug Fixes
+
+* **mxplayer:** guard delete toolbar click and shortcut flag merges ([afb2a59](https://github.com/lfnincao/morphe-patches/commit/afb2a59b1a2139b05cda3a179f6994a57c8e2ee7))
+* **opera:** stop WebContents crash from wrong Mhlly_d7 JNI ([738cf2d](https://github.com/lfnincao/morphe-patches/commit/738cf2d51ef665c135bc12babc77410ab156f930))
+* **release:** document MX emulator and Opera static verification ([d58ae1a](https://github.com/lfnincao/morphe-patches/commit/d58ae1a89ce16fda79fbebf3d07c7c5c7fff5158))
+
 ## [2.5.0](https://github.com/lfnincao/morphe-patches/compare/v2.4.3...v2.5.0) (2026-11-18)
 
 ### ✨ New Features
