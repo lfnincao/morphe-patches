@@ -49,6 +49,7 @@ fun main(arguments: Array<String>) {
         val patched = patcher.get()
         output?.let { out ->
             patched.applyTo(out)
+            println(verifyMxPlayerFreePatchedApkDex(out))
             println(verifyMxPlayerFreeCustomizeMenu(out))
             println(verifyMxPlayerExtensionInvokes(out))
         }
