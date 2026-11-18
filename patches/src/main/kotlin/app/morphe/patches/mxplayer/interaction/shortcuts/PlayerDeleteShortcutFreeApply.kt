@@ -78,23 +78,30 @@ internal fun applyFreeDeleteShortcutPatches() {
 
 private fun MutableMethod.patchFreeCustomizeBindDeleteRow(ext: String) {
     val instructions = implementation!!.instructions
-    val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
-    check(packedSwitchIndex >= 0) { "packed-switch fallback not found in rbd\$a.onBindViewHolder" }
+    val stringCastIndex = instructions.indexOfFirst { insn ->
+        insn.opcode == Opcode.CHECK_CAST &&
+            insn is ReferenceInstruction &&
+            insn.reference.toString().contains("Ljava/lang/String;")
+    }
+    check(stringCastIndex >= 0) { "String check-cast not found in rbd\$a.onBindViewHolder" }
+    val afterString = stringCastIndex + 1
+    val continueInstruction = getInstruction(afterString)
     val listenerIndex = instructions.indexOfFirst { insn ->
         insn.opcode == Opcode.NEW_INSTANCE &&
             insn is ReferenceInstruction &&
             insn.reference.toString().contains("Lqbd;")
     }
-    check(listenerIndex > packedSwitchIndex) { "Lqbd listener tail not found in rbd\$a.onBindViewHolder" }
+    check(listenerIndex > afterString) { "Lqbd listener tail not found in rbd\$a.onBindViewHolder" }
     val listenerInsn = getInstruction(listenerIndex)
 
     addInstructionsWithLabels(
-        packedSwitchIndex,
+        afterString,
         """
             const-string v6, "${Constants.DELETE_SHORTCUT_KEY}"
             invoke-virtual {v5, v6}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
             move-result v6
             if-eqz v6, :morphe_free_bind_delete_continue
+            check-cast p1, Lrbd${'$'}a${'$'}a;
             iget-object v0, p1, Lrbd${'$'}a${'$'}a;->b:Landroidx/appcompat/widget/AppCompatCheckBox;
             iget-object v1, p0, Lrbd${'$'}a;->k:Landroid/content/Context;
             sget v2, Lcah;->delete_file_item:I
@@ -112,8 +119,8 @@ private fun MutableMethod.patchFreeCustomizeBindDeleteRow(ext: String) {
             :morphe_free_bind_delete_set
             invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setChecked(Z)V
             goto/16 :morphe_free_bind_listener
-            :morphe_free_bind_delete_continue
         """.trimIndent(),
+        ExternalLabel("morphe_free_bind_delete_continue", continueInstruction),
         ExternalLabel("morphe_free_bind_listener", listenerInsn),
     )
 
