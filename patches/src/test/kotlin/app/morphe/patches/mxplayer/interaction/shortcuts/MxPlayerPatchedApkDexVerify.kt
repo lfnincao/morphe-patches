@@ -9,8 +9,16 @@ import kotlin.io.path.createTempDirectory
 /**
  * Runs dexdump + d8 on every DEX file, then ART `package compile -m verify` on a connected device/emulator.
  */
-internal fun verifyMxPlayerPatchedApk(apkFile: File, packageName: String = "com.mxtech.videoplayer.pro") {
+internal fun verifyMxPlayerPatchedApk(
+    apkFile: File,
+    packageName: String = "com.mxtech.videoplayer.pro",
+    stockApk: File? = null,
+) {
     verifyMxPlayerPatchedApkDex(apkFile)
+    val arrayReport = verifyMxPlayerShortcutsArray(apkFile, stockApk)
+    println(arrayReport)
+  val adapterReport = verifyMxPlayerCustomizeAdapter(apkFile)
+  println(adapterReport)
     val invokeReport = verifyMxPlayerExtensionInvokes(apkFile)
   println(invokeReport)
     val invokeLog = File("/opt/cursor/artifacts/mxplayer-extension-invoke-verify.log")

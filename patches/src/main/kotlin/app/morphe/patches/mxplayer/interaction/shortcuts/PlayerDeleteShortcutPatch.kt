@@ -20,17 +20,18 @@ import app.morphe.patches.mxplayer.shared.Constants.DELETE_PP0_FIELD_NAME
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_BIT
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_KEY
+import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_LIST_INDEX
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
 
 /**
  * Delete shortcut for MX Player Pro.
  *
  * Technique credit: [FTL-Patches](https://github.com/BlazeFTL/FTL-Patches) (BlazeFTL) —
- * PlayerDefaultShortcutsPatch, CleanPlayerSidebar* / ModSettings invoke-static hooks,
- * and resource-only sidebar edits. Logic lives in the mxplayerpro extension; patches only
- * add resources, one ActivityScreen field, and thin invoke-static bridges.
+ * resource `list_shortcuts*` edits, default shortcut bitmask migration, and thin extension hooks.
+ * Customize rows use stock `Lo20$a.l` label binding; we only branch on index 12 before packed-switch.
  */
 internal val playerDeleteShortcutResourcePatch = resourcePatch(
     name = null,
@@ -79,38 +80,13 @@ val playerDeleteShortcutPatch = bytecodePatch(
             ).toMutable(),
         )
 
-        CustomizeItemsOnBindFingerprint.method.cloneParameters().apply {
-            val continueInstruction = getInstruction(0)
-            addInstructionsWithLabels(
-                0,
-                """
-                invoke-static {p0, p1, p2}, $ext->bindCustomizeItem(Ljava/lang/Object;Ljava/lang/Object;I)Z
-                move-result v0
-                if-eqz v0, :morphe_bind_continue
-                return-void
-                """.trimIndent(),
-                ExternalLabel("morphe_bind_continue", continueInstruction),
-            )
-        }
+        CustomizeItemsOnBindFingerprint.method.cloneParameters().patchCustomizeBindRow12(ext)
 
-        CustomizeItemsToggleFingerprint.method.cloneParameters().apply {
-            val continueInstruction = getInstruction(0)
-            addInstructionsWithLabels(
-                0,
-                """
-                invoke-static {p0, p1}, $ext->onCustomizeToggle(Ljava/lang/Object;Landroid/widget/CompoundButton;)Z
-                move-result v0
-                if-eqz v0, :morphe_toggle_continue
-                return-void
-                """.trimIndent(),
-                ExternalLabel("morphe_toggle_continue", continueInstruction),
-            )
-        }
+        CustomizeItemsToggleFingerprint.method.cloneParameters().patchCustomizeToggleRow12(ext)
 
         MenuMoreShortcutsPanelFingerprint.method.cloneParameters().apply {
-            val returnIndex = indexOfLastReturnVoid()
             addInstructions(
-                returnIndex,
+                indexOfLastReturnVoid(),
                 """
                 invoke-static {p0}, $ext->ensureShortcutsPanelVisible(Ljava/lang/Object;)V
                 """.trimIndent(),
@@ -139,17 +115,57 @@ val playerDeleteShortcutPatch = bytecodePatch(
                 ExternalLabel("morphe_onclick_continue", continueInstruction),
             )
         }
-
-        ShortcutAdapterCreateViewHolderFingerprint.method.cloneParameters().apply {
-            addInstructions(
-                0,
-                """
-                invoke-static {p1}, $ext->remapShortcutViewType(I)I
-                move-result p1
-                """.trimIndent(),
-            )
-        }
     }
+}
+
+private fun MutableMethod.patchCustomizeBindRow12(ext: String) {
+    val instructions = implementation!!.instructions
+    val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
+    check(packedSwitchIndex >= 0) { "packed-switch not found in Lo20\$a.l" }
+    val epilogueIndex =
+        instructions.indexOfFirst { insn ->
+            insn.opcode == Opcode.NEW_INSTANCE &&
+                insn is ReferenceInstruction &&
+                insn.reference.toString().contains("Ln20;")
+        }
+    check(epilogueIndex > packedSwitchIndex) { "Ln20 epilogue not found in Lo20\$a.l" }
+
+    addInstructionsWithLabels(
+        packedSwitchIndex,
+        """
+            const/16 v3, $DELETE_SHORTCUT_LIST_INDEX
+            if-ne v6, v3, :morphe_bind_pswitch
+            invoke-static {v4, v0}, $ext->bindDeleteRowChecked(Ljava/lang/Object;Ljava/lang/Object;)V
+            goto/16 :morphe_bind_epilogue
+            :morphe_bind_pswitch
+        """.trimIndent(),
+        ExternalLabel("morphe_bind_epilogue", getInstruction(epilogueIndex)),
+    )
+}
+
+private fun MutableMethod.patchCustomizeToggleRow12(ext: String) {
+    val instructions = implementation!!.instructions
+    val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
+    check(packedSwitchIndex >= 0) { "packed-switch not found in n20.onCheckedChanged" }
+    val epilogueIndex =
+        instructions.indexOfFirst { insn ->
+            insn.opcode == Opcode.CONST_STRING &&
+                insn is ReferenceInstruction &&
+                insn.reference.toString().contains("shortcuts_flag.3")
+        }.takeIf { it > packedSwitchIndex }
+            ?: instructions.indexOfLast { it.opcode == Opcode.RETURN_VOID }
+
+    addInstructionsWithLabels(
+        packedSwitchIndex,
+        """
+            const/16 v4, $DELETE_SHORTCUT_LIST_INDEX
+            if-ne v3, v4, :morphe_toggle_pswitch
+            invoke-static {v1}, $ext->onDeleteShortcutToggle(Ljava/lang/Object;)V
+            goto/16 :morphe_toggle_epilogue
+            :morphe_toggle_pswitch
+        """.trimIndent(),
+        ExternalLabel("morphe_toggle_epilogue", getInstruction(epilogueIndex)),
+    )
 }
 
 private fun MutableMethod.indexOfLastReturnVoid(): Int =

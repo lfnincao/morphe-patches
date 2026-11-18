@@ -77,7 +77,7 @@ fun main(arguments: Array<String>) {
     val keyDetails = mxPlayerEmulatorKeyStoreDetails()
     ApkUtils.signApk(unsigned, outputApk, "MorpheTest", keyDetails, minSdkVersion = 24)
     if (!stockOnly) {
-        verifyMxPlayerPatchedApk(outputApk, packageName = pkg)
+        verifyMxPlayerPatchedApk(outputApk, packageName = pkg, stockApk = apkFile)
     }
     println("Signed $outputApk (stock=$stockOnly, clone=$clone, package=$pkg, keystore=${keyDetails.keyStore})")
 }

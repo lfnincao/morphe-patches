@@ -1,9 +1,6 @@
 package app.morphe.extension.mxplayerpro.delete;
 
 import android.view.View;
-import android.widget.CompoundButton;
-
-import androidx.appcompat.widget.AppCompatCheckBox;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -17,57 +14,44 @@ import java.util.ArrayList;
 public final class DeleteShortcutPatch {
     public static final int DELETE_SHORTCUT_BIT = 0x2000;
     public static final int DELETE_SHORTCUT_LIST_INDEX = 12;
-    public static final int DELETE_SHORTCUT_VIEW_TYPE = 12;
+    public static final int DELETE_SHORTCUT_VIEW_TYPE = 14;
 
     private static final int STRING_MENU_DELETE = 0x7f120475;
     private static final int DRAWABLE_DELETE = 0x7f080685;
-    private static final String PREFS_KEY = "shortcuts_flag.3";
     private static final String PP0_CACHE_FIELD = "patchDeleteShortcutPp0";
     private static final String ACTIVITY_SCREEN_CLASS = "com.mxtech.videoplayer.ActivityScreen";
 
     private DeleteShortcutPatch() {}
 
-    public static boolean bindCustomizeItem(Object adapter, Object holderBase, int position) {
-        if (position != DELETE_SHORTCUT_LIST_INDEX) {
-            return false;
-        }
+    /** Checked state for customize-items row index 12 (after stock {@code setText}). */
+    public static void bindDeleteRowChecked(Object adapter, Object checkbox) {
         try {
-            AppCompatCheckBox check = findCheckbox(holderBase);
-            if (check == null) {
-                return false;
-            }
-            CharSequence label = check.getContext().getString(STRING_MENU_DELETE);
-            check.setText(label);
-            int flags = adapterFieldInt(adapter, "d");
-            check.setChecked((flags & DELETE_SHORTCUT_BIT) != 0);
-            Constructor<?> listenerCtor = Class.forName("n20").getConstructor(
-                adapter.getClass(),
-                int.class,
-                holderBase.getClass()
-            );
-            CompoundButton.OnCheckedChangeListener listener =
-                (CompoundButton.OnCheckedChangeListener) listenerCtor.newInstance(adapter, position, holderBase);
-            check.setOnCheckedChangeListener(listener);
-            return true;
+            int flags = adapter.getClass().getField("d").getInt(adapter);
+            ((android.widget.CompoundButton) checkbox).setChecked((flags & DELETE_SHORTCUT_BIT) != 0);
         } catch (ReflectiveOperationException ignored) {
-            return false;
+            // no-op
         }
     }
 
-    public static boolean onCustomizeToggle(Object listener, CompoundButton button) {
+    /** Persist shortcuts_flag.3 when delete row is toggled (index 12 only). */
+    public static void onDeleteShortcutToggle(Object listener) {
         try {
-            int index = listenerFieldInt(listener, "d");
-            if (index != DELETE_SHORTCUT_LIST_INDEX) {
-                return false;
+            Class<?> n20 = listener.getClass();
+            int listIndex = n20.getField("d").getInt(listener);
+            if (listIndex != DELETE_SHORTCUT_LIST_INDEX) {
+                return;
             }
-            Object adapter = listenerField(listener, "k");
-            boolean checked = button.isChecked();
-            Method mutator = adapter.getClass().getMethod(checked ? "s" : "r", adapter.getClass(), int.class);
-            mutator.invoke(null, adapter, DELETE_SHORTCUT_BIT);
-            persistShortcutFlags(adapter);
-            return true;
+            Object adapter = n20.getField("k").get(listener);
+            Object viewHolder = n20.getField("e").get(listener);
+            Object checkbox = viewHolder.getClass().getField("I").get(viewHolder);
+            boolean checked = ((android.widget.CompoundButton) checkbox).isChecked();
+            Class<?> adapterClass = adapter.getClass();
+            Method mutate =
+                adapterClass.getMethod(checked ? "s" : "r", adapterClass, int.class);
+            int arg = checked ? DELETE_SHORTCUT_BIT : -(DELETE_SHORTCUT_BIT + 1);
+            mutate.invoke(null, adapter, arg);
         } catch (ReflectiveOperationException ignored) {
-            return false;
+            // no-op
         }
     }
 
@@ -81,10 +65,6 @@ public final class DeleteShortcutPatch {
         } catch (ReflectiveOperationException ignored) {
             // no-op
         }
-    }
-
-    public static int remapShortcutViewType(int viewType) {
-        return viewType == DELETE_SHORTCUT_VIEW_TYPE ? 0 : viewType;
     }
 
     public static void syncToolbarShortcut(Object screen) {
@@ -143,38 +123,6 @@ public final class DeleteShortcutPatch {
         }
     }
 
-    private static void persistShortcutFlags(Object adapter) throws ReflectiveOperationException {
-        int flags = adapterFieldInt(adapter, "d");
-        Class<?> lv = Class.forName("lV");
-        Object m90 = lv.getField("A").get(null);
-        Object prefs = field(m90, "d");
-        Method edit = prefs.getClass().getMethod("edit");
-        Object editor = edit.invoke(prefs);
-        Method putInt = editor.getClass().getMethod("putInt", String.class, int.class);
-        putInt.invoke(editor, PREFS_KEY, flags);
-        Method commit = editor.getClass().getMethod("commit");
-        commit.invoke(editor);
-    }
-
-    private static AppCompatCheckBox findCheckbox(Object holder) {
-        for (Class<?> type = holder.getClass(); type != null; type = type.getSuperclass()) {
-            for (Field field : type.getDeclaredFields()) {
-                if (AppCompatCheckBox.class.isAssignableFrom(field.getType())) {
-                    field.setAccessible(true);
-                    try {
-                        Object value = field.get(holder);
-                        if (value instanceof AppCompatCheckBox) {
-                            return (AppCompatCheckBox) value;
-                        }
-                    } catch (IllegalAccessException ignored) {
-                        return null;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
     private static Object createPp0(Object screen) throws ReflectiveOperationException {
         Class<?> pp0 = Class.forName("Pp0");
         Constructor<?> ctor = pp0.getConstructor(int.class, int.class, boolean.class, boolean.class, int.class, String.class);
@@ -212,14 +160,6 @@ public final class DeleteShortcutPatch {
         } catch (ReflectiveOperationException ignored) {
             // no-op
         }
-    }
-
-    private static int adapterFieldInt(Object adapter, String name) throws ReflectiveOperationException {
-        return adapter.getClass().getField(name).getInt(adapter);
-    }
-
-    private static int listenerFieldInt(Object listener, String name) throws ReflectiveOperationException {
-        return listener.getClass().getField(name).getInt(listener);
     }
 
     private static Object listenerField(Object listener, String name) throws ReflectiveOperationException {
