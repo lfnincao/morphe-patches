@@ -11,9 +11,17 @@ internal object MxBhEmulatorGateCFingerprint : Fingerprint(
     parameters = listOf("Landroid/content/Context;"),
 )
 
-/** `const-string "mx-bh"` in obfuscated Application [LlV.onCreate]. */
+/** `const-string "mx-bh"` in obfuscated Application [LlV.onCreate] (Pro 1.93.4). */
 internal object MxLvOnCreateMxBhStringFingerprint : Fingerprint(
     definingClass = "LlV;",
+    name = "onCreate",
+    returnType = "V",
+    filters = listOf(string("mx-bh")),
+)
+
+/** `const-string "mx-bh"` in free Application [Lzjc.onCreate] (3.5.3). */
+internal object MxZjcOnCreateMxBhStringFingerprint : Fingerprint(
+    definingClass = "Lzjc;",
     name = "onCreate",
     returnType = "V",
     filters = listOf(string("mx-bh")),

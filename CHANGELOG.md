@@ -1,5 +1,9 @@
 ## [2.5.1](https://github.com/lfnincao/morphe-patches/compare/v2.5.0...v2.5.1) (2026-11-18)
 
+### ✨ New Features
+
+* **mxplayer (free):** FTL-Patches universal ad removal (hide layouts, force-hide ad views, SDK strip) for 3.5.3 ([#23](https://github.com/lfnincao/morphe-patches/pull/23)); technique credit [BlazeFTL/FTL-Patches](https://github.com/BlazeFTL/FTL-Patches)
+
 ### 🐛 Bug Fixes
 
 * **mxplayer:** guard delete toolbar click and shortcut flag merges ([afb2a59](https://github.com/lfnincao/morphe-patches/commit/afb2a59b1a2139b05cda3a179f6994a57c8e2ee7))

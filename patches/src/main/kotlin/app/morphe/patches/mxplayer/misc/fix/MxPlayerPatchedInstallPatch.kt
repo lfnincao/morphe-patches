@@ -5,6 +5,7 @@ import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.cloneParameters
 import app.morphe.patches.all.misc.fix.spoofsignature.spoofSignaturePatch
 import app.morphe.patches.mxplayer.misc.extension.sharedExtensionPatch
+import app.morphe.patches.mxplayer.shared.Constants.COMPATIBILITY_MX_PLAYER_FREE
 import app.morphe.patches.mxplayer.shared.Constants.COMPATIBILITY_MX_PLAYER_PRO
 
 /**
@@ -29,7 +30,7 @@ val mxPlayerPatchedInstallPatch = patch(
         "from a stock APK.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_MX_PLAYER_PRO)
+    compatibleWith(COMPATIBILITY_MX_PLAYER_PRO, COMPATIBILITY_MX_PLAYER_FREE)
 
     dependsOn(sharedExtensionPatch, spoofSignaturePatch)
 

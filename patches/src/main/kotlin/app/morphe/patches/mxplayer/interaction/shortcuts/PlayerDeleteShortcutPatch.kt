@@ -5,6 +5,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLa
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.mutableClassDefBy
+import app.morphe.patcher.patch.packageMetadata
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.patch.resourceXml
 import app.morphe.patcher.util.cloneParameters
@@ -15,10 +16,12 @@ import app.morphe.patches.mxplayer.misc.extension.sharedExtensionPatch
 import app.morphe.patches.mxplayer.misc.fix.mxPlayerPatchedInstallPatch
 import app.morphe.patches.mxplayer.shared.Constants
 import app.morphe.patches.mxplayer.shared.Constants.ACTIVITY_SCREEN_CLASS
+import app.morphe.patches.mxplayer.shared.Constants.COMPATIBILITY_MX_PLAYER_FREE
 import app.morphe.patches.mxplayer.shared.Constants.COMPATIBILITY_MX_PLAYER_PRO
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_PP0_FIELD_NAME
-import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_BIT
-import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION
+import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_BIT_PRO
+import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION_PRO
+import app.morphe.patches.mxplayer.shared.Constants.PACKAGE_NAME_FREE
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_KEY
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_LIST_INDEX
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -38,15 +41,17 @@ internal val playerDeleteShortcutResourcePatch = resourcePatch(
     name = null,
     description = "Adds delete to list_shortcuts and delete_file to list_shortcuts_eng.",
 ) {
-    compatibleWith(COMPATIBILITY_MX_PLAYER_PRO)
+    compatibleWith(COMPATIBILITY_MX_PLAYER_PRO, COMPATIBILITY_MX_PLAYER_FREE)
 
     execute {
         resourceXml("res/values/arrays.xml").use { arrays ->
             arrays.resource("list_shortcuts_eng").appendChild("item") {
                 text = DELETE_SHORTCUT_KEY
             }
-            arrays.resource("list_shortcuts").appendChild("item") {
-                text = "@string/menu_delete"
+            if (packageMetadata.packageName != PACKAGE_NAME_FREE) {
+                arrays.resource("list_shortcuts").appendChild("item") {
+                    text = "@string/menu_delete"
+                }
             }
         }
     }
@@ -58,7 +63,7 @@ val playerDeleteShortcutPatch = bytecodePatch(
     description = "Adds Delete to Customize items and wires it to stock ActivityScreen delete flow.",
     default = true,
 ) {
-    compatibleWith(COMPATIBILITY_MX_PLAYER_PRO)
+    compatibleWith(COMPATIBILITY_MX_PLAYER_PRO, COMPATIBILITY_MX_PLAYER_FREE)
     dependsOn(
         sharedExtensionPatch,
         mxPlayerPatchedInstallPatch,
@@ -67,65 +72,72 @@ val playerDeleteShortcutPatch = bytecodePatch(
     )
 
     execute {
-        val ext = DELETE_SHORTCUT_EXTENSION
+        when (packageMetadata.packageName) {
+            PACKAGE_NAME_FREE -> applyFreeDeleteShortcutPatches()
+            else -> applyProDeleteShortcutPatches()
+        }
+    }
+}
 
-        mutableClassDefBy(ACTIVITY_SCREEN_CLASS).fields.add(
-            ImmutableField(
-                ACTIVITY_SCREEN_CLASS,
-                DELETE_PP0_FIELD_NAME,
-                "LPp0;",
-                AccessFlags.PUBLIC.value,
-                null,
-                null,
-                null,
-            ).toMutable(),
+private fun applyProDeleteShortcutPatches() {
+    val ext = DELETE_SHORTCUT_EXTENSION_PRO
+
+    mutableClassDefBy(ACTIVITY_SCREEN_CLASS).fields.add(
+        ImmutableField(
+            ACTIVITY_SCREEN_CLASS,
+            DELETE_PP0_FIELD_NAME,
+            "LPp0;",
+            AccessFlags.PUBLIC.value,
+            null,
+            null,
+            null,
+        ).toMutable(),
+    )
+
+    CustomizeItemsOnBindFingerprint.method.cloneParameters().patchCustomizeBindRow12(ext)
+
+    CustomizeItemsToggleFingerprint.method.cloneParameters().patchCustomizeToggleRow12()
+
+    MenuMoreShortcutsPanelFingerprint.method.cloneParameters().apply {
+        addInstructions(
+            indexOfLastReturnVoid(),
+            """
+            invoke-static {p0}, $ext->ensureShortcutsPanelVisible(Ljava/lang/Object;)V
+            """.trimIndent(),
         )
+    }
 
-        CustomizeItemsOnBindFingerprint.method.cloneParameters().patchCustomizeBindRow12(ext)
+    ActivityScreenBuildShortcutsFingerprint.method.cloneParameters().apply {
+        addInstructions(
+            indexOfLastReturnVoid(),
+            """
+            invoke-static {p0}, $ext->syncToolbarShortcut(Ljava/lang/Object;)V
+            """.trimIndent(),
+        )
+    }
 
-        CustomizeItemsToggleFingerprint.method.cloneParameters().patchCustomizeToggleRow12()
+    ShortcutAdapterOnClickFingerprint.method.cloneParameters().apply {
+        val continueInstruction = getInstruction(0)
+        addInstructionsWithLabels(
+            0,
+            """
+            invoke-static {p0}, $ext->onToolbarShortcutClick(Ljava/lang/Object;)Z
+            move-result v0
+            if-eqz v0, :morphe_onclick_continue
+            return-void
+            """.trimIndent(),
+            ExternalLabel("morphe_onclick_continue", continueInstruction),
+        )
+    }
 
-        MenuMoreShortcutsPanelFingerprint.method.cloneParameters().apply {
-            addInstructions(
-                indexOfLastReturnVoid(),
-                """
-                invoke-static {p0}, $ext->ensureShortcutsPanelVisible(Ljava/lang/Object;)V
-                """.trimIndent(),
-            )
-        }
-
-        ActivityScreenBuildShortcutsFingerprint.method.cloneParameters().apply {
-            addInstructions(
-                indexOfLastReturnVoid(),
-                """
-                invoke-static {p0}, $ext->syncToolbarShortcut(Ljava/lang/Object;)V
-                """.trimIndent(),
-            )
-        }
-
-        ShortcutAdapterOnClickFingerprint.method.cloneParameters().apply {
-            val continueInstruction = getInstruction(0)
-            addInstructionsWithLabels(
-                0,
-                """
-                invoke-static {p0}, $ext->onToolbarShortcutClick(Ljava/lang/Object;)Z
-                move-result v0
-                if-eqz v0, :morphe_onclick_continue
-                return-void
-                """.trimIndent(),
-                ExternalLabel("morphe_onclick_continue", continueInstruction),
-            )
-        }
-
-        ShortcutAdapterCreateViewHolderFingerprint.method.cloneParameters().apply {
-            addInstructions(
-                0,
-                """
-                invoke-static {p1}, $ext->remapShortcutViewType(I)I
-                move-result p1
-                """.trimIndent(),
-            )
-        }
+    ShortcutAdapterCreateViewHolderFingerprint.method.cloneParameters().apply {
+        addInstructions(
+            0,
+            """
+            invoke-static {p1}, $ext->remapShortcutViewType(I)I
+            move-result p1
+            """.trimIndent(),
+        )
     }
 }
 
@@ -180,7 +192,7 @@ private fun MutableMethod.patchCustomizeToggleRow12() {
             invoke-virtual {v2}, Landroid/widget/CompoundButton;->isChecked()Z
             move-result v2
             if-eqz v2, :morphe_delete_off
-            const/16 v2, ${Constants.DELETE_SHORTCUT_BIT}
+            const/16 v2, ${DELETE_SHORTCUT_BIT_PRO}
             invoke-static {v0, v2}, Lo20${'$'}a;->s(Lo20${'$'}a;I)V
             goto :morphe_toggle_epilogue
             :morphe_delete_off

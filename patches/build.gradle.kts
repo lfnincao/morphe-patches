@@ -168,6 +168,21 @@ tasks {
         }
     }
 
+    register<JavaExec>("validateMxPlayerFreePatchedApk") {
+        description = "Apply delete shortcut + ad removal + install fixes to MX Player free APK"
+        group = "verification"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("app.morphe.patches.mxplayer.interaction.shortcuts.MxPlayerFreePatchedApkBuildKt")
+        doFirst {
+            val apk = providers.gradleProperty("mxPlayerApk").orNull
+                ?: throw GradleException("validateMxPlayerFreePatchedApk requires -PmxPlayerApk")
+            val output = providers.gradleProperty("mxPlayerOutput").orNull
+                ?: throw GradleException("validateMxPlayerFreePatchedApk requires -PmxPlayerOutput")
+            setArgs(listOf(apk, output))
+        }
+    }
+
     register<JavaExec>("validateMxPlayerProDeleteShortcut") {
         description = "Applies Player delete shortcut to a stock MX Player Pro APK or APKM bundle"
         group = "verification"

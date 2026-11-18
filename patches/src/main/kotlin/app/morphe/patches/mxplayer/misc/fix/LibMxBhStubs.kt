@@ -11,7 +11,9 @@ import app.morphe.util.inputStreamFromBundledResource
 import app.morphe.patcher.util.numberOfParameterRegistersLogical
 import app.morphe.patcher.util.proxy.mutableTypes.MutableClass
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patcher.patch.packageMetadata
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
+import app.morphe.patches.mxplayer.shared.Constants.PACKAGE_NAME_FREE
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -49,7 +51,10 @@ internal fun replaceLibMxBhWithStubInApk() {
 }
 
 private fun skipLvOnCreateMxBhLoad() {
-    val fingerprint = MxLvOnCreateMxBhStringFingerprint
+    val fingerprint = when (packageMetadata.packageName) {
+        PACKAGE_NAME_FREE -> MxZjcOnCreateMxBhStringFingerprint
+        else -> MxLvOnCreateMxBhStringFingerprint
+    }
     val stringIndex = fingerprint.instructionMatches.first().index
     val method = fingerprint.method
     val loadLibraryIndex = method.instructions.withIndex()
