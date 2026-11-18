@@ -121,7 +121,7 @@ val playerDeleteShortcutPatch = bytecodePatch(
             addInstructions(
                 indexOfLastReturnVoid(),
                 """
-                invoke-static {p0}, $ext->syncToolbarShortcut(${ACTIVITY_SCREEN_CLASS})V
+                invoke-static {p0}, $ext->syncToolbarShortcut(Ljava/lang/Object;)V
                 """.trimIndent(),
             )
         }

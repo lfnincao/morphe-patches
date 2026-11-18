@@ -11,6 +11,12 @@ import kotlin.io.path.createTempDirectory
  */
 internal fun verifyMxPlayerPatchedApk(apkFile: File, packageName: String = "com.mxtech.videoplayer.pro") {
     verifyMxPlayerPatchedApkDex(apkFile)
+    val invokeReport = verifyMxPlayerExtensionInvokes(apkFile)
+  println(invokeReport)
+    val invokeLog = File("/opt/cursor/artifacts/mxplayer-extension-invoke-verify.log")
+    invokeLog.parentFile?.mkdirs()
+    invokeLog.writeText(invokeReport)
+    println("Wrote extension invoke verify log to $invokeLog")
     val artLog =
         if (hasConnectedAndroidDevice()) {
             verifyMxPlayerArtOnDevice(apkFile, packageName)
