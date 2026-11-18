@@ -26,6 +26,8 @@ private const val WRONG_EVAL_JS_NATIVE = "Mhlly_d7"
 private const val DEVTOOLS_CONSOLE_NATIVE = "MseJ7A4a"
 private const val PAGE_EVAL_JS_NATIVE = "MevqfbP8"
 private const val WEB_CONTENTS_IMPL_TYPE = "Lorg/chromium/content/browser/webcontents/WebContentsImpl;"
+private const val PAGE_SCRIPT_EVALUATOR_TYPE =
+    "Lorg/chromium/content/browser/webcontents/MorpheOperaPageScriptEvaluator;"
 private const val WEB_CONTENTS_PUBLIC_TYPE = "Lorg/chromium/content_public/browser/WebContents;"
 private const val OPERA_APPLICATION_TYPE = "Lcom/opera/android/OperaApplication;"
 private const val SHARED_UTILS_TYPE = "Lapp/morphe/extension/shared/Utils;"
@@ -61,7 +63,8 @@ fun main(args: Array<String>) {
 
     verifyExtensionMethodExists(apk, INJECTOR_TYPE, "evaluate")
     verifyInjectorDoesNotCallWebAuth(apk)
-    verifyInjectorUsesMevqfbP8(apk)
+    verifyInjectorDelegatesToChromiumEvaluator(apk)
+    verifyChromiumPackagePageScriptEvaluator(apk)
     verifyInjectorKillSwitch(apk)
     listOf(
         "patch_executePlaybackSpeedScript" to "Lcom/opera/android/browser/chromium/OperaWebContentsDelegate;",
@@ -211,9 +214,9 @@ private fun verifyInjectorDoesNotCallWebAuth(apk: File) {
     println("Static check passed: injector does not reference WebAuth RenderFrameHost APIs.")
 }
 
-private fun verifyInjectorUsesMevqfbP8(apk: File) {
-    var sawMevqfbP8 = false
-    var sawWebContentsGuard = false
+private fun verifyInjectorDelegatesToChromiumEvaluator(apk: File) {
+    var sawChromiumEvaluator = false
+    var illegalCrossPackageNativeAccess = false
     var sawDevToolsR0 = false
     var sawWrongNative = false
     var sawFieldReflection = false
@@ -232,20 +235,25 @@ private fun verifyInjectorUsesMevqfbP8(apk: File) {
                     val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
                     val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
                     if (methodRef != null) {
-                        if (methodRef.definingClass == WEB_CONTENTS_PUBLIC_TYPE &&
-                            methodRef.name == "R0"
+                        if (methodRef.definingClass == PAGE_SCRIPT_EVALUATOR_TYPE &&
+                            methodRef.name == "evaluateScript"
                         ) {
-                            sawDevToolsR0 = true
+                            sawChromiumEvaluator = true
                         }
-                        if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE && methodRef.name == "e") {
-                            sawWebContentsGuard = true
+                        if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE &&
+                            (methodRef.name == "e" || methodRef.name == "getNativePointer")
+                        ) {
+                            illegalCrossPackageNativeAccess = true
+                        }
+                        if (methodRef.definingClass == WEB_CONTENTS_PUBLIC_TYPE && methodRef.name == "R0") {
+                            sawDevToolsR0 = true
                         }
                         check(methodRef.definingClass != RENDER_FRAME_HOST_TYPE) {
                             "Injector must not call RenderFrameHost APIs"
                         }
                         if (methodRef.definingClass == CHROMIUM_JNI_CLASS) {
                             when (methodRef.name) {
-                                PAGE_EVAL_JS_NATIVE -> sawMevqfbP8 = true
+                                PAGE_EVAL_JS_NATIVE -> illegalCrossPackageNativeAccess = true
                                 WRONG_EVAL_JS_NATIVE -> sawWrongNative = true
                                 DEVTOOLS_CONSOLE_NATIVE -> sawDevToolsR0 = true
                             }
@@ -260,11 +268,11 @@ private fun verifyInjectorUsesMevqfbP8(apk: File) {
                 }
             }
     }
-    check(sawMevqfbP8) {
-        "Injector must call $CHROMIUM_JNI_CLASS->$PAGE_EVAL_JS_NATIVE (stock page JS eval; see Lmqi;->a)"
+    check(sawChromiumEvaluator) {
+        "Injector must delegate to $PAGE_SCRIPT_EVALUATOR_TYPE->evaluateScript (same-package native access)"
     }
-    check(sawWebContentsGuard) {
-        "Injector must call $WEB_CONTENTS_IMPL_TYPE->e() before native pointer use"
+    check(!illegalCrossPackageNativeAccess) {
+        "Injector must not call WebContentsImpl/J.N natives directly (IllegalAccessError on device)"
     }
     check(!sawDevToolsR0) {
         "Injector must not call WebContents.R0 or $DEVTOOLS_CONSOLE_NATIVE (devtools console only)"
@@ -276,8 +284,71 @@ private fun verifyInjectorUsesMevqfbP8(apk: File) {
         "Injector must not reflect native WebContents pointer fields"
     }
     println(
-        "Static check passed: injector uses WebContentsImpl.e + getNativePointer/b + " +
-            "$CHROMIUM_JNI_CLASS->$PAGE_EVAL_JS_NATIVE (not R0/$DEVTOOLS_CONSOLE_NATIVE).",
+        "Static check passed: injector delegates to $PAGE_SCRIPT_EVALUATOR_TYPE " +
+            "(no cross-package WebContentsImpl/native access).",
+    )
+}
+
+private fun verifyChromiumPackagePageScriptEvaluator(apk: File) {
+    var foundEvaluator = false
+    var sawMevqfbP8 = false
+    var sawWebContentsGuard = false
+    var sawNativePointer = false
+    var sawDevToolsR0 = false
+    var sawWrongNative = false
+    ZipFile(apk).use { zip ->
+        zip.entries().asSequence()
+            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
+            .forEach { entry ->
+                val dex = DexBackedDexFile.fromInputStream(
+                    Opcodes.getDefault(),
+                    zip.getInputStream(entry).readBytes().inputStream(),
+                )
+                val evaluator = dex.classes.firstOrNull { it.type == PAGE_SCRIPT_EVALUATOR_TYPE } ?: return@forEach
+                foundEvaluator = true
+                check(evaluator.type.startsWith("Lorg/chromium/content/browser/webcontents/")) {
+                    "$PAGE_SCRIPT_EVALUATOR_TYPE must live in Chromium webcontents package for legal access"
+                }
+                val method = evaluator.methods.firstOrNull { it.name == "evaluateScript" }
+                    ?: error("evaluateScript missing from MorpheOperaPageScriptEvaluator")
+                method.implementation?.instructions?.forEach { instruction ->
+                    val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                    val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                    if (methodRef == null) return@forEach
+                    if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE && methodRef.name == "e") {
+                        sawWebContentsGuard = true
+                    }
+                    if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE &&
+                        methodRef.name == "getNativePointer"
+                    ) {
+                        sawNativePointer = true
+                    }
+                    if (methodRef.definingClass == CHROMIUM_JNI_CLASS) {
+                        when (methodRef.name) {
+                            PAGE_EVAL_JS_NATIVE -> sawMevqfbP8 = true
+                            WRONG_EVAL_JS_NATIVE -> sawWrongNative = true
+                            DEVTOOLS_CONSOLE_NATIVE -> sawDevToolsR0 = true
+                        }
+                    }
+                }
+            }
+    }
+    check(foundEvaluator) { "$PAGE_SCRIPT_EVALUATOR_TYPE missing from patched APK" }
+    check(sawMevqfbP8) {
+        "$PAGE_SCRIPT_EVALUATOR_TYPE must call $CHROMIUM_JNI_CLASS->$PAGE_EVAL_JS_NATIVE"
+    }
+    check(sawWebContentsGuard && sawNativePointer) {
+        "$PAGE_SCRIPT_EVALUATOR_TYPE must call WebContentsImpl.e() and getNativePointer()"
+    }
+    check(!sawDevToolsR0) {
+        "Evaluator must not call R0/$DEVTOOLS_CONSOLE_NATIVE"
+    }
+    check(!sawWrongNative) {
+        "Evaluator must not call $WRONG_EVAL_JS_NATIVE"
+    }
+    println(
+        "Static check passed: $PAGE_SCRIPT_EVALUATOR_TYPE in Chromium package calls " +
+            "e() + getNativePointer + $PAGE_EVAL_JS_NATIVE.",
     )
 }
 
