@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-11-18T21:14:07",
-  "description": "## [2.7.1](https://github.com/lfnincao/morphe-patches/compare/v2.7.0...v2.7.1) (2026-11-18)\n\n### 🐛 Bug Fixes\n\n* **mxplayer-free:** add Delete row to MenuHelper Customize items list (3.5.3) ([16936cb](https://github.com/lfnincao/morphe-patches/commit/16936cb44f500b60dbd68d20f209ffba3c05406a))\n* **opera:** evaluate playback-speed JS via MevqfbP8 not R0 ([a615555](https://github.com/lfnincao/morphe-patches/commit/a615555fae779c46ddbac0fa9569ec816d312bf8))",
-  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.7.1/patches-2.7.1.mpp",
+  "created_at": "2026-11-18T22:54:09",
+  "description": "## [2.7.2](https://github.com/lfnincao/morphe-patches/compare/v2.7.1...v2.7.2) (2026-11-18)\n\n### 🐛 Bug Fixes\n\n* **mxplayer-free:** repair jy1.a(I) hook bytecode for ART verifier ([#29](https://github.com/lfnincao/morphe-patches/issues/29)) ([5347355](https://github.com/lfnincao/morphe-patches/commit/5347355d667b8bfaa84f10cc7560ba136ed4019a))\n* **opera:** same-package WebContentsImpl access for MevqfbP8 page eval ([#28](https://github.com/lfnincao/morphe-patches/issues/28)) ([58b94ef](https://github.com/lfnincao/morphe-patches/commit/58b94ef68bfc1ca135e5aee10ac1bae23cbf1d2b))",
+  "download_url": "https://github.com/lfnincao/morphe-patches/releases/download/v2.7.2/patches-2.7.2.mpp",
   "signature_download_url": "",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "public_key": "PPMsWvMqp78cL8h+2UgBGQwsJkuAL/sLWsNr2b5kqmE="
 }

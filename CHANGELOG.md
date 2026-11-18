@@ -1,3 +1,10 @@
+## [2.7.2](https://github.com/lfnincao/morphe-patches/compare/v2.7.1...v2.7.2) (2026-11-18)
+
+### 🐛 Bug Fixes
+
+* **mxplayer-free:** repair jy1.a(I) hook bytecode for ART verifier ([#29](https://github.com/lfnincao/morphe-patches/issues/29)) ([5347355](https://github.com/lfnincao/morphe-patches/commit/5347355d667b8bfaa84f10cc7560ba136ed4019a))
+* **opera:** same-package WebContentsImpl access for MevqfbP8 page eval ([#28](https://github.com/lfnincao/morphe-patches/issues/28)) ([58b94ef](https://github.com/lfnincao/morphe-patches/commit/58b94ef68bfc1ca135e5aee10ac1bae23cbf1d2b))
+
 ## [2.7.1](https://github.com/lfnincao/morphe-patches/compare/v2.7.0...v2.7.1) (2026-11-18)
 
 ### 🐛 Bug Fixes
