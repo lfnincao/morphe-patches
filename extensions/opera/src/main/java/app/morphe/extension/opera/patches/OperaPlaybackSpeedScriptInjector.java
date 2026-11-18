@@ -1,9 +1,8 @@
 /*
  * Copyright 2026 Morphe.
  *
- * Page JS is evaluated via {@link MorpheOperaPageScriptEvaluator} in the
- * {@code org.chromium.content.browser.webcontents} package (legal access to
- * package-private {@code WebContentsImpl#getNativePointer()} / field {@code b:J}).
+ * Page JS is evaluated via {@link MorpheOperaPageScriptEvaluator}, which reflects
+ * the private {@code WebContentsImpl} native pointer then calls {@code J.N.MevqfbP8}.
  *
  * {@link org.chromium.content_public.browser.WebContents#R0} → {@code MseJ7A4a} (devtools only).
  */

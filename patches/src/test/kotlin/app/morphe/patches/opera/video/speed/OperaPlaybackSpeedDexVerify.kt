@@ -269,10 +269,10 @@ private fun verifyInjectorDelegatesToChromiumEvaluator(apk: File) {
             }
     }
     check(sawChromiumEvaluator) {
-        "Injector must delegate to $PAGE_SCRIPT_EVALUATOR_TYPE->evaluateScript (same-package native access)"
+        "Injector must delegate to $PAGE_SCRIPT_EVALUATOR_TYPE->evaluateScript"
     }
     check(!illegalCrossPackageNativeAccess) {
-        "Injector must not call WebContentsImpl/J.N natives directly (IllegalAccessError on device)"
+        "Injector must not call WebContentsImpl/J.N natives directly"
     }
     check(!sawDevToolsR0) {
         "Injector must not call WebContents.R0 or $DEVTOOLS_CONSOLE_NATIVE (devtools console only)"
@@ -281,11 +281,10 @@ private fun verifyInjectorDelegatesToChromiumEvaluator(apk: File) {
         "Injector must not call $WRONG_EVAL_JS_NATIVE (CaptureDevicesDialogDelegate only in stock)"
     }
     check(!sawFieldReflection) {
-        "Injector must not reflect native WebContents pointer fields"
+        "Injector must not reflect WebContents native pointer (evaluator owns reflection)"
     }
     println(
-        "Static check passed: injector delegates to $PAGE_SCRIPT_EVALUATOR_TYPE " +
-            "(no cross-package WebContentsImpl/native access).",
+        "Static check passed: injector delegates to $PAGE_SCRIPT_EVALUATOR_TYPE only.",
     )
 }
 
@@ -293,7 +292,9 @@ private fun verifyChromiumPackagePageScriptEvaluator(apk: File) {
     var foundEvaluator = false
     var sawMevqfbP8 = false
     var sawWebContentsGuard = false
-    var sawNativePointer = false
+    var sawDirectNativePointer = false
+    var sawReflectionLookup = false
+    var sawSetAccessible = false
     var sawDevToolsR0 = false
     var sawWrongNative = false
     ZipFile(apk).use { zip ->
@@ -306,28 +307,37 @@ private fun verifyChromiumPackagePageScriptEvaluator(apk: File) {
                 )
                 val evaluator = dex.classes.firstOrNull { it.type == PAGE_SCRIPT_EVALUATOR_TYPE } ?: return@forEach
                 foundEvaluator = true
-                check(evaluator.type.startsWith("Lorg/chromium/content/browser/webcontents/")) {
-                    "$PAGE_SCRIPT_EVALUATOR_TYPE must live in Chromium webcontents package for legal access"
-                }
-                val method = evaluator.methods.firstOrNull { it.name == "evaluateScript" }
-                    ?: error("evaluateScript missing from MorpheOperaPageScriptEvaluator")
-                method.implementation?.instructions?.forEach { instruction ->
-                    val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-                    val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
-                    if (methodRef == null) return@forEach
-                    if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE && methodRef.name == "e") {
-                        sawWebContentsGuard = true
-                    }
-                    if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE &&
-                        methodRef.name == "getNativePointer"
-                    ) {
-                        sawNativePointer = true
-                    }
-                    if (methodRef.definingClass == CHROMIUM_JNI_CLASS) {
-                        when (methodRef.name) {
-                            PAGE_EVAL_JS_NATIVE -> sawMevqfbP8 = true
-                            WRONG_EVAL_JS_NATIVE -> sawWrongNative = true
-                            DEVTOOLS_CONSOLE_NATIVE -> sawDevToolsR0 = true
+                evaluator.methods.forEach { m ->
+                    m.implementation?.instructions?.forEach { instruction ->
+                        val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                        val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                        if (methodRef == null) return@forEach
+                        if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE && methodRef.name == "e") {
+                            sawWebContentsGuard = true
+                        }
+                        if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE &&
+                            methodRef.name == "getNativePointer"
+                        ) {
+                            sawDirectNativePointer = true
+                        }
+                        if (methodRef.definingClass == "Ljava/lang/Class;" &&
+                            (methodRef.name == "getDeclaredMethod" || methodRef.name == "getDeclaredField")
+                        ) {
+                            sawReflectionLookup = true
+                        }
+                        if (methodRef.name == "setAccessible" &&
+                            (methodRef.definingClass == "Ljava/lang/reflect/Method;" ||
+                                methodRef.definingClass == "Ljava/lang/reflect/Field;" ||
+                                methodRef.definingClass == "Ljava/lang/reflect/AccessibleObject;")
+                        ) {
+                            sawSetAccessible = true
+                        }
+                        if (methodRef.definingClass == CHROMIUM_JNI_CLASS) {
+                            when (methodRef.name) {
+                                PAGE_EVAL_JS_NATIVE -> sawMevqfbP8 = true
+                                WRONG_EVAL_JS_NATIVE -> sawWrongNative = true
+                                DEVTOOLS_CONSOLE_NATIVE -> sawDevToolsR0 = true
+                            }
                         }
                     }
                 }
@@ -337,8 +347,14 @@ private fun verifyChromiumPackagePageScriptEvaluator(apk: File) {
     check(sawMevqfbP8) {
         "$PAGE_SCRIPT_EVALUATOR_TYPE must call $CHROMIUM_JNI_CLASS->$PAGE_EVAL_JS_NATIVE"
     }
-    check(sawWebContentsGuard && sawNativePointer) {
-        "$PAGE_SCRIPT_EVALUATOR_TYPE must call WebContentsImpl.e() and getNativePointer()"
+    check(sawWebContentsGuard) {
+        "$PAGE_SCRIPT_EVALUATOR_TYPE must call WebContentsImpl.e() before native pointer use"
+    }
+    check(sawReflectionLookup && sawSetAccessible) {
+        "$PAGE_SCRIPT_EVALUATOR_TYPE must reflect WebContentsImpl native ptr (getDeclared* + setAccessible)"
+    }
+    check(!sawDirectNativePointer) {
+        "$PAGE_SCRIPT_EVALUATOR_TYPE must not call private getNativePointer() directly"
     }
     check(!sawDevToolsR0) {
         "Evaluator must not call R0/$DEVTOOLS_CONSOLE_NATIVE"
@@ -347,8 +363,8 @@ private fun verifyChromiumPackagePageScriptEvaluator(apk: File) {
         "Evaluator must not call $WRONG_EVAL_JS_NATIVE"
     }
     println(
-        "Static check passed: $PAGE_SCRIPT_EVALUATOR_TYPE in Chromium package calls " +
-            "e() + getNativePointer + $PAGE_EVAL_JS_NATIVE.",
+        "Static check passed: $PAGE_SCRIPT_EVALUATOR_TYPE uses reflection + " +
+            "$PAGE_EVAL_JS_NATIVE (not direct getNativePointer / R0).",
     )
 }
 
