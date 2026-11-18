@@ -1,0 +1,52 @@
+# One-shot: publish signed patches-2.5.1.mpp after interrupted semantic-release (run #36).
+name: Publish recover v2.5.1
+
+on:
+  push:
+    branches:
+      - cursor/publish-recover-v2-5-1-0dea
+
+jobs:
+  recover-release:
+    name: Recover release v2.5.1
+    permissions:
+      contents: write
+      packages: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: v2.5.1
+      - name: Install fork public key
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/contents/morphe-signing.pub?ref=$GITHUB_SHA" -H 'Accept: application/vnd.github.raw+json' > morphe-signing.pub
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Cache Gradle
+        uses: burrunan/gradle-cache-action@v3
+      - name: Build patch bundle
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MORPHE_SIGNING_KEY: ${{ secrets.MORPHE_SIGNING_KEY }}
+        run: |
+          test -n "$MORPHE_SIGNING_KEY"
+          ./gradlew generatePatchesList
+          ./gradlew :patches:buildAndroid
+      - name: Verify bundle signature
+        env:
+          TAG: v2.5.1
+        run: |
+          python3 -m pip install cryptography
+          python3 -c 'import base64, hashlib, pathlib, zipfile; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey; p = pathlib.Path("patches/build/libs/patches-" + __import__("os").environ["TAG"][1:] + ".mpp"); data = p.read_bytes(); comment = zipfile.ZipFile(p).comment; magic, key, sig = comment.split(); assert magic == b"MorpheSig1" and key.decode() == pathlib.Path("morphe-signing.pub").read_text().strip(); unsigned = data[:-len(comment)-2] + b"\x00\x00"; Ed25519PublicKey.from_public_bytes(base64.b64decode(key)).verify(base64.b64decode(sig), magic + hashlib.sha256(unsigned).digest()); print("Bundle signature verified")'
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bundle="patches/build/libs/patches-2.5.1.mpp"
+          gh release upload v2.5.1 "$bundle" --repo "$GITHUB_REPOSITORY" --clobber
