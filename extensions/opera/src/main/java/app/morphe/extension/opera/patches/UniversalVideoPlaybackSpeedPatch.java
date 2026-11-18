@@ -2,13 +2,10 @@
  * Copyright 2026 Morphe.
  *
  * Injects a document script on each completed page load so HTML5 {@code <video>}
- * and {@code <audio>} elements use a user-selected playback rate. Chromium's
- * built-in overlay speed menu is unchanged; this extends universal page media
- * beyond the default 0.25x–2x set.
+ * and {@code <audio>} elements use a user-selected playback rate.
  *
- * Hook placement follows recon on Vogelkop-MorphePatches targets
- * (https://github.com/maniesh-NR/Vogelkop-MorphePatches): executes JavaScript
- * via {@code RenderFrameHost} on {@code OperaWebContentsDelegate#loadingStateChanged}.
+ * Hook: {@code OperaWebContentsDelegate#loadingStateChanged} (Vogelkop fingerprint).
+ * Eval: stock {@code WebContentsImpl.e()} + {@code b:J} + {@code J.N.MevqfbP8(script)}.
  */
 
 package app.morphe.extension.opera.patches;
@@ -36,7 +33,7 @@ public class UniversalVideoPlaybackSpeedPatch {
     }
 
     /**
-     * Effective speed for script injection; reads {@link SharedPreferences} on each call.
+     * Effective speed for script injection; reads {@link OperaPlaybackSpeedPreferences} on each call.
      */
     public static float getPlaybackSpeed() {
         return OperaPlaybackSpeedPreferences.resolvePlaybackSpeed(getPatchDefaultPlaybackSpeed());
@@ -60,25 +57,52 @@ public class UniversalVideoPlaybackSpeedPatch {
         }
     }
 
-    private static String buildInjectionScript(float rate) {
+    /**
+     * Called from Settings → Media when the user picks a new default speed (same tab, no navigation).
+     */
+    public static void onDefaultSpeedChangedFromSettings(float rate) {
+        if (!isPatchIncluded()) {
+            return;
+        }
+        OperaPlaybackSpeedScriptInjector.reevaluateActiveTab(rate);
+    }
+
+    /**
+     * Main-world script: sets {@code playbackRate} on current and future {@code video}/{@code audio}.
+     * Preference → {@link #getPlaybackSpeed()} → bridge → {@link OperaPlaybackSpeedScriptInjector#evaluate}.
+     */
+    public static String buildInjectionScript(float rate) {
         if (rate <= 0f || Float.isNaN(rate) || Float.isInfinite(rate)) {
             rate = 1.0f;
         }
-        // Compact script; runs on every navigation in the page main world.
         return "(function(){"
                 + "var r="
                 + rate
                 + ";"
-                + "function s(e){"
-                + "try{if(e&&typeof e.playbackRate==='number'&&e.playbackRate!==r)e.playbackRate=r;}catch(x){}"
+                + "function applyRate(el){"
+                + "try{"
+                + "if(!el||typeof el.playbackRate!=='number')return;"
+                + "if(el.playbackRate!==r)el.playbackRate=r;"
+                + "}catch(x){}"
                 + "}"
-                + "function a(){"
-                + "try{var m=document.querySelectorAll('video,audio');"
-                + "for(var i=0;i<m.length;i++)s(m[i]);"
+                + "function applyAll(){"
+                + "try{"
+                + "var m=document.querySelectorAll('video,audio');"
+                + "for(var i=0;i<m.length;i++)applyRate(m[i]);"
                 + "}catch(e){}"
                 + "}"
-                + "try{console.log('morphe-playback-speed-applied',r);}catch(e){}"
-                + "a();"
+                + "window.__morpheSetPlaybackSpeed=function(n){"
+                + "if(typeof n!=='number'||!(n>0))return;"
+                + "r=n;window.__morphePlaybackSpeed=r;applyAll();"
+                + "};"
+                + "window.__morphePlaybackSpeed=r;"
+                + "if(window.__morphePlaybackSpeedBooted){"
+                + "window.__morpheSetPlaybackSpeed(r);"
+                + "return;"
+                + "}"
+                + "window.__morphePlaybackSpeedBooted=true;"
+                + "try{console.log('morphe-playback-speed',r);}catch(e){}"
+                + "applyAll();"
                 + "try{"
                 + "new MutationObserver(function(ms){"
                 + "for(var i=0;i<ms.length;i++){"
@@ -87,17 +111,17 @@ public class UniversalVideoPlaybackSpeedPatch {
                 + "var n=ns[j];"
                 + "if(n.nodeType!==1)continue;"
                 + "var t=n.nodeName;"
-                + "if(t==='VIDEO'||t==='AUDIO')s(n);"
+                + "if(t==='VIDEO'||t==='AUDIO')applyRate(n);"
                 + "else if(n.querySelectorAll){"
                 + "var q=n.querySelectorAll('video,audio');"
-                + "for(var k=0;k<q.length;k++)s(q[k]);"
+                + "for(var k=0;k<q.length;k++)applyRate(q[k]);"
                 + "}"
                 + "}"
                 + "}"
-                + "}).observe(document.documentElement,{childList:true,subtree:true});"
-                + "var ev=['play','loadedmetadata','ratechange'];"
+                + "}).observe(document.documentElement||document,{childList:true,subtree:true});"
+                + "var ev=['play','loadeddata','loadedmetadata','ratechange','emptied','canplay'];"
                 + "for(var x=0;x<ev.length;x++){"
-                + "document.addEventListener(ev[x],function(e){s(e.target);},true);"
+                + "document.addEventListener(ev[x],function(e){applyRate(e.target);},true);"
                 + "}"
                 + "}catch(e){}"
                 + "})();";
