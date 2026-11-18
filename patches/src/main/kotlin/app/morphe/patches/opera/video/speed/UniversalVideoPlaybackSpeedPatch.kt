@@ -11,6 +11,11 @@ import app.morphe.patches.opera.misc.extension.hooks.OperaApplicationOnCreateFin
 import app.morphe.patches.opera.misc.extension.operaExtensionDexPatch
 import app.morphe.patches.opera.shared.COMPATIBILITY_OPERA
 import app.morphe.patches.opera.shared.COMPATIBILITY_OPERA_DIRECT
+import app.morphe.patches.opera.adblock.operaDisableAcceptableAdsPatch
+import app.morphe.patches.opera.ads.operaDisableAdModulesPatch
+import app.morphe.patches.opera.ads.operaRemoveSponsoredSpeedDialPatch
+import app.morphe.patches.opera.analytics.operaDisableAnalyticsPatch
+import app.morphe.patches.opera.manifest.operaRemoveAdTrackingPermissionsPatch
 import app.morphe.patches.opera.startup.operaHideBrokenInstallationDialogPatch
 import app.morphe.patches.opera.startup.operaIgnoreBootFailuresPatch
 import app.morphe.patches.shared.misc.bridge.addBridge
@@ -42,12 +47,13 @@ private const val WEB_CONTENTS_CLASS = "Lorg/chromium/content_public/browser/Web
 val operaUniversalVideoPlaybackSpeedPatch = patch(
     name = "Universal video playback speed",
     description = "Applies a configurable default playback speed to HTML5 video and audio on " +
-        "every page by injecting a script when a tab finishes loading (stock " +
-        "WebContentsImpl.e + b / J.N.MevqfbP8). Supports 0.25x through 3x (including 2.5x). Adds a " +
-        "Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; " +
-        "SharedPreferences; patch option sets the initial default). Includes Vogelkop-MorphePatches " +
-        "startup helpers for emulators. Target: Opera Browser 103.3.5234.91185. Not compatible with " +
-        "the Clone app / package-rename patch.",
+        "every page by injecting a script when a tab finishes loading (Vogelkop-style " +
+        "OperaWebContentsDelegate.loadingStateChanged hook + stock WebContents.R0). Supports " +
+        "0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → " +
+        "Media (FTL-Patches-style layout hook; SharedPreferences; Morphe option sets the initial " +
+        "default). Bundles ported Vogelkop-MorphePatches Opera base (ads, adblock, analytics, " +
+        "manifest, startup). Target: Opera Browser 103.3.5234.91185. Not compatible with the " +
+        "Clone app / package-rename patch.",
 ) {
     val playbackSpeedOption = stringOption(
         key = "playbackSpeed",
@@ -72,6 +78,11 @@ val operaUniversalVideoPlaybackSpeedPatch = patch(
     dependsOn(
         operaExtensionDexPatch,
         operaPlaybackSpeedSettingsResourcePatch,
+        operaDisableAdModulesPatch,
+        operaRemoveSponsoredSpeedDialPatch,
+        operaDisableAcceptableAdsPatch,
+        operaDisableAnalyticsPatch,
+        operaRemoveAdTrackingPermissionsPatch,
         operaHideBrokenInstallationDialogPatch,
         operaIgnoreBootFailuresPatch,
     )

@@ -2879,6 +2879,79 @@
       "options": []
     },
     {
+      "name": "Disable Acceptable Ads whitelist",
+      "description": "Replaces Opera's hidden partner whitelists (Google/Yandex measurement, Taboola, gambling and shopping affiliates, AppsFlyer/Adjust/Kochava/CJ tracking domains) with empty filter lists, so the built-in ad blocker actually blocks them.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        },
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Disable DRC audio",
       "description": "Adds an option to disable DRC (Dynamic Range Compression) audio.",
       "default": true,
@@ -3246,6 +3319,152 @@
               "versionCodes": null,
               "isExperimental": false,
               "minSdk": 26,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Disable ad modules",
+      "description": "Prevents Opera from loading its bundled third-party ad network modules (Liftoff/Vungle, Mintegral, Pangle/ByteDance) by breaking the reflective class lookup used by the ad mediation layer.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        },
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Disable analytics & tracking",
+      "description": "Stops Firebase Analytics, Google Ads/Doubleclick/IMA and Leanplum from collecting or sending usage data by rewriting their endpoint constants to a dead host. Firebase infrastructure that features depend on (push notifications, feature flags) is left intact.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        },
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
               "description": null
             }
           ]
@@ -12314,6 +12533,79 @@
       "options": []
     },
     {
+      "name": "Remove ad & tracking permissions",
+      "description": "Drops ad-profiling and tracking permissions from the manifest: Privacy Sandbox (ACCESS_ADSERVICES_*), Google Advertising ID, Play install-referrer attribution, basic phone state and Huawei store junk.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        },
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Remove background playback restrictions",
       "description": "Removes restrictions on background playback, including playing kids videos in the background.",
       "default": true,
@@ -12450,6 +12742,79 @@
               "versionCodes": null,
               "isExperimental": false,
               "minSdk": 26,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Remove sponsored Speed Dial",
+      "description": "Stops sponsored/partner tiles from appearing on the start page by making Opera's suggested-sites database queries return no rows. Regular Speed Dial entries and bookmarks are not affected.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APKM",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        },
+        {
+          "packageName": "com.opera.browser",
+          "name": "Opera Browser",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#FF1B36",
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "103.3.5234.91185",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": "103.2.5234.90977",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
               "description": null
             }
           ]
@@ -15476,7 +15841,7 @@
     },
     {
       "name": "Universal video playback speed",
-      "description": "Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (stock WebContentsImpl.e + b / J.N.MevqfbP8). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; patch option sets the initial default). Includes Vogelkop-MorphePatches startup helpers for emulators. Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch.",
+      "description": "Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (Vogelkop-style OperaWebContentsDelegate.loadingStateChanged hook + stock WebContents.R0). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; Morphe option sets the initial default). Bundles ported Vogelkop-MorphePatches Opera base (ads, adblock, analytics, manifest, startup). Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch.",
       "default": true,
       "category": null,
       "compatiblePackages": [
