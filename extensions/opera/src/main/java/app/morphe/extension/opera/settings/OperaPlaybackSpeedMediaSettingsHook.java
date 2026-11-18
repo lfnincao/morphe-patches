@@ -69,6 +69,7 @@ public final class OperaPlaybackSpeedMediaSettingsHook {
                     float chosen = SPEED_OPTIONS[which];
                     OperaPlaybackSpeedPreferences.setPlaybackSpeed(chosen);
                     updateRowText(row, chosen);
+                    UniversalVideoPlaybackSpeedPatch.onDefaultSpeedChangedFromSettings(chosen);
                     dialog.dismiss();
                 })
                 .setNegativeButton(android.R.string.cancel, null)

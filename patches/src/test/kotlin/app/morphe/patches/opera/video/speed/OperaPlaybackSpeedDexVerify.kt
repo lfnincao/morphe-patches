@@ -23,8 +23,10 @@ private const val WEB_AUTH_RESULT_TYPE =
     "Lorg/chromium/content_public/browser/RenderFrameHost${'$'}WebAuthSecurityChecksResults;"
 private const val CHROMIUM_JNI_CLASS = "LJ/N;"
 private const val WRONG_EVAL_JS_NATIVE = "Mhlly_d7"
-private const val STOCK_WEB_CONTENTS_R0 = "R0"
-private const val WEB_CONTENTS_TYPE = "Lorg/chromium/content_public/browser/WebContents;"
+private const val DEVTOOLS_CONSOLE_NATIVE = "MseJ7A4a"
+private const val PAGE_EVAL_JS_NATIVE = "MevqfbP8"
+private const val WEB_CONTENTS_IMPL_TYPE = "Lorg/chromium/content/browser/webcontents/WebContentsImpl;"
+private const val WEB_CONTENTS_PUBLIC_TYPE = "Lorg/chromium/content_public/browser/WebContents;"
 private const val OPERA_APPLICATION_TYPE = "Lcom/opera/android/OperaApplication;"
 private const val SHARED_UTILS_TYPE = "Lapp/morphe/extension/shared/Utils;"
 private const val OPERA_PROCESS_GUARD_TYPE = "Lapp/morphe/extension/opera/OperaProcessGuard;"
@@ -59,7 +61,7 @@ fun main(args: Array<String>) {
 
     verifyExtensionMethodExists(apk, INJECTOR_TYPE, "evaluate")
     verifyInjectorDoesNotCallWebAuth(apk)
-    verifyInjectorUsesStockWebContentsR0(apk)
+    verifyInjectorUsesMevqfbP8(apk)
     verifyInjectorKillSwitch(apk)
     listOf(
         "patch_executePlaybackSpeedScript" to "Lcom/opera/android/browser/chromium/OperaWebContentsDelegate;",
@@ -209,10 +211,11 @@ private fun verifyInjectorDoesNotCallWebAuth(apk: File) {
     println("Static check passed: injector does not reference WebAuth RenderFrameHost APIs.")
 }
 
-private fun verifyInjectorUsesStockWebContentsR0(apk: File) {
-    var sawR0 = false
+private fun verifyInjectorUsesMevqfbP8(apk: File) {
+    var sawMevqfbP8 = false
+    var sawWebContentsGuard = false
+    var sawDevToolsR0 = false
     var sawWrongNative = false
-    var sawRawJni = false
     var sawFieldReflection = false
     ZipFile(apk).use { zip ->
         zip.entries().asSequence()
@@ -229,18 +232,22 @@ private fun verifyInjectorUsesStockWebContentsR0(apk: File) {
                     val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
                     val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
                     if (methodRef != null) {
-                        if (methodRef.definingClass == WEB_CONTENTS_TYPE &&
-                            methodRef.name == STOCK_WEB_CONTENTS_R0
+                        if (methodRef.definingClass == WEB_CONTENTS_PUBLIC_TYPE &&
+                            methodRef.name == "R0"
                         ) {
-                            sawR0 = true
+                            sawDevToolsR0 = true
+                        }
+                        if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE && methodRef.name == "e") {
+                            sawWebContentsGuard = true
                         }
                         check(methodRef.definingClass != RENDER_FRAME_HOST_TYPE) {
                             "Injector must not call RenderFrameHost APIs"
                         }
                         if (methodRef.definingClass == CHROMIUM_JNI_CLASS) {
-                            sawRawJni = true
-                            if (methodRef.name == WRONG_EVAL_JS_NATIVE) {
-                                sawWrongNative = true
+                            when (methodRef.name) {
+                                PAGE_EVAL_JS_NATIVE -> sawMevqfbP8 = true
+                                WRONG_EVAL_JS_NATIVE -> sawWrongNative = true
+                                DEVTOOLS_CONSOLE_NATIVE -> sawDevToolsR0 = true
                             }
                         }
                         if (methodRef.definingClass == "Ljava/lang/reflect/Field;" ||
@@ -253,11 +260,14 @@ private fun verifyInjectorUsesStockWebContentsR0(apk: File) {
                 }
             }
     }
-    check(sawR0) {
-        "Injector must call $WEB_CONTENTS_TYPE->$STOCK_WEB_CONTENTS_R0 (stock WebContentsImpl prologue)"
+    check(sawMevqfbP8) {
+        "Injector must call $CHROMIUM_JNI_CLASS->$PAGE_EVAL_JS_NATIVE (stock page JS eval; see Lmqi;->a)"
     }
-    check(!sawRawJni) {
-        "Injector must not call raw $CHROMIUM_JNI_CLASS natives (use stock WebContents API)"
+    check(sawWebContentsGuard) {
+        "Injector must call $WEB_CONTENTS_IMPL_TYPE->e() before native pointer use"
+    }
+    check(!sawDevToolsR0) {
+        "Injector must not call WebContents.R0 or $DEVTOOLS_CONSOLE_NATIVE (devtools console only)"
     }
     check(!sawWrongNative) {
         "Injector must not call $WRONG_EVAL_JS_NATIVE (CaptureDevicesDialogDelegate only in stock)"
@@ -266,8 +276,8 @@ private fun verifyInjectorUsesStockWebContentsR0(apk: File) {
         "Injector must not reflect native WebContents pointer fields"
     }
     println(
-        "Static check passed: injector calls stock $WEB_CONTENTS_TYPE->$STOCK_WEB_CONTENTS_R0 " +
-            "(maps to WebContentsImpl.e + b + MseJ7A4a in stock dex).",
+        "Static check passed: injector uses WebContentsImpl.e + getNativePointer/b + " +
+            "$CHROMIUM_JNI_CLASS->$PAGE_EVAL_JS_NATIVE (not R0/$DEVTOOLS_CONSOLE_NATIVE).",
     )
 }
 

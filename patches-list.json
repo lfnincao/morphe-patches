@@ -15841,7 +15841,7 @@
     },
     {
       "name": "Universal video playback speed",
-      "description": "Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (Vogelkop-style OperaWebContentsDelegate.loadingStateChanged hook + stock WebContents.R0). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; Morphe option sets the initial default). Bundles ported Vogelkop-MorphePatches Opera base (ads, adblock, analytics, manifest, startup). Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch.",
+      "description": "Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (Vogelkop-style OperaWebContentsDelegate.loadingStateChanged hook + stock WebContentsImpl.e/MevqfbP8). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; Morphe option sets the initial default). Bundles ported Vogelkop-MorphePatches Opera base (ads, adblock, analytics, manifest, startup). Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch.",
       "default": true,
       "category": null,
       "compatiblePackages": [
