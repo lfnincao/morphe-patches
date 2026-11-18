@@ -174,10 +174,3 @@ private fun MutableMethod.patchCustomizeToggleRow12(ext: String) {
 
 private fun MutableMethod.indexOfLastReturnVoid(): Int =
     implementation!!.instructions.indexOfLast { it.opcode == Opcode.RETURN_VOID }
-
-private fun referencesV90ShortcutFlags(insn: com.android.tools.smali.dexlib2.iface.instruction.Instruction): Boolean {
-    if (insn !is ReferenceInstruction) return false
-    val ref = insn.reference
-    if (ref !is MethodReference) return false
-    return ref.definingClass == "LV90;" && ref.name == "C"
-}
