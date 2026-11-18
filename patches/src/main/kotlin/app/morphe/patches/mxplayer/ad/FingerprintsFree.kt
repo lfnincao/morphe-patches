@@ -33,3 +33,58 @@ internal object MxInterstitialAdActivityOnCreateFingerprint : Fingerprint(
         opcode(Opcode.INVOKE_VIRTUAL),
     ),
 )
+
+internal object BannerViewOnAttachedFingerprint : Fingerprint(
+    definingClass = "Lcom/mxplay/monetize/v2/banner/BannerView;",
+    name = "onAttachedToWindow",
+    returnType = "V",
+    filters = listOf(opcode(Opcode.INVOKE_SUPER)),
+)
+
+/** Stops banner refresh / AdView child wiring. */
+internal object BannerViewShowFingerprint : Fingerprint(
+    definingClass = "Lcom/mxplay/monetize/v2/banner/BannerView;",
+    name = "a",
+    returnType = "V",
+    filters = listOf(
+        opcode(Opcode.INVOKE_STATIC),
+        opcode(Opcode.IPUT_BOOLEAN),
+    ),
+)
+
+/** Folder list between-tray native ad row binder. */
+internal object BetweenTrayNativeAdBinderP32Fingerprint : Fingerprint(
+    definingClass = "Lp32;",
+    name = "i",
+    returnType = "V",
+    parameters = listOf(
+        "Lp32\$a;",
+        "Lcom/mxtech/videoplayer/ad/online/ad/views/model/BetweenTrayItemAdResource;",
+    ),
+)
+
+/** Alternate list binder for between-tray native ads. */
+internal object BetweenTrayNativeAdBinderThiFingerprint : Fingerprint(
+    definingClass = "Lthi;",
+    name = "i",
+    returnType = "V",
+    parameters = listOf(
+        "Lthi\$a;",
+        "Lcom/mxtech/videoplayer/ad/online/ad/views/model/BetweenTrayItemAdResource;",
+    ),
+)
+
+/** Loads GlobalNativeAds placement on folder screens. */
+internal object GlobalNativeAdsLoadFingerprint : Fingerprint(
+    definingClass = "Lxe8;",
+    name = "h",
+    returnType = "V",
+    filters = listOf(
+        fieldAccess(
+            name = "GlobalNativeAds",
+            type = "Lcom/mxtech/videoplayer/ad/local/ad/AdPlacement;",
+            definingClass = "Lcom/mxtech/videoplayer/ad/local/ad/AdPlacement;",
+            opcode = Opcode.SGET_OBJECT,
+        ),
+    ),
+)

@@ -27,6 +27,9 @@ internal object Constants {
     /** Free 3.5.3: mirror uses 0x2000; delete uses the next free bit. */
     internal const val DELETE_SHORTCUT_BIT_FREE = 0x10000
 
+    /** Fresh-install shortcuts_flag.3 default for free (all stock rows enabled; high bits preserved). */
+    internal const val FREE_DEFAULT_SHORTCUTS_MASK = -1
+
     /** @deprecated use [DELETE_SHORTCUT_BIT_PRO] or package-specific bit */
     internal const val DELETE_SHORTCUT_BIT = DELETE_SHORTCUT_BIT_PRO
 

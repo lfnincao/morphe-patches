@@ -19,12 +19,20 @@ public final class DeleteShortcutPatch {
 
     private DeleteShortcutPatch() {}
 
-    public static void bindDeleteRowChecked(Object adapter, Object viewHolder) {
+    /** Reconcile checkbox with flag bit after stock row bind (label + listener). */
+    public static void overlayDeleteRowChecked(Object adapter, Object viewHolder, int position) {
         try {
-            int flags = effectiveShortcutsFlag3();
-            adapter.getClass().getField("j").setInt(adapter, flags);
-            Field checkboxField = viewHolder.getClass().getField("b");
-            Object checkbox = checkboxField.get(viewHolder);
+            Field listField = adapter.getClass().getField("i");
+            @SuppressWarnings("unchecked")
+            ArrayList<String> keys = (ArrayList<String>) listField.get(adapter);
+            if (position < 0 || position >= keys.size()) {
+                return;
+            }
+            if (!DELETE_SHORTCUT_KEY.equals(keys.get(position))) {
+                return;
+            }
+            int flags = adapter.getClass().getField("j").getInt(adapter);
+            Object checkbox = viewHolder.getClass().getField("b").get(viewHolder);
             if (checkbox instanceof android.widget.CompoundButton) {
                 ((android.widget.CompoundButton) checkbox).setChecked((flags & DELETE_SHORTCUT_BIT) != 0);
             }
@@ -32,6 +40,8 @@ public final class DeleteShortcutPatch {
             // no-op
         }
     }
+
+    private static final String DELETE_SHORTCUT_KEY = "delete_file";
 
     public static void toggleDeleteShortcut(Object adapter, boolean checked) {
         try {
@@ -140,9 +150,12 @@ public final class DeleteShortcutPatch {
         Context context = (Context) screen;
         int labelId = context.getResources().getIdentifier("menu_delete", "string", context.getPackageName());
         String label = labelId != 0 ? context.getString(labelId) : "Delete";
-        int iconId = context.getResources().getIdentifier("ic_delete", "drawable", context.getPackageName());
+        int iconId = context.getResources().getIdentifier("mxskin__smb_delete_ic__light", "drawable", context.getPackageName());
         if (iconId == 0) {
-            iconId = context.getResources().getIdentifier("menu_delete", "drawable", context.getPackageName());
+            iconId = context.getResources().getIdentifier("mxskin__smb_delete_ic__dark", "drawable", context.getPackageName());
+        }
+        if (iconId == 0) {
+            iconId = context.getResources().getIdentifier("ic_delete", "drawable", context.getPackageName());
         }
         return ctor.newInstance(DELETE_SHORTCUT_VIEW_TYPE, 0, label, false, false, iconId);
     }

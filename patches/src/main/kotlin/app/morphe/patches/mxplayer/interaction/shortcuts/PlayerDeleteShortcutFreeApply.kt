@@ -4,7 +4,6 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.mutableClassDefBy
-import app.morphe.patcher.patch.packageMetadata
 import app.morphe.patcher.util.cloneParameters
 import app.morphe.patcher.util.proxy.mutableTypes.MutableField.Companion.toMutable
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
@@ -13,7 +12,6 @@ import app.morphe.patches.mxplayer.shared.Constants
 import app.morphe.patches.mxplayer.shared.Constants.ACTIVITY_SCREEN_CLASS
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_BIT_FREE
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION_FREE
-import app.morphe.patches.mxplayer.shared.Constants.FREE_DELETE_DIALOG_INNER_CLASS
 import app.morphe.patches.mxplayer.shared.Constants.FREE_TOOLBAR_MODEL_CLASS
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
@@ -59,7 +57,7 @@ internal fun applyFreeDeleteShortcutPatches() {
         addInstructionsWithLabels(
             0,
             """
-            invoke-static {p0}, $ext->onToolbarShortcutClick(Ljava/lang/Object;)Z
+            invoke-static/range {p0 .. p0}, $ext->onToolbarShortcutClick(Ljava/lang/Object;)Z
             move-result v0
             if-eqz v0, :morphe_onclick_continue
             return-void
@@ -71,8 +69,8 @@ internal fun applyFreeDeleteShortcutPatches() {
         addInstructions(
             0,
             """
-            invoke-static {p1}, $ext->remapShortcutViewType(I)I
-            move-result p1
+            invoke-static {p2}, $ext->remapShortcutViewType(I)I
+            move-result p2
             """.trimIndent(),
         )
     }
@@ -80,24 +78,51 @@ internal fun applyFreeDeleteShortcutPatches() {
 
 private fun MutableMethod.patchFreeCustomizeBindDeleteRow(ext: String) {
     val instructions = implementation!!.instructions
-    val stringIndex = instructions.indexOfFirst { insn ->
-        insn.opcode == Opcode.CHECK_CAST &&
+    val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
+    check(packedSwitchIndex >= 0) { "packed-switch fallback not found in rbd\$a.onBindViewHolder" }
+    val listenerIndex = instructions.indexOfFirst { insn ->
+        insn.opcode == Opcode.NEW_INSTANCE &&
             insn is ReferenceInstruction &&
-            insn.reference.toString().contains("Ljava/lang/String;")
+            insn.reference.toString().contains("Lqbd;")
     }
-    check(stringIndex >= 0) { "delete row string check-cast not found in rbd\$a.onBindViewHolder" }
-  val afterString = stringIndex + 1
+    check(listenerIndex > packedSwitchIndex) { "Lqbd listener tail not found in rbd\$a.onBindViewHolder" }
+    val listenerInsn = getInstruction(listenerIndex)
+
     addInstructionsWithLabels(
-        afterString,
+        packedSwitchIndex,
         """
-            const-string v3, "${Constants.DELETE_SHORTCUT_KEY}"
-            invoke-virtual {v5, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
-            move-result v3
-            if-eqz v3, :morphe_free_bind_continue
-            invoke-static {p0, p1}, $ext->bindDeleteRowChecked(Ljava/lang/Object;Ljava/lang/Object;)V
-            return-void
+            const-string v6, "${Constants.DELETE_SHORTCUT_KEY}"
+            invoke-virtual {v5, v6}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+            move-result v6
+            if-eqz v6, :morphe_free_bind_delete_continue
+            iget-object v0, p1, Lrbd${'$'}a${'$'}a;->b:Landroidx/appcompat/widget/AppCompatCheckBox;
+            iget-object v1, p0, Lrbd${'$'}a;->k:Landroid/content/Context;
+            sget v2, Lcah;->delete_file_item:I
+            invoke-virtual {v1, v2}, Landroid/content/Context;->getString(I)Ljava/lang/String;
+            move-result-object v1
+            invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+            iget v1, p0, Lrbd${'$'}a;->j:I
+            const v2, $DELETE_SHORTCUT_BIT_FREE
+            and-int/2addr v1, v2
+            if-eqz v1, :morphe_free_bind_delete_off
+            const/4 v1, 0x1
+            goto :morphe_free_bind_delete_set
+            :morphe_free_bind_delete_off
+            const/4 v1, 0x0
+            :morphe_free_bind_delete_set
+            invoke-virtual {v0, v1}, Landroid/widget/CompoundButton;->setChecked(Z)V
+            goto/16 :morphe_free_bind_listener
+            :morphe_free_bind_delete_continue
         """.trimIndent(),
-        ExternalLabel("morphe_free_bind_continue", getInstruction(afterString)),
+        ExternalLabel("morphe_free_bind_listener", listenerInsn),
+    )
+
+    val returnIndex = instructions.indexOfLast { it.opcode == Opcode.RETURN_VOID }
+    addInstructions(
+        returnIndex,
+        """
+        invoke-static {p0, p1, p2}, $ext->overlayDeleteRowChecked(Ljava/lang/Object;Ljava/lang/Object;I)V
+        """.trimIndent(),
     )
 }
 
@@ -110,13 +135,13 @@ private fun MutableMethod.patchFreeCustomizeToggleDeleteRow(ext: String) {
     }
     check(stringIndex >= 0) { "delete toggle string check-cast not found in qbd.onCheckedChanged" }
     val afterString = stringIndex + 1
-    val epilogueIndex =
-        instructions.indexOfFirst { insn ->
-            insn.opcode == Opcode.CONST_STRING &&
-                insn is ReferenceInstruction &&
-                insn.reference.toString().contains("shortcuts_flag.3")
-        }
-    check(epilogueIndex > afterString) { "shortcuts_flag.3 epilogue not found in qbd.onCheckedChanged" }
+    val epilogueIndex = instructions.indexOfFirst { insn ->
+        insn.opcode == Opcode.SGET_OBJECT &&
+            insn is ReferenceInstruction &&
+            insn.reference.toString().contains("Lzjc;") &&
+            insn.reference.toString().contains("->o:")
+    }
+    check(epilogueIndex > afterString) { "Lzjc.o prefs epilogue not found in qbd.onCheckedChanged" }
 
     addInstructionsWithLabels(
         afterString,
