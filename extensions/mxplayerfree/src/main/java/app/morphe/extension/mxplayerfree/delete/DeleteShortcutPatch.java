@@ -11,7 +11,8 @@ import java.util.ArrayList;
 /** Delete shortcut hooks for MX Player free 3.5.3 (com.mxtech.videoplayer.ad). */
 public final class DeleteShortcutPatch {
     public static final int DELETE_SHORTCUT_BIT = 0x10000;
-    public static final int DELETE_SHORTCUT_VIEW_TYPE = 16;
+    /** Distinct from stock toolbar types (11=customize, 14–17=actions) on free 3.5.3. */
+    public static final int DELETE_SHORTCUT_VIEW_TYPE = 18;
 
     private static final String CACHE_FIELD = "patchDeleteShortcutB0j";
     private static final String ACTIVITY_SCREEN_CLASS = "com.mxtech.videoplayer.ActivityScreen";
@@ -75,7 +76,11 @@ public final class DeleteShortcutPatch {
         }
     }
 
-    public static void syncToolbarShortcut(Object screen) {
+  /**
+   * Hooked inside {@code ActivityScreen.Ya()} before {@code Collections.sort} so delete uses the
+   * same {@code Xa} placement path as stock shortcuts instead of a post-build list append.
+   */
+    public static void rebuildDeleteShortcutInYa(Object screen) {
         try {
             Class<?> flagsClass = Class.forName("b6f");
             int packed = flagsClass.getField("f1").getInt(null);
@@ -83,14 +88,20 @@ public final class DeleteShortcutPatch {
                 removeCachedToolbarShortcut(screen);
                 return;
             }
+            Class<?> activityScreen = Class.forName(ACTIVITY_SCREEN_CLASS);
             Object shortcut = getCachedToolbarShortcut(screen);
             if (shortcut == null) {
                 shortcut = createToolbarShortcut(screen);
                 setCachedToolbarShortcut(screen, shortcut);
             }
-            Field listField = Class.forName(ACTIVITY_SCREEN_CLASS).getField(SHORTCUTS_LIST_FIELD);
+            Field listField = activityScreen.getField(SHORTCUTS_LIST_FIELD);
             @SuppressWarnings("unchecked")
             ArrayList<Object> shortcuts = (ArrayList<Object>) listField.get(screen);
+            if (shortcuts.contains(shortcut)) {
+                shortcuts.remove(shortcut);
+            }
+            Method place = activityScreen.getMethod("Xa", Class.forName("b0j"), boolean.class, boolean.class);
+            place.invoke(screen, shortcut, Boolean.FALSE, Boolean.FALSE);
             if (!shortcuts.contains(shortcut)) {
                 shortcuts.add(shortcut);
             }
@@ -124,10 +135,6 @@ public final class DeleteShortcutPatch {
             Object widgetAdapter = field(clickGroup, "g");
             Object screen = field(widgetAdapter, "j");
             if (screen == null) {
-                return false;
-            }
-            Object cachedDelete = getCachedToolbarShortcut(screen);
-            if (cachedDelete == null || cachedDelete != shortcut) {
                 return false;
             }
             deletePlayingFile(screen);

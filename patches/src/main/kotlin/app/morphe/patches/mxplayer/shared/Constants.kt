@@ -27,8 +27,8 @@ internal object Constants {
     /** Free 3.5.3: mirror uses 0x2000; delete uses the next free bit. */
     internal const val DELETE_SHORTCUT_BIT_FREE = 0x10000
 
-    /** Fresh-install shortcuts_flag.3 default for free (all stock rows enabled; high bits preserved). */
-    internal const val FREE_DEFAULT_SHORTCUTS_MASK = -1
+    /** Fresh-install shortcuts_flag.3 default for free (all stock bits on; delete off until user enables). */
+    internal const val FREE_DEFAULT_SHORTCUTS_MASK = -65537 // 0xFFFEFFFF, clears 0x10000
 
     /** @deprecated use [DELETE_SHORTCUT_BIT_PRO] or package-specific bit */
     internal const val DELETE_SHORTCUT_BIT = DELETE_SHORTCUT_BIT_PRO
@@ -45,8 +45,11 @@ internal object Constants {
     /** Key in list_shortcuts_eng (localized label comes from list_shortcuts resource entry). */
     internal const val DELETE_SHORTCUT_KEY = "delete_file"
 
-    /** LPp0.b view type for delete toolbar (14=customize, 15=screenshot in Pro 1.93.4). */
+    /** LPp0.b view type for delete toolbar (Pro 1.93.4). */
     internal const val DELETE_SHORTCUT_VIEW_TYPE = 16
+
+    /** Lb0j view type for delete on free 3.5.3 (stock uses 11 customize, 14–17 for other actions). */
+    internal const val DELETE_SHORTCUT_VIEW_TYPE_FREE = 18
 
     internal const val ACTIVITY_SCREEN_CLASS = "Lcom/mxtech/videoplayer/ActivityScreen;"
     internal const val DELETE_DIALOG_INNER_CLASS = "Lcom/mxtech/videoplayer/ActivityScreen\$w;"
