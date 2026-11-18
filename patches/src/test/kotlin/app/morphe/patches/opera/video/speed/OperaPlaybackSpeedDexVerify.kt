@@ -22,8 +22,12 @@ private const val RENDER_FRAME_HOST_TYPE =
 private const val WEB_AUTH_RESULT_TYPE =
     "Lorg/chromium/content_public/browser/RenderFrameHost${'$'}WebAuthSecurityChecksResults;"
 private const val CHROMIUM_JNI_CLASS = "LJ/N;"
-private const val EVALUATE_JS_NATIVE = "Mhlly_d7"
+private const val EVALUATE_JS_NATIVE = "MevqfbP8"
+private const val WRONG_EVAL_JS_NATIVE = "Mhlly_d7"
 private const val WEB_CONTENTS_TYPE = "Lorg/chromium/content_public/browser/WebContents;"
+private const val WEB_CONTENTS_IMPL_TYPE =
+    "Lorg/chromium/content/browser/webcontents/WebContentsImpl;"
+private const val WEB_CONTENTS_IMPL_NATIVE_FIELD = "b:J"
 private const val OPERA_APPLICATION_TYPE = "Lcom/opera/android/OperaApplication;"
 private const val SHARED_UTILS_TYPE = "Lapp/morphe/extension/shared/Utils;"
 private const val OPERA_PROCESS_GUARD_TYPE = "Lapp/morphe/extension/opera/OperaProcessGuard;"
@@ -58,7 +62,8 @@ fun main(args: Array<String>) {
 
     verifyExtensionMethodExists(apk, INJECTOR_TYPE, "evaluate")
     verifyInjectorDoesNotCallWebAuth(apk)
-    verifyInjectorUsesEvaluateJavaScript(apk)
+    verifyInjectorUsesStockWebContentsEvaluate(apk)
+    verifyInjectorKillSwitch(apk)
     listOf(
         "patch_executePlaybackSpeedScript" to "Lcom/opera/android/browser/chromium/OperaWebContentsDelegate;",
     ).forEach { (name, type) ->
@@ -207,8 +212,12 @@ private fun verifyInjectorDoesNotCallWebAuth(apk: File) {
     println("Static check passed: injector does not reference WebAuth RenderFrameHost APIs.")
 }
 
-private fun verifyInjectorUsesEvaluateJavaScript(apk: File) {
+private fun verifyInjectorUsesStockWebContentsEvaluate(apk: File) {
     var sawEvaluateNative = false
+    var sawWebContentsImplE = false
+    var sawGetNativePointer = false
+    var sawWrongNative = false
+    var sawFieldReflection = false
     ZipFile(apk).use { zip ->
         zip.entries().asSequence()
             .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
@@ -223,21 +232,98 @@ private fun verifyInjectorUsesEvaluateJavaScript(apk: File) {
                 evaluate.implementation?.instructions?.forEach { instruction ->
                     val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
                     val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                    val fieldRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.FieldReference
+                    if (fieldRef != null) {
+                        if (fieldRef.definingClass == WEB_CONTENTS_IMPL_TYPE &&
+                            fieldRef.name == "b" && fieldRef.type == "J"
+                        ) {
+                            sawGetNativePointer = true
+                        }
+                    }
                     if (methodRef != null) {
                         check(methodRef.definingClass != WEB_CONTENTS_TYPE || methodRef.name != "R0") {
                             "Injector must not call WebContents.R0 (devtools console only)"
                         }
-                        if (methodRef.definingClass == CHROMIUM_JNI_CLASS && methodRef.name == EVALUATE_JS_NATIVE) {
-                            sawEvaluateNative = true
+                        if (methodRef.definingClass == CHROMIUM_JNI_CLASS) {
+                            when (methodRef.name) {
+                                EVALUATE_JS_NATIVE -> sawEvaluateNative = true
+                                WRONG_EVAL_JS_NATIVE -> sawWrongNative = true
+                            }
+                        }
+                        if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE && methodRef.name == "e") {
+                            sawWebContentsImplE = true
+                        }
+                        if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE && methodRef.name == "getNativePointer") {
+                            sawGetNativePointer = true
+                        }
+                        if (methodRef.definingClass == "Ljava/lang/reflect/Field;" ||
+                            (methodRef.definingClass == "Ljava/lang/Class;" &&
+                                methodRef.name == "getDeclaredField")
+                        ) {
+                            sawFieldReflection = true
                         }
                     }
                 }
             }
     }
     check(sawEvaluateNative) {
-        "Injector must invoke $CHROMIUM_JNI_CLASS->$EVALUATE_JS_NATIVE (Chromium EvaluateJavaScript)"
+        "Injector must invoke $CHROMIUM_JNI_CLASS->$EVALUATE_JS_NATIVE (stock WebContents script JNI)"
     }
-    println("Static check passed: injector calls $CHROMIUM_JNI_CLASS->$EVALUATE_JS_NATIVE.")
+    check(sawWebContentsImplE) {
+        "Injector must call $WEB_CONTENTS_IMPL_TYPE->e before native (stock prologue)"
+    }
+    check(sawGetNativePointer) {
+        "Injector must use $WEB_CONTENTS_IMPL_TYPE->getNativePointer or iget $WEB_CONTENTS_IMPL_NATIVE_FIELD"
+    }
+    check(!sawWrongNative) {
+        "Injector must not call $WRONG_EVAL_JS_NATIVE (CaptureDevicesDialogDelegate only in stock)"
+    }
+    check(!sawFieldReflection) {
+        "Injector must not reflect native WebContents pointer fields"
+    }
+    println(
+        "Static check passed: injector uses stock WebContentsImpl.e + native pointer + " +
+            "$CHROMIUM_JNI_CLASS->$EVALUATE_JS_NATIVE.",
+    )
+}
+
+private fun verifyInjectorKillSwitch(apk: File) {
+    ZipFile(apk).use { zip ->
+        zip.entries().asSequence()
+            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
+            .forEach { entry ->
+                val dex = DexBackedDexFile.fromInputStream(
+                    Opcodes.getDefault(),
+                    zip.getInputStream(entry).readBytes().inputStream(),
+                )
+                val prefs = dex.classes.firstOrNull { it.type == PLAYBACK_PREFS_TYPE }
+                    ?: return@forEach
+                val hasKey = prefs.methods.any { method ->
+                    method.implementation?.instructions?.any { ins ->
+                        val ref = ins as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                        val stringRef = ref?.reference as? com.android.tools.smali.dexlib2.iface.reference.StringReference
+                        stringRef?.string?.contains("script_injection_disabled") == true
+                    } == true
+                }
+                check(hasKey) {
+                    "$PLAYBACK_PREFS_TYPE must define script injection kill-switch preference key"
+                }
+                val injector = dex.classes.firstOrNull { it.type == INJECTOR_TYPE } ?: return@forEach
+                val callsKillSwitch = injector.methods.any { method ->
+                    method.implementation?.instructions?.any { ins ->
+                        val ref = ins as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                        val methodRef = ref?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                        methodRef?.definingClass == PLAYBACK_PREFS_TYPE &&
+                            (methodRef.name == "isScriptInjectionDisabled" ||
+                                methodRef.name == "setScriptInjectionDisabled")
+                    } == true
+                }
+                check(callsKillSwitch) {
+                    "Injector must consult $PLAYBACK_PREFS_TYPE script injection kill-switch"
+                }
+            }
+    }
+    println("Static check passed: script injection kill-switch wired.")
 }
 
 private fun verifyExtensionMethodExists(apk: File, type: String, name: String) {
