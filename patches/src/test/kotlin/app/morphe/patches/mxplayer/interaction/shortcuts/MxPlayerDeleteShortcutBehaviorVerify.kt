@@ -86,6 +86,32 @@ internal fun verifyMxPlayerDeleteShortcutBehavior(apkFile: File): String {
             else "MISSING  delete toggle hook",
         )
 
+        val toggleHookIndex =
+            toggle.indexOfFirst {
+                it is ReferenceInstruction &&
+                    it.reference.toString().contains("onDeleteShortcutToggle")
+            }
+        val returnAfterToggleHook =
+            toggle.getOrNull(toggleHookIndex + 1)?.opcode == Opcode.RETURN_VOID
+        appendLine(
+            if (returnAfterToggleHook) {
+                "OK  onDeleteShortcutToggle is followed by return-void (no stock epilogue reuse)"
+            } else {
+                "MISSING  onDeleteShortcutToggle must return-void before shortcuts_flag.3 putInt"
+            },
+        )
+        val gotoAfterToggleHook =
+            toggle.getOrNull(toggleHookIndex + 1).let { insn ->
+                insn != null &&
+                    (insn.opcode == Opcode.GOTO ||
+                        insn.opcode == Opcode.GOTO_16 ||
+                        insn.opcode == Opcode.GOTO_32)
+            }
+        appendLine(
+            if (!gotoAfterToggleHook) "OK  delete toggle hook does not goto stock epilogue"
+            else "MISSING  delete toggle hook must not goto shortcuts_flag.3 epilogue",
+        )
+
         val toggleMethod =
             extClass.methods.firstOrNull { it.name == "onDeleteShortcutToggle" }
                 ?: error("onDeleteShortcutToggle missing")
@@ -110,6 +136,41 @@ internal fun verifyMxPlayerDeleteShortcutBehavior(apkFile: File): String {
         appendLine(
             if (mergeUsesOrAnd) "OK  mergeShortcutsFlag3DeleteBit uses or/and-lit16 on 0x2000"
             else "MISSING  merge helper does not or/and 0x2000 in dex",
+        )
+        val mergeCallsEffective =
+            mergeMethod.implementation!!.instructions.any { insn ->
+                insn is ReferenceInstruction &&
+                    insn.reference.toString().contains("effectiveShortcutsFlag3")
+            }
+        appendLine(
+            if (mergeCallsEffective) {
+                "OK  mergeShortcutsFlag3DeleteBit reads effective flags via effectiveShortcutsFlag3 (V90.C())"
+            } else {
+                "MISSING  merge helper must call effectiveShortcutsFlag3 not raw getInt default 0"
+            },
+        )
+
+        val bindMethod =
+            extClass.methods.firstOrNull { it.name == "bindDeleteRowChecked" }
+                ?: error("bindDeleteRowChecked missing")
+        val bindUsesEffective =
+            bindMethod.implementation!!.instructions.any { insn ->
+                insn is ReferenceInstruction &&
+                    insn.reference.toString().contains("effectiveShortcutsFlag3")
+            }
+        appendLine(
+            if (bindUsesEffective) {
+                "OK  bindDeleteRowChecked uses effectiveShortcutsFlag3 (V90.C())"
+            } else {
+                "MISSING  bindDeleteRowChecked must not use raw adapter field only"
+            },
+        )
+
+        val normalizeAbsent =
+            extClass.methods.none { it.name == "normalizeCustomizeShortcutFlags" }
+        appendLine(
+            if (normalizeAbsent) "OK  normalizeCustomizeShortcutFlags removed (stock V90.C() only)"
+            else "MISSING  normalizeCustomizeShortcutFlags still present",
         )
     }
     val failed = lines.lines().any { it.startsWith("MISSING  ") }

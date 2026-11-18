@@ -87,21 +87,6 @@ val playerDeleteShortcutPatch = bytecodePatch(
         CustomizeItemsToggleFingerprint.method.cloneParameters().patchCustomizeToggleRow12(ext)
 
         MenuMoreShortcutsPanelFingerprint.method.cloneParameters().apply {
-            val insns = implementation!!.instructions
-            val cCallIndex = insns.indexOfFirst(::referencesV90ShortcutFlags)
-            check(cCallIndex >= 0) { "V90.C() call not found in Lo20 shortcuts panel" }
-            val moveResultIndex = cCallIndex + 1
-            val flagsRegister =
-                insns.getOrNull(moveResultIndex)?.let { insn ->
-                    (insn as? OneRegisterInstruction)?.registerA
-                } ?: error("move-result after V90.C() not found in Lo20")
-            addInstructions(
-                moveResultIndex + 1,
-                """
-                invoke-static {v$flagsRegister}, $ext->normalizeCustomizeShortcutFlags(I)I
-                move-result v$flagsRegister
-                """.trimIndent(),
-            )
             addInstructions(
                 indexOfLastReturnVoid(),
                 """
@@ -174,13 +159,6 @@ private fun MutableMethod.patchCustomizeToggleRow12(ext: String) {
     val instructions = implementation!!.instructions
     val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
     check(packedSwitchIndex >= 0) { "packed-switch not found in n20.onCheckedChanged" }
-    val epilogueIndex =
-        instructions.indexOfFirst { insn ->
-            insn.opcode == Opcode.CONST_STRING &&
-                insn is ReferenceInstruction &&
-                insn.reference.toString().contains("shortcuts_flag.3")
-        }.takeIf { it > packedSwitchIndex }
-            ?: instructions.indexOfLast { it.opcode == Opcode.RETURN_VOID }
 
     addInstructionsWithLabels(
         packedSwitchIndex,
@@ -188,10 +166,9 @@ private fun MutableMethod.patchCustomizeToggleRow12(ext: String) {
             const/16 v4, $DELETE_SHORTCUT_LIST_INDEX
             if-ne v3, v4, :morphe_toggle_pswitch
             invoke-static {v1}, $ext->onDeleteShortcutToggle(Ljava/lang/Object;)V
-            goto/16 :morphe_toggle_epilogue
-            :morphe_toggle_pswitch
+            return-void
         """.trimIndent(),
-        ExternalLabel("morphe_toggle_epilogue", getInstruction(epilogueIndex)),
+        ExternalLabel("morphe_toggle_pswitch", getInstruction(packedSwitchIndex)),
     )
 }
 

@@ -26,7 +26,8 @@ public final class DeleteShortcutPatch {
     /** Checked state for customize-items row index 12 (after stock {@code setText}). */
     public static void bindDeleteRowChecked(Object adapter, Object checkbox) {
         try {
-            int flags = adapter.getClass().getField("d").getInt(adapter);
+            int flags = effectiveShortcutsFlag3();
+            adapter.getClass().getField("d").setInt(adapter, flags);
             ((android.widget.CompoundButton) checkbox).setChecked((flags & DELETE_SHORTCUT_BIT) != 0);
         } catch (ReflectiveOperationException ignored) {
             // no-op
@@ -55,24 +56,6 @@ public final class DeleteShortcutPatch {
     /** Maps delete view type to a Sp0 view-holder bucket Sp0.n already implements. */
     public static int remapShortcutViewType(int viewType) {
         return viewType == DELETE_SHORTCUT_VIEW_TYPE ? 0 : viewType;
-    }
-
-    /** Adapter field {@code d} after stock {@code V90.C()} — prefer stored {@code shortcuts_flag.3} when set. */
-    public static int normalizeCustomizeShortcutFlags(int stockValue) {
-        try {
-            Class<?> v90 = Class.forName("V90");
-            Object m90 = Class.forName("lV").getField("A").get(null);
-            Object prefs = m90.getClass().getField("d").get(m90);
-            Method contains = prefs.getClass().getMethod("contains", String.class);
-            Method getInt = prefs.getClass().getMethod("getInt", String.class, int.class);
-            String key = "shortcuts_flag.3";
-            if (Boolean.TRUE.equals(contains.invoke(prefs, key))) {
-                return ((Integer) getInt.invoke(prefs, key, stockValue)).intValue();
-            }
-            return stockValue;
-        } catch (ReflectiveOperationException ignored) {
-            return stockValue;
-        }
     }
 
     public static void ensureShortcutsPanelVisible(Object menuMoreFragment) {
@@ -201,22 +184,42 @@ public final class DeleteShortcutPatch {
         return pp0.getClass().getField(name).getInt(pp0);
     }
 
+    /**
+     * Same effective bitmask stock uses for customize items ({@code V90.C()}) and toolbar rebuild
+     * ({@code V90.e1} for bit tests).
+     */
+    private static int effectiveShortcutsFlag3() throws ReflectiveOperationException {
+        Class<?> v90 = Class.forName("V90");
+        Method c = v90.getMethod("C");
+        return ((Integer) c.invoke(null)).intValue();
+    }
+
     private static int mergeShortcutsFlag3DeleteBit(boolean enableDelete) throws ReflectiveOperationException {
+        Class<?> v90 = Class.forName("V90");
+        int flags = effectiveShortcutsFlag3();
+        int merged =
+            enableDelete ? (flags | DELETE_SHORTCUT_BIT) : (flags & ~DELETE_SHORTCUT_BIT);
+
         Class<?> m90Holder = Class.forName("lV");
         Object m90 = m90Holder.getField("A").get(null);
         Object prefs = m90.getClass().getField("d").get(m90);
-        Method getInt = prefs.getClass().getMethod("getInt", String.class, int.class);
         Method edit = prefs.getClass().getMethod("edit");
         String key = "shortcuts_flag.3";
-        int flags = ((Integer) getInt.invoke(prefs, key, 0)).intValue();
-        int merged =
-            enableDelete ? (flags | DELETE_SHORTCUT_BIT) : (flags & ~DELETE_SHORTCUT_BIT);
         Object editor = edit.invoke(prefs);
         Method putInt =
             editor.getClass().getMethod("putInt", String.class, int.class);
         Method commit = editor.getClass().getMethod("commit");
         putInt.invoke(editor, key, merged);
         commit.invoke(editor);
+
+        Field e1 = v90.getField("e1");
+        int toolbarFlags = e1.getInt(null);
+        int toolbarMerged =
+            enableDelete
+                ? (toolbarFlags | DELETE_SHORTCUT_BIT)
+                : (toolbarFlags & ~DELETE_SHORTCUT_BIT);
+        e1.setInt(null, toolbarMerged);
+
         return merged;
     }
 }
