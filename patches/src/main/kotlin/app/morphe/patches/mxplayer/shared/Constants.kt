@@ -30,6 +30,10 @@ internal object Constants {
     internal const val SHORTCUT_ADAPTER_ON_CLICK_CLASS = "LSp0\$g\$a;"
     internal const val DELETE_PP0_FIELD_NAME = "patchDeleteShortcutPp0"
 
+    /** Morphe extension (FTL ModSettings-style hooks). */
+    internal const val DELETE_SHORTCUT_EXTENSION =
+        "Lapp/morphe/extension/mxplayerpro/delete/DeleteShortcutPatch;"
+
     val COMPATIBILITY_MX_PLAYER_PRO = Compatibility(
         packageName = PACKAGE_NAME,
         name = "MX Player Pro",
