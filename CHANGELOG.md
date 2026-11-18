@@ -1,3 +1,13 @@
+## [2.7.0](https://github.com/lfnincao/morphe-patches/compare/v2.6.0...v2.7.0) (2026-11-18)
+
+### ✨ New Features
+
+* **opera:** port Vogelkop patch base + universal playback speed and default-speed setting ([da2b7ac](https://github.com/lfnincao/morphe-patches/commit/da2b7ac9e769db9cc4ee46c168f133ed7ef524bb))
+
+### 🐛 Bug Fixes
+
+* **mxplayer:** place free delete in Customize shortcuts list (v2.6.1) ([06ebd01](https://github.com/lfnincao/morphe-patches/commit/06ebd017498090af6bd92db779575eae069c80e4))
+
 ## [2.6.0](https://github.com/lfnincao/morphe-patches/compare/v2.5.1...v2.6.0) (2026-11-18)
 
 ### ✨ New Features

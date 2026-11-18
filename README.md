@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v2.6.0](https://github.com/lfnincao/morphe-patches/releases/tag/v2.6.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;221 patches total
+> **[v2.7.0](https://github.com/lfnincao/morphe-patches/releases/tag/v2.7.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;226 patches total
 <details>
 <summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;56 patches</summary>
 <br>
@@ -287,7 +287,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 </details>
 
 <details>
-<summary>📦 Opera Browser&nbsp;&nbsp;•&nbsp;&nbsp;3 patches</summary>
+<summary>📦 Opera Browser&nbsp;&nbsp;•&nbsp;&nbsp;8 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -297,9 +297,14 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
+| [Disable Acceptable Ads whitelist](#disable-acceptable-ads-whitelist) | Replaces Opera's hidden partner whitelists (Google/Yandex measurement, Taboola, gambling and shopping affiliates, AppsFlyer/Adjust/Kochava/CJ tracking domains) with empty filter lists, so the built-in ad blocker actually blocks them. |  |
+| [Disable ad modules](#disable-ad-modules) | Prevents Opera from loading its bundled third-party ad network modules (Liftoff/Vungle, Mintegral, Pangle/ByteDance) by breaking the reflective class lookup used by the ad mediation layer. |  |
+| [Disable analytics & tracking](#disable-analytics-tracking) | Stops Firebase Analytics, Google Ads/Doubleclick/IMA and Leanplum from collecting or sending usage data by rewriting their endpoint constants to a dead host. Firebase infrastructure that features depend on (push notifications, feature flags) is left intact. |  |
 | [Hide broken installation dialog](#hide-broken-installation-dialog) | Prevents Opera's "Your app installation appears to be broken" dialog from blocking startup. Fingerprints from Vogelkop-MorphePatches (crash-recovery nag, not a signature check). Recommended alongside playback-speed patches on emulators and patched installs. |  |
 | [Ignore browser boot failures](#ignore-browser-boot-failures) | Rewrites MainLibraryBoot failure announcements into success so the welcome flow can continue when Chromium boot fails (e.g. ARM build on x86 emulator). Fingerprints from Vogelkop-MorphePatches. |  |
-| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (stock WebContentsImpl.e + b / J.N.MevqfbP8). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; patch option sets the initial default). Includes Vogelkop-MorphePatches startup helpers for emulators. Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch. | • Default HTML5 playback speed |
+| [Remove ad & tracking permissions](#remove-ad-tracking-permissions) | Drops ad-profiling and tracking permissions from the manifest: Privacy Sandbox (ACCESS_ADSERVICES_*), Google Advertising ID, Play install-referrer attribution, basic phone state and Huawei store junk. |  |
+| [Remove sponsored Speed Dial](#remove-sponsored-speed-dial) | Stops sponsored/partner tiles from appearing on the start page by making Opera's suggested-sites database queries return no rows. Regular Speed Dial entries and bookmarks are not affected. |  |
+| [Universal video playback speed](#universal-video-playback-speed) | Applies a configurable default playback speed to HTML5 video and audio on every page by injecting a script when a tab finishes loading (Vogelkop-style OperaWebContentsDelegate.loadingStateChanged hook + stock WebContents.R0). Supports 0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → Media (FTL-Patches-style layout hook; SharedPreferences; Morphe option sets the initial default). Bundles ported Vogelkop-MorphePatches Opera base (ads, adblock, analytics, manifest, startup). Target: Opera Browser 103.3.5234.91185. Not compatible with the Clone app / package-rename patch. | • Default HTML5 playback speed |
 
 </details>
 
