@@ -25,7 +25,6 @@ import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
 
 /**
@@ -134,13 +133,6 @@ private fun MutableMethod.patchCustomizeBindRow12(ext: String) {
     val instructions = implementation!!.instructions
     val packedSwitchIndex = instructions.indexOfFirst { it.opcode == Opcode.PACKED_SWITCH }
     check(packedSwitchIndex >= 0) { "packed-switch not found in Lo20\$a.l" }
-    val epilogueIndex =
-        instructions.indexOfFirst { insn ->
-            insn.opcode == Opcode.NEW_INSTANCE &&
-                insn is ReferenceInstruction &&
-                insn.reference.toString().contains("Ln20;")
-        }
-    check(epilogueIndex > packedSwitchIndex) { "Ln20 epilogue not found in Lo20\$a.l" }
 
     addInstructionsWithLabels(
         packedSwitchIndex,
@@ -148,10 +140,9 @@ private fun MutableMethod.patchCustomizeBindRow12(ext: String) {
             const/16 v3, $DELETE_SHORTCUT_LIST_INDEX
             if-ne v6, v3, :morphe_bind_pswitch
             invoke-static {v4, v0}, $ext->bindDeleteRowChecked(Ljava/lang/Object;Ljava/lang/Object;)V
-            goto/16 :morphe_bind_epilogue
-            :morphe_bind_pswitch
+            return-void
         """.trimIndent(),
-        ExternalLabel("morphe_bind_epilogue", getInstruction(epilogueIndex)),
+        ExternalLabel("morphe_bind_pswitch", getInstruction(packedSwitchIndex)),
     )
 }
 
