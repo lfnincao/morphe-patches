@@ -5,7 +5,7 @@
  * and {@code <audio>} elements use a user-selected playback rate.
  *
  * Hook: {@code OperaWebContentsDelegate#loadingStateChanged} (Vogelkop fingerprint).
- * Eval: stock {@code WebContentsImpl.e()} + {@code b:J} + {@code J.N.MevqfbP8(script)}.
+ * Eval: {@code WebContents.F()} → {@code RenderFrameHost.d(script, origin, callback)}.
  */
 
 package app.morphe.extension.opera.patches;
@@ -17,49 +17,37 @@ import app.morphe.extension.shared.Logger;
 
 @SuppressWarnings("unused")
 public class UniversalVideoPlaybackSpeedPatch {
-    /**
-     * @return If this patch was included during patching.
-     */
+    /** Embedded in injected JS for logcat / DOM verification on device. */
+    public static final String SENTINEL_LOG_TOKEN = "MORPHE_SPEED_INJECT";
+
     @SuppressWarnings("SameReturnValue")
     public static boolean isPatchIncluded() {
         return false;
     }
 
-    /**
-     * Initial default from the Morphe patch option {@code playbackSpeed} (build time only).
-     */
     public static float getPatchDefaultPlaybackSpeed() {
         return 1.0f;
     }
 
-    /**
-     * Effective speed for script injection; reads {@link OperaPlaybackSpeedPreferences} on each call.
-     */
     public static float getPlaybackSpeed() {
         return OperaPlaybackSpeedPreferences.resolvePlaybackSpeed(getPatchDefaultPlaybackSpeed());
     }
 
-    /**
-     * Injection point from {@code OperaWebContentsDelegate.loadingStateChanged}.
-     */
     public static void onLoadingStateChanged(Object delegate, boolean isLoading) {
         if (!isPatchIncluded() || isLoading || delegate == null) {
             return;
         }
         try {
             float rate = getPlaybackSpeed();
-            String script = buildInjectionScript(rate);
             OperaWebContentsDelegate.patch_executePlaybackSpeedScript(
-                    (OperaWebContentsDelegate) delegate, script);
+                    (OperaWebContentsDelegate) delegate, buildInjectionScript(rate));
+            OperaPlaybackSpeedScriptInjector.scheduleLoadCompleteRetries(rate);
             Logger.printInfo(() -> "Applied HTML5 playback speed script (rate=" + rate + ")");
         } catch (Exception ex) {
             Logger.printException(() -> "onLoadingStateChanged failure", ex);
         }
     }
 
-    /**
-     * Called from Settings → Media when the user picks a new default speed (same tab, no navigation).
-     */
     public static void onDefaultSpeedChangedFromSettings(float rate) {
         if (!isPatchIncluded()) {
             return;
@@ -67,10 +55,6 @@ public class UniversalVideoPlaybackSpeedPatch {
         OperaPlaybackSpeedScriptInjector.reevaluateActiveTab(rate);
     }
 
-    /**
-     * Main-world script: sets {@code playbackRate} on current and future {@code video}/{@code audio}.
-     * Preference → {@link #getPlaybackSpeed()} → bridge → {@link OperaPlaybackSpeedScriptInjector#evaluate}.
-     */
     public static String buildInjectionScript(float rate) {
         if (rate <= 0f || Float.isNaN(rate) || Float.isInfinite(rate)) {
             rate = 1.0f;
@@ -79,6 +63,15 @@ public class UniversalVideoPlaybackSpeedPatch {
                 + "var r="
                 + rate
                 + ";"
+                + "try{"
+                + "var _v=document.querySelectorAll('video').length;"
+                + "console.log('"
+                + SENTINEL_LOG_TOKEN
+                + " v='+r+' videos='+_v);"
+                + "if(document.documentElement){"
+                + "document.documentElement.setAttribute('data-morphe-speed',String(r));"
+                + "}"
+                + "}catch(_s){}"
                 + "function applyRate(el){"
                 + "try{"
                 + "if(!el||typeof el.playbackRate!=='number')return;"
@@ -93,7 +86,9 @@ public class UniversalVideoPlaybackSpeedPatch {
                 + "}"
                 + "window.__morpheSetPlaybackSpeed=function(n){"
                 + "if(typeof n!=='number'||!(n>0))return;"
-                + "r=n;window.__morphePlaybackSpeed=r;applyAll();"
+                + "r=n;window.__morphePlaybackSpeed=r;"
+                + "try{document.documentElement.setAttribute('data-morphe-speed',String(r));}catch(e){}"
+                + "applyAll();"
                 + "};"
                 + "window.__morphePlaybackSpeed=r;"
                 + "if(window.__morphePlaybackSpeedBooted){"
@@ -101,7 +96,6 @@ public class UniversalVideoPlaybackSpeedPatch {
                 + "return;"
                 + "}"
                 + "window.__morphePlaybackSpeedBooted=true;"
-                + "try{console.log('morphe-playback-speed',r);}catch(e){}"
                 + "applyAll();"
                 + "try{"
                 + "new MutationObserver(function(ms){"
@@ -119,7 +113,7 @@ public class UniversalVideoPlaybackSpeedPatch {
                 + "}"
                 + "}"
                 + "}).observe(document.documentElement||document,{childList:true,subtree:true});"
-                + "var ev=['play','loadeddata','loadedmetadata','ratechange','emptied','canplay'];"
+                + "var ev=['play','loadeddata','loadedmetadata','ratechange','emptied','canplay','durationchange'];"
                 + "for(var x=0;x<ev.length;x++){"
                 + "document.addEventListener(ev[x],function(e){applyRate(e.target);},true);"
                 + "}"

@@ -9,8 +9,9 @@ import com.android.tools.smali.dexlib2.Opcode
  * verified in Opera 103.2.5234.90977 {@code OperaWebContentsDelegate.loadingStateChanged}.
  *
  * Hook placement uses a structural fingerprint on Chromium load state (not obfuscated class
- * names), consistent with Vogelkop-MorphePatches style. Script eval mirrors stock
- * {@code WebContentsImpl.e + J.N.MevqfbP8}, not {@code WebContents.R0}/{@code MseJ7A4a}.
+ * names), consistent with Vogelkop-MorphePatches style. Script eval uses
+ * {@code WebContents.F()} → {@code RenderFrameHost.d} (frame evaluateJavaScript), not
+ * {@code MevqfbP8} (selection-only) or {@code WebContents.R0}/{@code MseJ7A4a}.
  * Vogelkop does not ship playback speed;
  * startup companions are operaHideBrokenInstallationDialogPatch and operaIgnoreBootFailuresPatch.
  */

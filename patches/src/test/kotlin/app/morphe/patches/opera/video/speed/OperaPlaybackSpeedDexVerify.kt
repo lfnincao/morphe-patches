@@ -24,7 +24,11 @@ private const val WEB_AUTH_RESULT_TYPE =
 private const val CHROMIUM_JNI_CLASS = "LJ/N;"
 private const val WRONG_EVAL_JS_NATIVE = "Mhlly_d7"
 private const val DEVTOOLS_CONSOLE_NATIVE = "MseJ7A4a"
-private const val PAGE_EVAL_JS_NATIVE = "MevqfbP8"
+private const val LEGACY_PAGE_EVAL_NOOP_NATIVE = "MevqfbP8"
+private const val FRAME_EVAL_JS_NATIVE_D = "M5dgGNo$"
+private const val FRAME_EVAL_JS_NATIVE_A = "M2ouq_qG"
+private const val DEVICE_SENTINEL_LOG = "MORPHE_SPEED_INJECT"
+private const val DEVICE_SENTINEL_ATTR = "data-morphe-speed"
 private const val WEB_CONTENTS_IMPL_TYPE = "Lorg/chromium/content/browser/webcontents/WebContentsImpl;"
 private const val PAGE_SCRIPT_EVALUATOR_TYPE =
     "Lorg/chromium/content/browser/webcontents/MorpheOperaPageScriptEvaluator;"
@@ -65,6 +69,7 @@ fun main(args: Array<String>) {
     verifyInjectorDoesNotCallWebAuth(apk)
     verifyInjectorDelegatesToChromiumEvaluator(apk)
     verifyChromiumPackagePageScriptEvaluator(apk)
+    verifyInjectionSentinelWired(apk)
     verifyInjectorKillSwitch(apk)
     listOf(
         "patch_executePlaybackSpeedScript" to "Lcom/opera/android/browser/chromium/OperaWebContentsDelegate;",
@@ -253,7 +258,10 @@ private fun verifyInjectorDelegatesToChromiumEvaluator(apk: File) {
                         }
                         if (methodRef.definingClass == CHROMIUM_JNI_CLASS) {
                             when (methodRef.name) {
-                                PAGE_EVAL_JS_NATIVE -> illegalCrossPackageNativeAccess = true
+                                LEGACY_PAGE_EVAL_NOOP_NATIVE,
+                                FRAME_EVAL_JS_NATIVE_D,
+                                FRAME_EVAL_JS_NATIVE_A,
+                                -> illegalCrossPackageNativeAccess = true
                                 WRONG_EVAL_JS_NATIVE -> sawWrongNative = true
                                 DEVTOOLS_CONSOLE_NATIVE -> sawDevToolsR0 = true
                             }
@@ -291,9 +299,10 @@ private fun verifyInjectorDelegatesToChromiumEvaluator(apk: File) {
 
 private fun verifyChromiumPackagePageScriptEvaluator(apk: File) {
     var foundEvaluator = false
-    var sawMevqfbP8 = false
-    var sawWebContentsGuard = false
-    var sawNativePointer = false
+    var sawGetMainFrame = false
+    var sawFrameEval = false
+    var sawFrameOrigin = false
+    var sawLegacyMevqfbP8 = false
     var sawDevToolsR0 = false
     var sawWrongNative = false
     ZipFile(apk).use { zip ->
@@ -306,39 +315,45 @@ private fun verifyChromiumPackagePageScriptEvaluator(apk: File) {
                 )
                 val evaluator = dex.classes.firstOrNull { it.type == PAGE_SCRIPT_EVALUATOR_TYPE } ?: return@forEach
                 foundEvaluator = true
-                check(evaluator.type.startsWith("Lorg/chromium/content/browser/webcontents/")) {
-                    "$PAGE_SCRIPT_EVALUATOR_TYPE must live in Chromium webcontents package for legal access"
-                }
-                val method = evaluator.methods.firstOrNull { it.name == "evaluateScript" }
-                    ?: error("evaluateScript missing from MorpheOperaPageScriptEvaluator")
-                method.implementation?.instructions?.forEach { instruction ->
-                    val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-                    val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
-                    if (methodRef == null) return@forEach
-                    if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE && methodRef.name == "e") {
-                        sawWebContentsGuard = true
-                    }
-                    if (methodRef.definingClass == WEB_CONTENTS_IMPL_TYPE &&
-                        methodRef.name == "getNativePointer"
-                    ) {
-                        sawNativePointer = true
-                    }
-                    if (methodRef.definingClass == CHROMIUM_JNI_CLASS) {
-                        when (methodRef.name) {
-                            PAGE_EVAL_JS_NATIVE -> sawMevqfbP8 = true
-                            WRONG_EVAL_JS_NATIVE -> sawWrongNative = true
-                            DEVTOOLS_CONSOLE_NATIVE -> sawDevToolsR0 = true
+                evaluator.methods.forEach { m ->
+                    m.implementation?.instructions?.forEach { instruction ->
+                        val reference = instruction as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                        val methodRef = reference?.reference as? com.android.tools.smali.dexlib2.iface.reference.MethodReference
+                        if (methodRef == null) return@forEach
+                        if (methodRef.definingClass == WEB_CONTENTS_PUBLIC_TYPE && methodRef.name == "F") {
+                            sawGetMainFrame = true
+                        }
+                        if (methodRef.definingClass == WEB_CONTENTS_PUBLIC_TYPE && methodRef.name == "R0") {
+                            sawDevToolsR0 = true
+                        }
+                        if (methodRef.definingClass == RENDER_FRAME_HOST_TYPE &&
+                            (methodRef.name == "d" || methodRef.name == "a")
+                        ) {
+                            sawFrameEval = true
+                        }
+                        if (methodRef.definingClass == RENDER_FRAME_HOST_TYPE && methodRef.name == "c") {
+                            sawFrameOrigin = true
+                        }
+                        if (methodRef.definingClass == CHROMIUM_JNI_CLASS) {
+                            when (methodRef.name) {
+                                LEGACY_PAGE_EVAL_NOOP_NATIVE -> sawLegacyMevqfbP8 = true
+                                WRONG_EVAL_JS_NATIVE -> sawWrongNative = true
+                                DEVTOOLS_CONSOLE_NATIVE -> sawDevToolsR0 = true
+                            }
                         }
                     }
                 }
             }
     }
     check(foundEvaluator) { "$PAGE_SCRIPT_EVALUATOR_TYPE missing from patched APK" }
-    check(sawMevqfbP8) {
-        "$PAGE_SCRIPT_EVALUATOR_TYPE must call $CHROMIUM_JNI_CLASS->$PAGE_EVAL_JS_NATIVE"
+    check(sawGetMainFrame && sawFrameEval) {
+        "$PAGE_SCRIPT_EVALUATOR_TYPE must use WebContents.F() + RenderFrameHost frame eval (d/a)"
     }
-    check(sawWebContentsGuard && sawNativePointer) {
-        "$PAGE_SCRIPT_EVALUATOR_TYPE must call WebContentsImpl.e() and getNativePointer()"
+    check(sawFrameOrigin) {
+        "$PAGE_SCRIPT_EVALUATOR_TYPE should read frame origin via RenderFrameHost.c()"
+    }
+    check(!sawLegacyMevqfbP8) {
+        "Do not use $LEGACY_PAGE_EVAL_NOOP_NATIVE (selection process-text only; no page eval on load)"
     }
     check(!sawDevToolsR0) {
         "Evaluator must not call R0/$DEVTOOLS_CONSOLE_NATIVE"
@@ -347,9 +362,42 @@ private fun verifyChromiumPackagePageScriptEvaluator(apk: File) {
         "Evaluator must not call $WRONG_EVAL_JS_NATIVE"
     }
     println(
-        "Static check passed: $PAGE_SCRIPT_EVALUATOR_TYPE in Chromium package calls " +
-            "e() + getNativePointer + $PAGE_EVAL_JS_NATIVE.",
+        "Static check passed: frame evaluateJavaScript path (F + RenderFrameHost), not MevqfbP8/R0.",
     )
+}
+
+private fun verifyInjectionSentinelWired(apk: File) {
+    var sawSentinel = false
+    var sawAttr = false
+    ZipFile(apk).use { zip ->
+        zip.entries().asSequence()
+            .filter { it.name.matches(Regex("classes\\d*\\.dex")) }
+            .forEach { entry ->
+                val dex = DexBackedDexFile.fromInputStream(
+                    Opcodes.getDefault(),
+                    zip.getInputStream(entry).readBytes().inputStream(),
+                )
+                val patch = dex.classes.firstOrNull { it.type == EXTENSION_TYPE } ?: return@forEach
+                patch.methods.forEach { method ->
+                    method.implementation?.instructions?.forEach { ins ->
+                        val ref = ins as? com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+                        val stringRef = ref?.reference as? com.android.tools.smali.dexlib2.iface.reference.StringReference
+                            ?: return@forEach
+                        if (stringRef.string.contains(DEVICE_SENTINEL_LOG)) {
+                            sawSentinel = true
+                        }
+                        if (stringRef.string.contains(DEVICE_SENTINEL_ATTR)) {
+                            sawAttr = true
+                        }
+                    }
+                }
+            }
+    }
+    check(sawSentinel && sawAttr) {
+        "$EXTENSION_TYPE buildInjectionScript must embed $DEVICE_SENTINEL_LOG and $DEVICE_SENTINEL_ATTR"
+    }
+    verifyExtensionMethodExists(apk, INJECTOR_TYPE, "scheduleLoadCompleteRetries")
+    println("Static check passed: device sentinel + load-complete retries wired.")
 }
 
 private fun verifyInjectorKillSwitch(apk: File) {

@@ -48,7 +48,7 @@ val operaUniversalVideoPlaybackSpeedPatch = patch(
     name = "Universal video playback speed",
     description = "Applies a configurable default playback speed to HTML5 video and audio on " +
         "every page by injecting a script when a tab finishes loading (Vogelkop-style " +
-        "OperaWebContentsDelegate.loadingStateChanged hook + stock WebContentsImpl.e/MevqfbP8). " +
+        "OperaWebContentsDelegate.loadingStateChanged hook + WebContents.F/RenderFrameHost.d). " +
         "Supports " +
         "0.25x through 3x (including 2.5x). Adds a Default playback speed row under Opera Settings → " +
         "Media (FTL-Patches-style layout hook; SharedPreferences; Morphe option sets the initial " +
