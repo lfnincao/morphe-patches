@@ -120,6 +120,7 @@ internal fun verifyMxPlayerPatchedApkDex(apkFile: File) {
     require(verified.isNotEmpty()) { "No DEX files extracted from $apkFile" }
     verified.forEach { verifier.verifyDexFile(it) }
     println("ART/SDK DEX verification passed for ${verified.size} file(s) in $apkFile")
+    println(verifyDexMethodRegisterBounds(apkFile))
 }
 
 internal fun verifyMxPlayerArtOnDevice(apkFile: File, packageName: String): String {
