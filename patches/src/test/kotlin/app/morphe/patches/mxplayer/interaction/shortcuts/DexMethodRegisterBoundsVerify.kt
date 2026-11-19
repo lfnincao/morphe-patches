@@ -5,7 +5,6 @@ import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
 import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.FourRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
@@ -66,7 +65,6 @@ internal fun instructionRegisters(insn: Instruction): List<Int> =
                 5 -> listOf(insn.registerC, insn.registerD, insn.registerE, insn.registerF, insn.registerG)
                 else -> emptyList()
             }
-        is FourRegisterInstruction -> listOf(insn.registerA, insn.registerB, insn.registerC, insn.registerD)
         is ThreeRegisterInstruction -> listOf(insn.registerA, insn.registerB, insn.registerC)
         is TwoRegisterInstruction -> listOf(insn.registerA, insn.registerB)
         is OneRegisterInstruction -> listOf(insn.registerA)
