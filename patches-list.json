@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "2.7.2",
+  "version": "2.8.0",
   "patches": [
     {
       "name": "A-B loop",
@@ -1822,6 +1822,38 @@
               "versionCodes": null,
               "isExperimental": false,
               "minSdk": 26,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Clean Me Tab",
+      "description": "Adds Mod Settings switches (default off) to hide Me tab promo rows, quick-access tiles, and Private Folder / File Transfer / Add to Playlist entries when enabled.",
+      "default": false,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.mxtech.videoplayer.ad",
+          "name": "MX Player",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": null,
+          "signatures": null,
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "3.5.3",
+              "versionCodes": {
+                "ARM64_V8A": 2001003563,
+                "ARMEABI_V7A": 2001003563,
+                "X86_64": 2001003563,
+                "X86": 2001003563
+              },
+              "isExperimental": false,
+              "minSdk": 24,
               "description": null
             }
           ]

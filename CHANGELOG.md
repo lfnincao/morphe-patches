@@ -1,3 +1,9 @@
+## [2.8.0](https://github.com/lfnincao/morphe-patches/compare/v2.7.2...v2.8.0) (2026-11-19)
+
+### ✨ New Features
+
+* **mxplayer-free:** port FTL Clean Me Tab patches with Mod Settings ([#33](https://github.com/lfnincao/morphe-patches/issues/33)) ([031667c](https://github.com/lfnincao/morphe-patches/commit/031667c891b0478fec0b021269133b41fadb41c6))
+
 ## [2.7.2](https://github.com/lfnincao/morphe-patches/compare/v2.7.1...v2.7.2) (2026-11-18)
 
 ### 🐛 Bug Fixes

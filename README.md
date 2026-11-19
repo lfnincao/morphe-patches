@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v2.7.2](https://github.com/lfnincao/morphe-patches/releases/tag/v2.7.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;226 patches total
+> **[v2.8.0](https://github.com/lfnincao/morphe-patches/releases/tag/v2.8.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;227 patches total
 <details>
 <summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;56 patches</summary>
 <br>
@@ -287,6 +287,24 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 </details>
 
 <details>
+<summary>📦 MX Player&nbsp;&nbsp;•&nbsp;&nbsp;4 patches</summary>
+<br>
+
+**🎯 Supported versions:**
+
+| 3.5.3 |
+| :---: |
+
+| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+|----------|----------------|-----------|
+| [Clean Me Tab](#clean-me-tab) | Adds Mod Settings switches (default off) to hide Me tab promo rows, quick-access tiles, and Private Folder / File Transfer / Add to Playlist entries when enabled. |  |
+| [MX Player patched install support](#mx-player-patched-install-support) | Keeps MX Player Pro launchable on Morphe re-signed builds by stubbing com.ddx.axx.axx.axx BH/AS/AG natives and replacing libmx-bh.so with a no-op stub (libmxvp still links), plus spoofing the original package signature when patching from a stock APK. |  |
+| [MX Player remove ads](#mx-player-remove-ads) | FTL-style SDK/layout ad removal for com.mxtech.videoplayer.ad; dismisses full-screen interstitial. |  |
+| [Player delete shortcut](#player-delete-shortcut) | Adds Delete to Customize items (free: Luad/MenuHelper; pro: shortcut list) and wires it to stock ActivityScreen delete flow. |  |
+
+</details>
+
+<details>
 <summary>📦 Opera Browser&nbsp;&nbsp;•&nbsp;&nbsp;8 patches</summary>
 <br>
 
@@ -320,23 +338,6 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
 | [MX Player patched install support](#mx-player-patched-install-support) | Keeps MX Player Pro launchable on Morphe re-signed builds by stubbing com.ddx.axx.axx.axx BH/AS/AG natives and replacing libmx-bh.so with a no-op stub (libmxvp still links), plus spoofing the original package signature when patching from a stock APK. |  |
-| [Player delete shortcut](#player-delete-shortcut) | Adds Delete to Customize items (free: Luad/MenuHelper; pro: shortcut list) and wires it to stock ActivityScreen delete flow. |  |
-
-</details>
-
-<details>
-<summary>📦 MX Player&nbsp;&nbsp;•&nbsp;&nbsp;3 patches</summary>
-<br>
-
-**🎯 Supported versions:**
-
-| 3.5.3 |
-| :---: |
-
-| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
-|----------|----------------|-----------|
-| [MX Player patched install support](#mx-player-patched-install-support) | Keeps MX Player Pro launchable on Morphe re-signed builds by stubbing com.ddx.axx.axx.axx BH/AS/AG natives and replacing libmx-bh.so with a no-op stub (libmxvp still links), plus spoofing the original package signature when patching from a stock APK. |  |
-| [MX Player remove ads](#mx-player-remove-ads) | FTL-style SDK/layout ad removal for com.mxtech.videoplayer.ad; dismisses full-screen interstitial. |  |
 | [Player delete shortcut](#player-delete-shortcut) | Adds Delete to Customize items (free: Luad/MenuHelper; pro: shortcut list) and wires it to stock ActivityScreen delete flow. |  |
 
 </details>
