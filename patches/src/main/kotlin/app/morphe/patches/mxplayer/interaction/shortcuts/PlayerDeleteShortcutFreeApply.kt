@@ -35,6 +35,16 @@ internal fun applyFreeDeleteShortcutPatches() {
         )
     }
 
+    FreeLuadApplyClickFingerprint.method.cloneParameters().apply {
+        val returnIndex = implementation!!.instructions.indexOfLast { it.opcode == Opcode.RETURN_VOID }
+        addInstructions(
+            returnIndex,
+            """
+            invoke-static {p0}, $ext->persistDeleteTopBarMenuPref(Ljava/lang/Object;)V
+            """.trimIndent(),
+        )
+    }
+
     FreeJy1MenuActionFingerprint.method.cloneParameters().apply {
         val insns = implementation!!.instructions
         // jy1.a(I) copies params from high registers before dispatch; p0/p1 are not valid at entry.

@@ -56,6 +56,16 @@ fun verifyMxPlayerFreeCustomizeMenu(apkFile: File): String {
             else "MISSING  pref key $DELETE_MENU_PREF_KEY_FREE",
         )
 
+        val applyBtn = findMethod(dexFiles, "Lb3;", "onClick") { it.size == 1 && it[0] == "Landroid/view/View;" }
+        val persistsOnApply = applyBtn?.any {
+            it is ReferenceInstruction &&
+                it.reference.toString().contains("persistDeleteTopBarMenuPref")
+        } == true
+        appendLine(
+            if (persistsOnApply) "OK  Lb3.onClick persists delete top-bar pref on Apply"
+            else "MISSING  Lb3.onClick must call persistDeleteTopBarMenuPref",
+        )
+
         val jy1 = findMethod(dexFiles, "Ljy1;", "a") { it.size == 1 && it[0] == "I" }
         val sbd = findMethod(dexFiles, "Lsbd;", "onClick")
         val jy1ByteOk = verifyHookedBooleanCall(jy1, "onCustomizeMenuAction")

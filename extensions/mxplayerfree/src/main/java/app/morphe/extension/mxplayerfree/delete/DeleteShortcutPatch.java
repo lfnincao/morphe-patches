@@ -43,8 +43,12 @@ public final class DeleteShortcutPatch {
                 return;
             }
             SharedPreferences prefs = prefs();
-            int portraitSlot = prefs.getInt(DELETE_MENU_PREF_KEY, -1);
-            int landscapeSlot = prefs.getInt(DELETE_MENU_PREF_KEY, -1);
+            int packed = prefs.getInt(DELETE_MENU_PREF_KEY, -1);
+            if (packed < 0) {
+                return;
+            }
+            int portraitSlot = packed % 10;
+            int landscapeSlot = packed / 10;
             Object portraitItem = createMenuItem(menuHelper, true);
             Object landscapeItem = createMenuItem(menuHelper, true);
             appendToSection(portrait, portraitItem, portraitSlot);
@@ -62,6 +66,22 @@ public final class DeleteShortcutPatch {
     }
 
     /** Intercepts {@code Ljy1;->a(I)} when the player customize control fires delete. */
+    /**
+     * Luad Apply ({@code Lb3.onClick}) persists the six stock top-bar slots only; this mirrors that
+     * path for delete (type {@link #DELETE_MENU_TYPE}) via {@code Lcbd.a(I)} encoding.
+     */
+    public static void persistDeleteTopBarMenuPref(Object applyListener) {
+        try {
+            Object luad = field(applyListener, "c");
+            Object cbd = field(luad, "j0");
+            Method encode = cbd.getClass().getMethod("a", int.class);
+            int packed = (Integer) encode.invoke(cbd, DELETE_MENU_TYPE);
+            prefs().edit().putInt(DELETE_MENU_PREF_KEY, packed).apply();
+        } catch (ReflectiveOperationException ignored) {
+            // no-op
+        }
+    }
+
     public static boolean onCustomizeMenuAction(Object jy1, int menuType) {
         if (menuType != DELETE_MENU_TYPE) {
             return false;
