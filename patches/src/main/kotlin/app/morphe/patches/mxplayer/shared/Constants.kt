@@ -65,6 +65,9 @@ internal object Constants {
     internal const val DELETE_SHORTCUT_EXTENSION_FREE =
         "Lapp/morphe/extension/mxplayerfree/delete/DeleteShortcutPatch;"
 
+    internal const val MOD_SETTINGS_CLASS =
+        "Lapp/morphe/extension/mxplayerfree/modsettings/ModSettings;"
+
     /** @deprecated use [DELETE_SHORTCUT_EXTENSION_PRO] */
     internal const val DELETE_SHORTCUT_EXTENSION = DELETE_SHORTCUT_EXTENSION_PRO
 

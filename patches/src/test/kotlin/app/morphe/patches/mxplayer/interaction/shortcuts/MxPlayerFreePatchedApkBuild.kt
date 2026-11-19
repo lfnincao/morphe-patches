@@ -9,6 +9,7 @@ import app.morphe.patcher.Patcher
 import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.patches.mxplayer.ad.mxPlayerRemoveAdsPatch
+import app.morphe.patches.mxplayer.interaction.cleanmetab.cleanMeTabPatch
 import app.morphe.patches.mxplayer.misc.fix.mxPlayerPatchedInstallPatch
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -29,6 +30,7 @@ fun main(arguments: Array<String>) {
         mxPlayerPatchedInstallPatch,
         playerDeleteShortcutPatch,
         mxPlayerRemoveAdsPatch,
+        cleanMeTabPatch,
     )
 
     Patcher(
