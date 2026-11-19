@@ -60,7 +60,7 @@ internal val playerDeleteShortcutResourcePatch = resourcePatch(
 @Suppress("unused")
 val playerDeleteShortcutPatch = bytecodePatch(
     name = "Player delete shortcut",
-    description = "Adds Delete to Customize items (free: Luad/MenuHelper; pro: shortcut list) " +
+    description = "Adds Delete to Customize Shortcuts list (free: Lrbd/Lqbd) or pro shortcut list " +
         "and wires it to stock ActivityScreen delete flow.",
     default = true,
 ) {

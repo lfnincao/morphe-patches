@@ -1,9 +1,8 @@
 package app.morphe.patches.mxplayer.interaction.shortcuts
 
 import app.morphe.patcher.dex.SdkDexVerifier
-import app.morphe.patches.mxplayer.shared.Constants.DELETE_MENU_PREF_KEY_FREE
-import app.morphe.patches.mxplayer.shared.Constants.DELETE_MENU_TYPE_FREE
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION_FREE
+import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_KEY
 import com.android.tools.smali.dexlib2.Opcodes
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
@@ -14,7 +13,7 @@ import java.util.zip.ZipFile
 import kotlin.io.path.createTempDirectory
 
 /**
- * Proves the patched APK wires Delete into MenuHelper customize lists (not only extension dex).
+ * Static gates for free 3.5.3 delete: Shortcuts list placement + jy1/toolbar delete action.
  */
 fun verifyMxPlayerFreeCustomizeMenu(apkFile: File): String {
     val dexFiles = readAllDex(apkFile)
@@ -22,67 +21,90 @@ fun verifyMxPlayerFreeCustomizeMenu(apkFile: File): String {
         appendLine("=== free customize menu verify (${apkFile.name}) ===")
 
         val menuB = findMethod(dexFiles, "Lcbd;", "b")
-            ?: error("Lcbd;->b missing")
-        val callsAppend = menuB.any {
+        val luadMenuInject = menuB?.any {
             it is ReferenceInstruction &&
                 it.reference.toString().contains("appendDeleteCustomizeCandidate")
-        }
+        } == true
         appendLine(
-            if (callsAppend) "OK  MenuHelper.b() calls appendDeleteCustomizeCandidate"
-            else "MISSING  MenuHelper.b() must append delete row",
+            if (!luadMenuInject) "OK  no Luad MenuHelper.b() delete inject (path B)"
+            else "MISSING  remove appendDeleteCustomizeCandidate from Lcbd.b()",
         )
 
-        val menuC = findMethod(dexFiles, "Lcbd;", "c") { it.size == 1 && it[0] == "I" }
-            ?: error("Lcbd;->c(I) missing")
-        val callsRegister = menuC.any {
+        val bind = findMethod(dexFiles, "Lrbd\$a;", "onBindViewHolder")
+            ?: error("Lrbd\$a.onBindViewHolder missing")
+        val bindDelete = bind.any {
             it is ReferenceInstruction &&
-                it.reference.toString().contains("registerDeleteMenuEntry")
-        }
-        val hasPrefKey = dexFiles.any { dex ->
-            dex.classes.any { cls ->
-                cls.methods.any { m ->
-                    m.implementation?.instructions?.any { insn ->
-                        insn is ReferenceInstruction &&
-                            insn.reference.toString().contains(DELETE_MENU_PREF_KEY_FREE)
-                    } == true
-                }
-            }
+                (it.reference.toString().contains(DELETE_SHORTCUT_KEY) ||
+                    it.reference.toString().contains("overlayDeleteRowChecked"))
         }
         appendLine(
-            if (callsRegister) "OK  MenuHelper.c(I) calls registerDeleteMenuEntry"
-            else "MISSING  MenuHelper.c(I) registry hook",
+            if (bindDelete) "OK  Shortcuts list bind wires delete_file row"
+            else "MISSING  Lrbd\$a.onBindViewHolder must bind delete shortcut row",
         )
+
+        val toggle = findMethod(dexFiles, "Lqbd;", "onCheckedChanged")
+            ?: error("Lqbd.onCheckedChanged missing")
+        val toggleDelete = toggle.any {
+            it is ReferenceInstruction && it.reference.toString().contains("toggleDeleteShortcut")
+        }
         appendLine(
-            if (hasPrefKey) "OK  dex contains pref key $DELETE_MENU_PREF_KEY_FREE"
-            else "MISSING  pref key $DELETE_MENU_PREF_KEY_FREE",
+            if (toggleDelete) "OK  Lqbd.onCheckedChanged toggles delete via shortcuts_flag.3"
+            else "MISSING  Lqbd.onCheckedChanged must call toggleDeleteShortcut",
+        )
+
+        val ya = findMethod(dexFiles, ACTIVITY_SCREEN, "Ya")
+        val rebuildYa = ya?.any {
+            it is ReferenceInstruction && it.reference.toString().contains("rebuildDeleteShortcutInYa")
+        } == true
+        appendLine(
+            if (rebuildYa) "OK  ActivityScreen.Ya() rebuilds delete toolbar shortcut"
+            else "MISSING  ActivityScreen.Ya() must call rebuildDeleteShortcutInYa",
+        )
+
+        val toolbarClick = findMethod(dexFiles, "Lcom/mxtech/videoplayer/widget/b\$g\$a;", "onClick")
+        val toolbarDelete = toolbarClick?.any {
+            it is ReferenceInstruction && it.reference.toString().contains("onToolbarShortcutClick")
+        } == true
+        appendLine(
+            if (toolbarDelete) "OK  toolbar adapter onClick handles delete shortcut"
+            else "MISSING  widget b\$g\$a.onClick must call onToolbarShortcutClick",
         )
 
         val jy1 = findMethodImpl(dexFiles, "Ljy1;", "a") { it.size == 1 && it[0] == "I" }
-        val sbd = findMethodImpl(dexFiles, "Lsbd;", "onClick")
         val jy1ByteOk = verifyHookedBooleanCall(jy1, "onCustomizeMenuAction")
-        val sbdByteOk = verifyHookedBooleanCall(sbd, "onCustomizeRowClick")
         appendLine(
             if (jy1ByteOk) "OK  Ljy1.a(I) invokes onCustomizeMenuAction with valid move-result"
             else "MISSING  Ljy1.a(I) must invoke-static onCustomizeMenuAction before move-result",
         )
+
+        val deleteFlow =
+            dexFiles.flatMap { it.classes }
+                .firstOrNull { it.type == DELETE_SHORTCUT_EXTENSION_FREE }
+                ?.methods
+                ?.firstOrNull { it.name == "deletePlayingFile" }
+        val usesYDialog = deleteFlow?.implementation?.instructions?.any {
+            it is ReferenceInstruction &&
+                it.reference.toString().contains("ActivityScreen\$y")
+        } == true
         appendLine(
-            if (sbdByteOk) "OK  Lsbd.onClick invokes onCustomizeRowClick with valid move-result"
-            else "MISSING  Lsbd.onClick must invoke-static onCustomizeRowClick before move-result",
+            if (usesYDialog) "OK  deletePlayingFile constructs ActivityScreen\$y"
+            else "MISSING  deletePlayingFile must call ActivityScreen\$y",
+        )
+
+        val applyBtn = findMethod(dexFiles, "Lb3;", "onClick") { it.size == 1 && it[0] == "Landroid/view/View;" }
+        val topBarPersist = applyBtn?.any {
+            it is ReferenceInstruction &&
+                it.reference.toString().contains("persistDeleteTopBarMenuPref")
+        } == true
+        appendLine(
+            if (!topBarPersist) "OK  no Luad top-bar key_show_delete_file persist hook"
+            else "MISSING  remove persistDeleteTopBarMenuPref from Lb3.onClick",
         )
 
         val ext = dexFiles.flatMap { it.classes }.firstOrNull {
             it.type == DELETE_SHORTCUT_EXTENSION_FREE
         } ?: error("DeleteShortcutPatch missing")
         appendLine("OK  extension ${ext.type}")
-
-        val wrongToolbarHook = findMethod(dexFiles, ACTIVITY_SCREEN, "Ya")?.any {
-            it is ReferenceInstruction &&
-                it.reference.toString().contains("rebuildDeleteShortcutInYa")
-        } == true
-        appendLine(
-            if (!wrongToolbarHook) "OK  ActivityScreen.Ya() no longer uses rebuildDeleteShortcutInYa"
-            else "MISSING  remove legacy Ya() toolbar inject",
-        )
     }
     val failed = lines.lines().any { it.startsWith("MISSING  ") }
     val result = lines + if (failed) "FAILED\n" else "PASSED\n"

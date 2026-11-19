@@ -45,35 +45,6 @@ internal object FreeCustomizeItemsToggleFingerprint : Fingerprint(
     ),
 )
 
-/** [MenuHelper.b] six-row customize picker (Luad RecyclerView). */
-internal object FreeMenuHelperBuildListFingerprint : Fingerprint(
-    definingClass = "Lcbd;",
-    name = "b",
-    returnType = "Ljava/util/ArrayList;",
-    filters = listOf(
-        literal(13, location = MatchAfterWithin(30)),
-        literal(9, location = MatchAfterWithin(60)),
-        literal(10, location = MatchAfterWithin(120)),
-    ),
-)
-
-/** [MenuHelper.c] after {@code d()} rebuilds portrait/landscape slot maps. */
-internal object FreeMenuHelperOrientFingerprint : Fingerprint(
-    definingClass = "Lcbd;",
-    name = "c",
-    returnType = "Lcbd\$a;",
-    parameters = listOf("I"),
-    filters = listOf(
-        opcode(Opcode.INVOKE_VIRTUAL, location = MatchAfterWithin(20)),
-        fieldAccess(
-            name = "h",
-            type = "Lcbd\$a;",
-            definingClass = "Lcbd;",
-            opcode = Opcode.IGET_OBJECT,
-        ),
-    ),
-)
-
 /** [Ljy1;.a] dispatches customize/player control actions. */
 internal object FreeJy1MenuActionFingerprint : Fingerprint(
     definingClass = "Ljy1;",
@@ -83,17 +54,6 @@ internal object FreeJy1MenuActionFingerprint : Fingerprint(
     filters = listOf(
         literal(6, location = MatchAfterWithin(25)),
         literal(13, location = MatchAfterWithin(500)),
-    ),
-)
-
-/** [Lsbd;] customize grid row click before {@code Ljy1;->a}. */
-internal object FreeSbdMenuClickFingerprint : Fingerprint(
-    definingClass = "Lsbd;",
-    name = "onClick",
-    returnType = "V",
-    filters = listOf(
-        string("favorite"),
-        string("morePanel"),
     ),
 )
 
