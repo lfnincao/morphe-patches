@@ -1,3 +1,9 @@
+## [2.8.1](https://github.com/lfnincao/morphe-patches/compare/v2.8.0...v2.8.1) (2026-11-19)
+
+### 🐛 Bug Fixes
+
+* **mxplayer-free:** Lsbd onClick VerifyError from out-of-range v15 ([#34](https://github.com/lfnincao/morphe-patches/issues/34)) ([2805c82](https://github.com/lfnincao/morphe-patches/commit/2805c826b9c0b6afced7a4dae440b54041bef0c9))
+
 ## [2.8.0](https://github.com/lfnincao/morphe-patches/compare/v2.7.2...v2.8.0) (2026-11-19)
 
 ### ✨ New Features
