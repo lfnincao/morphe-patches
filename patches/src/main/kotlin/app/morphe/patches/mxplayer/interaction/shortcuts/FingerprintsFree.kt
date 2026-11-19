@@ -57,18 +57,6 @@ internal object FreeMenuHelperBuildListFingerprint : Fingerprint(
     ),
 )
 
-/** Luad Apply button ({@code Lb3.onClick}) — writes {@code key_show_*} prefs for top-bar slots. */
-internal object FreeLuadApplyClickFingerprint : Fingerprint(
-    definingClass = "Lb3;",
-    name = "onClick",
-    returnType = "V",
-    parameters = listOf("Landroid/view/View;"),
-    filters = listOf(
-        string("key_show_audio"),
-        string("key_show_zoom"),
-    ),
-)
-
 /** [MenuHelper.c] after {@code d()} rebuilds portrait/landscape slot maps. */
 internal object FreeMenuHelperOrientFingerprint : Fingerprint(
     definingClass = "Lcbd;",
