@@ -1,3 +1,9 @@
+## [2.8.2](https://github.com/lfnincao/morphe-patches/compare/v2.8.1...v2.8.2) (2026-11-19)
+
+### 🐛 Bug Fixes
+
+* **mxplayer-free:** restore Delete in Shortcuts checklist (path B) ([#35](https://github.com/lfnincao/morphe-patches/issues/35)) ([2bc3b6d](https://github.com/lfnincao/morphe-patches/commit/2bc3b6d864226bcc8ea19c99923c48394d562b38))
+
 ## [2.8.1](https://github.com/lfnincao/morphe-patches/compare/v2.8.0...v2.8.1) (2026-11-19)
 
 ### 🐛 Bug Fixes
