@@ -7,6 +7,7 @@ import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION_FR
 import com.android.tools.smali.dexlib2.Opcodes
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import java.io.File
 import java.util.zip.ZipFile
@@ -56,8 +57,8 @@ fun verifyMxPlayerFreeCustomizeMenu(apkFile: File): String {
             else "MISSING  pref key $DELETE_MENU_PREF_KEY_FREE",
         )
 
-        val jy1 = findMethod(dexFiles, "Ljy1;", "a") { it.size == 1 && it[0] == "I" }
-        val sbd = findMethod(dexFiles, "Lsbd;", "onClick")
+        val jy1 = findMethodImpl(dexFiles, "Ljy1;", "a") { it.size == 1 && it[0] == "I" }
+        val sbd = findMethodImpl(dexFiles, "Lsbd;", "onClick")
         val jy1ByteOk = verifyHookedBooleanCall(jy1, "onCustomizeMenuAction")
         val sbdByteOk = verifyHookedBooleanCall(sbd, "onCustomizeRowClick")
         appendLine(
@@ -103,19 +104,29 @@ fun verifyMxPlayerFreePatchedApkDex(apkFile: File): String {
     }
     val dexFiles = dexDir.listFiles()?.filter { it.name.matches(Regex("classes\\d*\\.dex")) }.orEmpty()
     require(dexFiles.isNotEmpty()) { "No DEX in $apkFile" }
-  val verifier = SdkDexVerifier(sdk)
+    val verifier = SdkDexVerifier(sdk)
     dexFiles.sortedBy { it.name }.forEach { verifier.verifyDexFile(it) }
-    return "OK  SDK/ART DEX verification passed for ${dexFiles.size} file(s)\n"
+    val boundsReport = verifyDexMethodRegisterBounds(apkFile)
+    return buildString {
+        appendLine("OK  SDK/ART DEX verification passed for ${dexFiles.size} file(s)")
+        append(boundsReport)
+    }
 }
 
 /**
  * Ensures a hooked handler uses `invoke-static … Z` immediately before the matching `move-result`,
  * not a leading orphan `move-result` (ART VerifyError on launch).
  */
+private data class MethodInsnView(
+    val registerCount: Int,
+    val instructions: List<com.android.tools.smali.dexlib2.iface.instruction.Instruction>,
+)
+
 private fun verifyHookedBooleanCall(
-    insns: List<com.android.tools.smali.dexlib2.iface.instruction.Instruction>?,
+    method: MethodInsnView?,
     extensionMethodSuffix: String,
 ): Boolean {
+    val insns = method?.instructions
     if (insns.isNullOrEmpty()) return false
     if (insns.first().opcode == Opcode.MOVE_RESULT) {
         return false
@@ -125,6 +136,8 @@ private fun verifyHookedBooleanCall(
     if (moveIdx <= 0) return false
     val invoke = window[moveIdx - 1]
     if (invoke.opcode != Opcode.INVOKE_STATIC) return false
+    val moveInsn = window[moveIdx] as OneRegisterInstruction
+    if (moveInsn.registerA >= method.registerCount) return false
     return invoke is ReferenceInstruction &&
         invoke.reference.toString().contains(extensionMethodSuffix)
 }
@@ -147,13 +160,22 @@ private fun findMethod(
     type: String,
     name: String,
     paramsFilter: ((List<String>) -> Boolean)? = null,
-): List<com.android.tools.smali.dexlib2.iface.instruction.Instruction>? {
+): List<com.android.tools.smali.dexlib2.iface.instruction.Instruction>? =
+    findMethodImpl(dexFiles, type, name, paramsFilter)?.instructions
+
+private fun findMethodImpl(
+    dexFiles: List<DexBackedDexFile>,
+    type: String,
+    name: String,
+    paramsFilter: ((List<String>) -> Boolean)? = null,
+): MethodInsnView? {
     for (dex in dexFiles) {
         val cls = dex.classes.firstOrNull { it.type == type } ?: continue
         for (method in cls.methods) {
             if (method.name != name) continue
             if (paramsFilter != null && !paramsFilter(method.parameters.map { it.type })) continue
-            return method.implementation?.instructions?.toList()
+            val impl = method.implementation ?: return null
+            return MethodInsnView(impl.registerCount, impl.instructions.toList())
         }
     }
     return null

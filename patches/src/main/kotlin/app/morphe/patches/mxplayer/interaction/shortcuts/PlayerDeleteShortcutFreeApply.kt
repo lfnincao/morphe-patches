@@ -3,6 +3,7 @@ package app.morphe.patches.mxplayer.interaction.shortcuts
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.util.cloneParameters
+import app.morphe.patcher.util.findFreeRegister
 import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patches.mxplayer.shared.Constants.DELETE_SHORTCUT_EXTENSION_FREE
 import com.android.tools.smali.dexlib2.Opcode
@@ -60,12 +61,14 @@ internal fun applyFreeDeleteShortcutPatches() {
     FreeSbdMenuClickFingerprint.method.cloneParameters().apply {
         val insns = implementation!!.instructions
         val continueAt = insns[0]
+        // Lsbd;->onClick has a small frame (~10 regs after clone); v15 is out of range (VerifyError).
+        val hookResultRegister = findFreeRegister(0)
         addInstructionsWithLabels(
             0,
             """
             invoke-static {p0}, $ext->onCustomizeRowClick(Ljava/lang/Object;)Z
-            move-result v15
-            if-eqz v15, :morphe_sbd_continue
+            move-result v$hookResultRegister
+            if-eqz v$hookResultRegister, :morphe_sbd_continue
             return-void
             """.trimIndent(),
             ExternalLabel("morphe_sbd_continue", continueAt),
